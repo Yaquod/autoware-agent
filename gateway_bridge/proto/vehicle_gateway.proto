@@ -1,0 +1,418 @@
+syntax = "proto3";
+package vehicle_gateway;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ==============================================================================
+// Service Definitions
+// ==============================================================================
+
+// Service for streaming sensor data from CARLA
+service SensorService {
+  // Subscribe to a stream of sensor data
+  rpc StreamSensorData(SensorSubscription) returns (stream SensorData);
+}
+
+// Service for vehicle state and control
+service VehicleService {
+  // Stream the vehicle's kinematic state
+  rpc StreamVehicleState(VehicleStreamRequest) returns (stream VehicleState);
+  // Send control commands to the vehicle
+  rpc SendControlCommand(VehicleControl) returns (google.protobuf.Empty);
+}
+
+// Service for perception data
+service PerceptionService {
+  // Stream detected objects from the perception system
+  rpc StreamDetectedObjects(PerceptionRequest) returns (stream DetectedObjectList);
+  // Stream detected lanes
+  rpc StreamLanes(PerceptionRequest) returns (stream LaneList);
+}
+
+// Service for planning and trajectory
+service PlanningService {
+  // Stream the current planned trajectory
+  rpc StreamTrajectory(PlanningRequest) returns (stream Trajectory);
+}
+
+// Service for trip management (based on the original VehicleGateway)
+service TripService {
+  rpc VehicleLogin(LoginRequest) returns (LoginResponse);
+  rpc SendEta(EtaRequest) returns (EtaResponse);
+  rpc SendStatus(StatusRequest) returns (StatusResponse);
+  rpc SendArrive(ArriveRequest) returns (ArriveResponse);
+  rpc StartTrip(StartTripRequest) returns (StartTripResponse);
+  rpc CancelTrip(TripCommand) returns (CancelTripResponse);
+  rpc GetTripStatus(TripStatusRequest) returns (TripStatusResponse);
+  rpc StreamTripUpdates(stream TripUpdate) returns (google.protobuf.Empty);
+}
+
+// Service for HD Map data
+service MapService {
+  // Request a chunk of the HD map
+  rpc GetMapChunk(MapRequest) returns (MapChunk);
+}
+
+
+// ==============================================================================
+// Common Message Types
+// ==============================================================================
+
+message Vector3D {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Transform {
+  Vector3D location = 1;
+  Vector3D rotation = 2; // Euler angles: roll, pitch, yaw
+}
+
+// Geographic coordinates
+message Location {
+    double latitude = 1;
+    double longitude = 2;
+    double altitude = 3;
+    string address = 4;
+}
+
+// ==============================================================================
+// Sensor Service Messages
+// ==============================================================================
+
+message SensorSubscription {
+  string sensor_id = 1;
+  SensorType sensor_type = 2;
+}
+
+enum SensorType {
+  SENSOR_TYPE_UNKNOWN = 0;
+  SENSOR_TYPE_CAMERA_RGB = 1;
+  SENSOR_TYPE_LIDAR = 2;
+  SENSOR_TYPE_RADAR = 3;
+  SENSOR_TYPE_GNSS = 4;
+  SENSOR_TYPE_IMU = 5;
+}
+
+message SensorData {
+  string sensor_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  oneof data {
+    Image image = 3;
+    PointCloud point_cloud = 4;
+    RadarData radar_data = 5;
+    GnssData gnss_data = 6;
+    ImuData imu_data = 7;
+  }
+}
+
+message Image {
+  uint32 height = 1;
+  uint32 width = 2;
+  string encoding = 3; // e.g., "rgb8", "rgba8"
+  bytes data = 4;
+}
+
+message PointCloud {
+  string frame_id = 1;
+  repeated float points = 2; // [x1, y1, z1, intensity1, x2, y2, z2, intensity2, ...]
+}
+
+message RadarMeasurement {
+  float range = 1;
+  float azimuth = 2; // radians
+  float elevation = 3; // radians
+  float velocity = 4;
+}
+
+message RadarData {
+  repeated RadarMeasurement measurements = 1;
+}
+
+message GnssData {
+  Location location = 1;
+}
+
+message ImuData {
+  Vector3D acceleration = 1;
+  Vector3D angular_velocity = 2;
+  Transform transform = 3;
+}
+
+
+// ==============================================================================
+// Vehicle Service Messages
+// ==============================================================================
+
+message VehicleStreamRequest {
+  string vin_number = 1;
+}
+
+// Represents the physical state of the vehicle
+message VehicleState {
+  google.protobuf.Timestamp timestamp = 1;
+  Transform transform = 2;
+  Vector3D velocity = 3;
+  Vector3D angular_velocity = 4;
+  Vector3D acceleration = 5;
+  double speed_kmh = 6;
+}
+
+// Represents a command to control the vehicle
+message VehicleControl {
+  double throttle = 1; // [0.0, 1.0]
+  double steer = 2;    // [-1.0, 1.0]
+  double brake = 3;    // [0.0, 1.0]
+  bool hand_brake = 4;
+  bool reverse = 5;
+  int32 gear = 6;
+}
+
+// ==============================================================================
+// Perception Service Messages
+// ==============================================================================
+
+message PerceptionRequest {
+  string vin_number = 1;
+}
+
+message BoundingBox3D {
+  Transform center = 1;
+  Vector3D size = 2; // length, width, height
+}
+
+message DetectedObject {
+  uint32 id = 1;
+  string label = 2; // e.g., "car", "pedestrian"
+  float score = 3;
+  BoundingBox3D bounding_box = 4;
+  Vector3D velocity = 5;
+}
+
+message DetectedObjectList {
+  google.protobuf.Timestamp timestamp = 1;
+  repeated DetectedObject objects = 2;
+}
+
+message LaneWaypoint {
+  Transform transform = 1;
+  bool is_junction = 2;
+  double lane_width = 3;
+}
+
+message LaneMarking {
+  enum Type {
+    OTHER = 0;
+    BROKEN = 1;
+    SOLID = 2;
+  }
+  Type type = 1;
+  string color = 2; // e.g., "white", "yellow"
+}
+
+message Lane {
+  repeated LaneWaypoint waypoints = 1;
+  LaneMarking left_marking = 2;
+  LaneMarking right_marking = 3;
+}
+
+message LaneList {
+  google.protobuf.Timestamp timestamp = 1;
+  repeated Lane lanes = 2;
+}
+
+// ==============================================================================
+// Planning Service Messages
+// ==============================================================================
+
+message PlanningRequest {
+  string vin_number = 1;
+}
+
+message TrajectoryPoint {
+  Transform transform = 1;
+  float velocity = 2; // m/s
+  float acceleration = 3; // m/s^2
+}
+
+message Trajectory {
+  google.protobuf.Timestamp timestamp = 1;
+  repeated TrajectoryPoint points = 2;
+}
+
+// ==============================================================================
+// Map Service Messages
+// ==============================================================================
+
+message MapRequest {
+  Location center = 1;
+  float radius = 2; // in meters
+}
+
+message MapChunk {
+  bytes data = 1; // e.g., OpenDRIVE format
+}
+
+
+// ==============================================================================
+// Trip Service Messages (Original)
+// ==============================================================================
+
+message LoginRequest {
+    string vin_number = 1;
+    string trip_id = 2;
+}
+
+message LoginResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message EtaRequest {
+    string vin_number = 1;
+    string trip_id = 2;
+    double time = 3;
+    double fare = 4;
+}
+
+message EtaResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StatusRequest
+{
+  string vin_number = 1;
+  string trip_id = 2;
+  string status = 3;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ArriveRequest{
+  string vin_number = 1;
+  string trip_id = 2;
+  double long = 3;
+  double lat = 4;
+}
+
+message ArriveResponse{
+  bool success = 1;
+  string message = 2;
+}
+
+message Waypoint {
+    Location location = 1;
+    double heading = 2;
+    string name = 3;
+}
+
+message StartTripRequest {
+    string vin_number = 1;
+    string trip_id = 2;
+    Location pickup_location = 3;
+    Location destination_location = 4;
+    google.protobuf.Timestamp requested_pickup_time = 5;
+    string passenger_id = 6;
+    int32 passenger_count = 7;
+}
+
+message StartTripResponse {
+    bool success = 1;
+    string message = 2;
+    string trip_id = 3;
+    TripState trip_state = 4;
+    double distance_traveled = 5;
+    double distance_remaining = 6;
+    double eta_seconds = 7;
+    string current_leg = 8;
+    double progress_percent = 9;
+}
+
+message CancelTripResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message TripStatusRequest {
+  string vin_number = 1;
+  string trip_id = 2;
+}
+
+message TripStatusResponse {
+  bool success = 1;
+  string message = 2;
+  TripState state = 3;
+  Location current_location = 4;
+  double distance_traveled = 5;
+  double distance_remaining = 6;
+  double eta_seconds = 7;
+  string current_leg = 8;
+  double progress_percent = 9;
+}
+
+message TripUpdate {
+  string vin_number = 1;
+  string trip_id = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  TripState trip_state = 4;
+  Location current_location = 5;
+  double speed_kmh = 6;
+  double heading_degrees = 7;
+  double eta_seconds = 8;
+  optional TripEvent trip_event = 9;
+}
+
+message TripCommand {
+  string vin_number = 1;
+  string trip_id = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  CommandType command_type = 4;
+  optional Location new_destination = 5;
+  optional double new_speed_limit_kmh = 6;
+  optional string instruction = 7;
+}
+
+enum CommandType {
+  COMMAND_NONE = 0;
+  COMMAND_PAUSE = 1;
+  COMMAND_RESUME = 2;
+  COMMAND_CANCEL = 3;
+  COMMAND_UPDATE_DESTINATION = 4;
+  COMMAND_EMERGENCY_STOP = 5;
+  COMMAND_RETURN_GARAGE = 6;
+}
+
+enum TripState {
+  TRIP_STATE_UNKNOWN = 0;
+  TRIP_STATE_IDLE = 1;
+  TRIP_STATE_ASSIGNED = 2;
+  TRIP_STATE_EN_ROUTE_PICKUP = 3;
+  TRIP_STATE_ARRIVED_PICKUP = 4;
+  TRIP_STATE_PASSENGER_ONBOARD = 5;
+  TRIP_STATE_EN_ROUTE_DESTINATION = 6;
+  TRIP_STATE_ARRIVED_DESTINATION = 7;
+  TRIP_STATE_RETURNING_GARAGE = 8;
+  TRIP_STATE_CANCELLED = 9;
+  TRIP_STATE_ERROR = 10;
+}
+
+enum TripEvent {
+  TRIP_EVENT_NONE = 0;
+  TRIP_EVENT_ROUTE_CALCULATED = 1;
+  TRIP_EVENT_STARTED = 2;
+  TRIP_EVENT_ARRIVED_PICKUP = 3;
+  TRIP_EVENT_PASSENGER_BOARDED = 4;
+  TRIP_EVENT_ARRIVED_DESTINATION = 5;
+  TRIP_EVENT_PASSENGER_ALIGHTED = 6;
+  TRIP_EVENT_COMPLETED = 7;
+  TRIP_EVENT_CANCELLED = 8;
+  TRIP_EVENT_OBSTACLE_DETECTED = 9;
+  TRIP_EVENT_REROUTING = 10;
+  TRIP_EVENT_EMERGENCY_STOP = 11;
+}
