@@ -72,10 +72,10 @@ message Transform {
 
 // Geographic coordinates
 message Location {
-    double latitude = 1;
-    double longitude = 2;
-    double altitude = 3;
-    string address = 4;
+  double latitude = 1;
+  double longitude = 2;
+  double altitude = 3;
+  string address = 4;
 }
 
 // ==============================================================================
@@ -261,20 +261,20 @@ message MapChunk {
 // ==============================================================================
 
 message LoginRequest {
-    string vin_number = 1;
-    string trip_id = 2;
+  string vin_number = 1;
+  string trip_id = 2;
 }
 
 message LoginResponse {
-    bool success = 1;
-    string message = 2;
+  bool success = 1;
+  string message = 2;
 }
 
 message EtaRequest {
-    string vin_number = 1;
-    string trip_id = 2;
-    double time = 3;
-    double fare = 4;
+  string vin_number = 1;
+  string trip_id = 2;
+  double time = 3;
+  double fare = 4;
 }
 
 message EtaResponse {
@@ -307,36 +307,36 @@ message ArriveResponse{
 }
 
 message Waypoint {
-    Location location = 1;
-    double heading = 2;
-    string name = 3;
+  Location location = 1;
+  double heading = 2;
+  string name = 3;
 }
 
 message StartTripRequest {
-    string vin_number = 1;
-    string trip_id = 2;
-    Location pickup_location = 3;
-    Location destination_location = 4;
-    google.protobuf.Timestamp requested_pickup_time = 5;
-    string passenger_id = 6;
-    int32 passenger_count = 7;
+  string vin_number = 1;
+  string trip_id = 2;
+  Location pickup_location = 3;
+  Location destination_location = 4;
+  google.protobuf.Timestamp requested_pickup_time = 5;
+  string passenger_id = 6;
+  int32 passenger_count = 7;
 }
 
 message StartTripResponse {
-    bool success = 1;
-    string message = 2;
-    string trip_id = 3;
-    TripState trip_state = 4;
-    double distance_traveled = 5;
-    double distance_remaining = 6;
-    double eta_seconds = 7;
-    string current_leg = 8;
-    double progress_percent = 9;
+  bool success = 1;
+  string message = 2;
+  string trip_id = 3;
+  TripState trip_state = 4;
+  double distance_traveled = 5;
+  double distance_remaining = 6;
+  double eta_seconds = 7;
+  string current_leg = 8;
+  double progress_percent = 9;
 }
 
 message CancelTripResponse {
-    bool success = 1;
-    string message = 2;
+  bool success = 1;
+  string message = 2;
 }
 
 message TripStatusRequest {

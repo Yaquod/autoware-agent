@@ -35,7 +35,7 @@ add_test(NAME routing_unit_test COMMAND autoware_tests)
 set_tests_properties(routing_unit_test PROPERTIES ENVIRONMENT
         "VEHICLE_AGENT_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/unit")
 
-if(BUILD_INTEGRATION_TESTS)
+if (BUILD_INTEGRATION_TESTS)
     file(GLOB_RECURSE INTEGRATION_TEST_SOURCES "integration/**/*_test.cpp")
 
     add_executable(autoware_integration_tests
@@ -59,4 +59,4 @@ if(BUILD_INTEGRATION_TESTS)
     gtest_discover_tests(autoware_integration_tests
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
-endif()
+endif ()

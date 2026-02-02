@@ -17,87 +17,88 @@
 #ifndef AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
 #define AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
 
+#include <yaml-cpp/yaml.h>
+
+#include <cmath>
 #include <string>
 #include <vector>
-#include <yaml-cpp/yaml.h>
-#include <cmath>
 
 namespace AutowareAgent {
-
 struct GPSCoordinate {
-    double latitude;
-    double longitude;
+  double latitude;
+  double longitude;
 };
 
 struct LocalCoordinate {
-    double x;
-    double y;
-    double z;
+  double x;
+  double y;
+  double z;
 };
 
 struct Orientation {
-    double x = 0.0;
-    double y = 0.0;
-    double z;
-    double w;
-    double yaw_degrees;
+  double x = 0.0;
+  double y = 0.0;
+  double z;
+  double w;
+  double yaw_degrees;
 };
 
 struct LaneInfo {
-    int lane_id;
-    GPSCoordinate gps;
-    LocalCoordinate local;
-    Orientation orientation;
+  int lane_id;
+  GPSCoordinate gps;
+  LocalCoordinate local;
+  Orientation orientation;
 };
 
 struct MapOrigin {
-    double latitude;
-    double longitude;
-    double local_x;
-    double local_y;
+  double latitude;
+  double longitude;
+  double local_x;
+  double local_y;
 };
 
 struct FixedStartPosition {
-    std::string name;
-    int lane_id;
-    GPSCoordinate gps;
-    LocalCoordinate local;
-    Orientation orientation;
+  std::string name;
+  int lane_id;
+  GPSCoordinate gps;
+  LocalCoordinate local;
+  Orientation orientation;
 };
 
 class RouteConfig {
-public:
-    RouteConfig(const std::string &config_file);
+ public:
+  RouteConfig(const std::string& config_file);
 
-    ~RouteConfig() = default;
+  ~RouteConfig() = default;
 
-    const std::string& getMapName() const;
+  const std::string& getMapName() const;
 
-    const MapOrigin& getMapOrigin() const;
+  const MapOrigin& getMapOrigin() const;
 
-    const std::vector<LaneInfo>& getAllLanes() const;
+  const std::vector<LaneInfo>& getAllLanes() const;
 
-    [[nodiscard]] size_t getLanesCount() const;
+  [[nodiscard]] size_t getLanesCount() const;
 
-    void loadFromYaml(const std::string &config_file);
+  void loadFromYaml(const std::string& config_file);
 
-    LocalCoordinate gpsToLocalCoordinate(const GPSCoordinate &gps) const;
+  [[nodiscard]] LocalCoordinate gpsToLocalCoordinate(
+      const GPSCoordinate& gps) const;
 
-    const LaneInfo* FindNearestLane(const GPSCoordinate &gps) const;
+  [[nodiscard]] const LaneInfo* FindNearestLane(const GPSCoordinate& gps) const;
 
-    const LaneInfo* getLaneByID(int lane_id) const;
+  [[nodiscard]] const LaneInfo* getLaneByID(int lane_id) const;
 
-    const FixedStartPosition* getDefaultStart() const;
+  [[nodiscard]] const FixedStartPosition* getDefaultStart() const;
 
-private:
-    std::string map_name_;
-    MapOrigin map_origin_{};
-    std::vector<LaneInfo> lanes_;
-    std::vector<FixedStartPosition> default_starts_;
-    static constexpr double EARTH_RADIUS = 6378137.0;
+ private:
+  std::string map_name_;
+  MapOrigin map_origin_{};
+  std::vector<LaneInfo> lanes_;
+  std::vector<FixedStartPosition> default_starts_;
+  static constexpr double EARTH_RADIUS = 6378137.0;
 
-    static std::string resolveConfigPath(const std::string& filename);
+  static std::string resolveConfigPath(const std::string& filename);
 };
-}
+}  // namespace AutowareAgent
 
-#endif //AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
+#endif  // AUTOWARE_CARLA_GNSS_ROUTECONFIG_H

@@ -10,7 +10,10 @@ install(FILES nishishinjuku_routes.yaml
 
 target_compile_definitions(map_routes_lib PRIVATE
         DEFAULT_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
-target_link_libraries(map_routes_lib PUBLIC yaml-cpp)
+target_link_libraries(map_routes_lib
+        PUBLIC yaml-cpp
+        PUBLIC config_header
+)
 
 target_include_directories(map_routes_lib
         PUBLIC
