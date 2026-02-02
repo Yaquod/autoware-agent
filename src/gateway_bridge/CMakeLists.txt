@@ -23,14 +23,15 @@ pkg_check_modules(Protobuf REQUIRED protobuf)
 find_program(PROTOC protoc REQUIRED)
 find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED)
 
-set(PROTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+set(PROTO_SRC_DIR ../../proto)
 set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_GEN_DIR})
 
 set(PROTO_FILE ${PROTO_SRC_DIR}/vehicle_gateway.proto)
 set(PROTO_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.pb.cc)
 set(PROTO_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.pb.h)
-set(GRPC_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.cc)
+set(GRPC_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.cc
+        ../main.cc)
 set(GRPC_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.h)
 
 add_custom_command(
@@ -103,7 +104,7 @@ install(
 )
 
 install(
-        DIRECTORY include/
+        DIRECTORY include
         DESTINATION include
         OPTIONAL
 )
