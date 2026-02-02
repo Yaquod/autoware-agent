@@ -38,13 +38,19 @@ message(STATUS "Finding system dependencies...")
 # Threading
 find_package(Threads REQUIRED)
 
+# ---------------------------------------------------------------------------
+# gRPC  (via pkg-config)
+# ---------------------------------------------------------------------------
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GRPC REQUIRED grpc++ gpr)
 
-if(NOT TARGET gRPC::grpc)
-    add_library(gRPC::grpc INTERFACE IMPORTED)
-    target_link_libraries(gRPC::grpc INTERFACE ${GRPC_LIBRARIES})
-    target_include_directories(gRPC::grpc INTERFACE ${GRPC_INCLUDE_DIRS})
+# Wrap the pkg-config results in a single INTERFACE target so sub-directories
+# can just link against gRPC::grpc++ without repeating flags.
+if(NOT TARGET gRPC::grpc++)
+    add_library(gRPC::grpc++ INTERFACE IMPORTED)
+    target_link_libraries(gRPC::grpc++ INTERFACE ${GRPC_LIBRARIES})
+    target_include_directories(gRPC::grpc++ INTERFACE ${GRPC_INCLUDE_DIRS})
+    target_link_directories(gRPC::grpc++ INTERFACE ${GRPC_LIBRARY_DIRS})
 endif()
 
 find_program(gRPC_CPP_PLUGIN_PATH NAMES grpc_cpp_plugin)
@@ -55,18 +61,55 @@ if(gRPC_CPP_PLUGIN_PATH AND NOT TARGET gRPC::grpc_cpp_plugin)
             IMPORTED_LOCATION "${gRPC_CPP_PLUGIN_PATH}")
 endif()
 
-find_package(Protobuf REQUIRED)
+# ---------------------------------------------------------------------------
+# Protobuf  (via pkg-config — keeps everything consistent with gRPC above)
+# ---------------------------------------------------------------------------
+pkg_check_modules(Protobuf REQUIRED protobuf)
+
+# Same pattern: one INTERFACE target, usable everywhere.
 if(NOT TARGET protobuf::libprotobuf)
-    add_library(protobuf::libprotobuf ALIAS Protobuf::libprotobuf)
+    add_library(protobuf::libprotobuf INTERFACE IMPORTED)
+    target_link_libraries(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARIES})
+    target_include_directories(protobuf::libprotobuf INTERFACE ${Protobuf_INCLUDE_DIRS})
+    target_link_directories(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARY_DIRS})
 endif()
 
-#add_subdirectory(src/gateway_bridge)
+find_program(PROTOC NAMES protoc REQUIRED)
 
+# ---------------------------------------------------------------------------
+# Sub-directories
+# ---------------------------------------------------------------------------
+add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/map_routes)
 
-add_executable(autoware_agent src/main.cc)
-target_link_libraries(autoware_agent PRIVATE autoware_lib)
+# ---------------------------------------------------------------------------
+# Main executable
+# ---------------------------------------------------------------------------
+add_executable(autoware_agent
+        src/main.cc
+        src/gateway_bridge/src/AutowareController.cc
+)
 
+target_link_libraries(autoware_agent PRIVATE
+        autoware_controller      # library target from gateway_bridge/CMakeLists.txt
+        map_routes_lib           # library target from map_routes/CMakeLists.txt
+)
+
+# ---------------------------------------------------------------------------
+# Generated config header
+# ---------------------------------------------------------------------------
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Config.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/Config.h"
+        @ONLY
+)
+target_include_directories(autoware_agent PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
+# ---------------------------------------------------------------------------
+# Strip in Release builds
+# ---------------------------------------------------------------------------
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_custom_command(TARGET autoware_agent POST_BUILD
             COMMAND ${CMAKE_STRIP} $<TARGET_FILE:autoware_agent>
@@ -74,33 +117,26 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 endif()
 
-# Root CMakeLists.txt
-configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/Config.h.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/Config.h"
-        @ONLY
-)
-
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/generated")
-
+# ---------------------------------------------------------------------------
 # Tests
+# ---------------------------------------------------------------------------
 if(BUILD_TESTS)
     find_package(GTest REQUIRED)
-endif()
-if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-#install(TARGETS Autoware_Agent
-#        RUNTIME DESTINATION bin)
-
-# Install systemd service file only on Linux.
+# ---------------------------------------------------------------------------
+# systemd service  (Linux only)
+# ---------------------------------------------------------------------------
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systemd/autoware-agent.service")
     install(FILES systemd/autoware-agent.service
             DESTINATION /lib/systemd/system)
 endif()
 
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
 message(STATUS "==========================================")
 message(STATUS "Vehicle Autoware Agent")
 message(STATUS "==========================================")

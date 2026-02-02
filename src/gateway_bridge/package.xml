@@ -12,6 +12,9 @@
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>autoware_auto_vehicle_msgs</depend>
+  <depend>autoware_adapi_v1_msgs</depend>
+  <depend>yaml-cpp</depend>
   <depend>nav_msgs</depend>
   <depend>std_msgs</depend>
   <depend>protobuf-dev</depend>
