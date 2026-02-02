@@ -6,7 +6,7 @@ import os
 
 def generate():
     """Generates the gRPC code."""
-    proto_path = '../gateway_bridge/proto'
+    proto_path = '../proto'
     output_path = '.'
     proto_file = os.path.join(proto_path, 'vehicle_gateway.proto')
 
