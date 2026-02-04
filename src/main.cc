@@ -14,3 +14,42 @@
  * limitations under the License.
  */
 
+#include <spdlog/spdlog.h>
+
+#include <csignal>
+#include <memory>
+#include <rclcpp/rclcpp.hpp>
+#include <string>
+
+#include "AutowareController.h"
+#include "Config.h"
+
+static std::atomic<bool> g_shutdown_requested{false};
+
+void signalHandler(int /*signal*/)
+{
+  g_shutdown_requested.store(true);
+}
+
+int main(int argc,char** argv) {
+  rclcpp::init(argc,argv);
+
+  std::signal(SIGINT,signalHandler);
+  std::signal(SIGTERM,signalHandler);
+
+  RCLCPP_INFO(rclcpp::get_logger("main"),"[AutowareAgent] Yaml configs loaded: %s",std::string(AutowareAgent::SRC_MAP_DIR).c_str());
+  spdlog::info("[AutowareAgent] Yaml configs loaded : {}",AutowareAgent::SRC_MAP_DIR);
+  auto controller = std::make_shared<AutowareAgent::AutowareController>(std::string(AutowareAgent::SRC_MAP_DIR));
+
+  // TODO: start the gRPC server on a background thread
+
+  // rclcpp::spin blocks until shutdown is requested
+  while (rclcpp::ok() && !g_shutdown_requested.load()) {
+    rclcpp::spin(controller);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
+  rclcpp::shutdown();
+  return 0;
+}
