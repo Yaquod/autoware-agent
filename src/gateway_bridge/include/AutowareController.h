@@ -38,20 +38,20 @@ class AutowareController : public rclcpp::Node {
 
   ~AutowareController() = default;
 
-  bool startTrip(double latitude,double longitude);
+  bool startTrip(double latitude, double longitude);
 
   void cancelTrip();
 
-  TripStatus getTripStatus()const;
+  TripStatus getTripStatus() const;
 
-private:
+ private:
   std::unique_ptr<RouteConfig> route_config_;
   std::unique_ptr<TripController> trip_ctrl_;
   rclcpp::TimerBase::SharedPtr tick_timer_;
 
   void onTickTimer();
 
-  void onTripStateChanged(TripState prev,TripState next);
+  void onTripStateChanged(TripState prev, TripState next);
 };
 }  // namespace AutowareAgent
 #endif  // VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H

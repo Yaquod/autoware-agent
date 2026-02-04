@@ -33,20 +33,20 @@ target_link_libraries(autoware_tests PRIVATE
         yaml-cpp
 )
 
-if(fmt_FOUND)
+if (fmt_FOUND)
     target_link_libraries(autoware_tests PRIVATE fmt::fmt)
-endif()
+endif ()
 
-if(tier4_external_api_msgs_FOUND)
+if (tier4_external_api_msgs_FOUND)
     target_link_libraries(autoware_tests PRIVATE
             ${tier4_external_api_msgs_TARGETS}
     )
-endif()
+endif ()
 
 add_test(NAME autoware_tests COMMAND autoware_tests)
 
 # Integration Tests  (live test against running Autoware instance)
-if(BUILD_INTEGRATION_TESTS)
+if (BUILD_INTEGRATION_TESTS)
     find_package(geometry_msgs REQUIRED)
     find_package(autoware_vehicle_msgs REQUIRED)
     find_package(autoware_adapi_v1_msgs REQUIRED)
@@ -86,4 +86,4 @@ if(BUILD_INTEGRATION_TESTS)
             INSTALL_RPATH "/opt/ros/humble/lib;$ENV{HOME}/autoware/install/lib"
     )
     add_test(NAME autoware_integration_tests COMMAND autoware_integration_tests)
-endif()
+endif ()

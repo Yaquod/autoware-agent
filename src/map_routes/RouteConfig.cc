@@ -115,14 +115,13 @@ void RouteConfig::loadFromYaml(const std::string& config_file) {
 
 LocalCoordinate RouteConfig::gpsToLocalCoordinate(
     const GPSCoordinate& gps) const {
-  double dlat = (gps.latitude - map_origin_.latitude) * M_PI / 180.0;
-  double dlon = (gps.longitude - map_origin_.longitude) * M_PI / 180.0;
-  double lat_rad = map_origin_.latitude * M_PI / 180.0;
+  GeographicLib::LocalCartesian proj(map_origin_.latitude,
+                                     map_origin_.longitude, 0.0);
 
-  double dx = dlon * EARTH_RADIUS * std::cos(lat_rad);
-  double dy = dlat * EARTH_RADIUS;
+  double x, y, z;
+  proj.Forward(gps.latitude, gps.longitude, 0.0, x, y, z);
 
-  return {map_origin_.local_x + dx, map_origin_.local_y + dy, 0.0};
+  return {map_origin_.local_x + x, map_origin_.local_y + y, 0.0};
 }
 
 const LaneInfo* RouteConfig::FindNearestLane(const GPSCoordinate& gps) const {

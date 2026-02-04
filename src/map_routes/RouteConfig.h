@@ -19,6 +19,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <GeographicLib/LocalCartesian.hpp>
 #include <cmath>
 #include <string>
 #include <vector>

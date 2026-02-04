@@ -31,7 +31,6 @@ struct TripStatus {
   double goal_distance_m{0.0};
   std::chrono::steady_clock::time_point trip_started_at;
   std::chrono::steady_clock::time_point last_state_change;
-
 };
 
 #endif  // VEHICLEAUTOWAREAGENT_TRIPSTATUS_H

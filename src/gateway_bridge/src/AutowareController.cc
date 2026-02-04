@@ -42,8 +42,9 @@ AutowareController::AutowareController(const std::string& map_path,
       route_config_->getMapName(), route_config_->getLanesCount(),
       route_config_->getDefaultStart() ? 1u : 0u);
 
-  trip_ctrl_ =
-      std::make_unique<TripController>(shared_from_this(), *route_config_);
+  trip_ctrl_ = std::make_unique<TripController>(
+      std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*) {}),
+      *route_config_);
 
   trip_ctrl_->setStateChangeCallback([this](TripState prev, TripState next) {
     onTripStateChanged(prev, next);
@@ -92,8 +93,7 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
     return "???";
   };
 
-  RCLCPP_INFO(get_logger(), "[AutowareAgent] %s -> %s", name(prev),
-              name(next));
+  RCLCPP_INFO(get_logger(), "[AutowareAgent] %s -> %s", name(prev), name(next));
   spdlog::info("[AutowareAgent] {} -> {}", name(prev), name(next));
 
   if (next == TripState::FAILED) {
@@ -104,7 +104,8 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
     auto st = trip_ctrl_->status();
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Trip live: lane %s → lane %s",
                 st.start_lanelet_id.c_str(), st.goal_lanelet_id.c_str());
-    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}",st.start_lanelet_id,st.goal_lanelet_id);
+    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}",
+                 st.start_lanelet_id, st.goal_lanelet_id);
   }
 }
 }  // namespace AutowareAgent

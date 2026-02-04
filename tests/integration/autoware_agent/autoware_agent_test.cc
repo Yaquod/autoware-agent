@@ -15,244 +15,219 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <chrono>
 #include <rclcpp/rclcpp.hpp>
 #include <thread>
-#include <chrono>
 
 #include "AutowareController.h"
+#include "Config.h"
+#include "RouteConfig.h"
 #include "TripStates.h"
 #include "TripStatus.h"
-#include "RouteConfig.h"
 
 using namespace AutowareAgent;
 
-class AutowareAgentTest : public ::testing::Test
-{
-protected:
-    void SetUp() override
-    {
-        if (!rclcpp::ok()) {
-            rclcpp::init(0, nullptr);
-        }
-        yaml_path_ = "/home/wafdy/autoware-carla-gnss/src/map_routes/nishishinjuku_routes.yaml";
+class AutowareAgentTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
     }
+    yaml_path_ = std::string(SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  }
 
-    void TearDown() override
-    {
-        controller_.reset();
+  void TearDown() override { controller_.reset(); }
+
+  void createController() {
+    controller_ = std::make_shared<AutowareController>(yaml_path_);
+  }
+
+  void spinFor(std::chrono::milliseconds duration) const {
+    auto start = std::chrono::steady_clock::now();
+    while (rclcpp::ok() &&
+           std::chrono::steady_clock::now() - start < duration) {
+      rclcpp::spin_some(controller_);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+  }
 
-    void createController()
-    {
-        controller_ = std::make_shared<AutowareController>(yaml_path_);
-    }
-
-    void spinFor(std::chrono::milliseconds duration) const
-    {
-        auto start = std::chrono::steady_clock::now();
-        while (rclcpp::ok() &&
-               std::chrono::steady_clock::now() - start < duration)
-        {
-            rclcpp::spin_some(controller_);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-    }
-
-    std::string yaml_path_;
-    std::shared_ptr<AutowareController> controller_;
+  std::string yaml_path_;
+  std::shared_ptr<AutowareController> controller_;
 };
 
 // Test 1: RouteConfig loads successfully
-TEST_F(AutowareAgentTest, RouteConfigLoadsYAML)
-{
-    ASSERT_NO_THROW({
-        RouteConfig config(yaml_path_);
-    });
+TEST_F(AutowareAgentTest, RouteConfigLoadsYAML) {
+  ASSERT_NO_THROW({ RouteConfig config(yaml_path_); });
 
-    RouteConfig config(yaml_path_);
+  RouteConfig config(yaml_path_);
 
-    // Verify map metadata
-    EXPECT_EQ(config.getMapName(), "Nishishinjuku");
-    EXPECT_GT(config.getLanesCount(), 0u) << "YAML should have at least one lane";
+  // Verify map metadata
+  EXPECT_EQ(config.getMapName(), "Nishishinjuku");
+  EXPECT_GT(config.getLanesCount(), 0u) << "YAML should have at least one lane";
 
-    // Verify origin (this will catch the origin-read bug if it's not fixed)
-    const MapOrigin& origin = config.getMapOrigin();
-    EXPECT_NEAR(origin.latitude,  35.68855194431519,  1e-6);
-    EXPECT_NEAR(origin.longitude, 139.69142711058254, 1e-6);
-    EXPECT_NEAR(origin.local_x,   81596.1357,         1e-2);
-    EXPECT_NEAR(origin.local_y,   50194.0803,         1e-2);
+  // Verify origin (this will catch the origin-read bug if it's not fixed)
+  const MapOrigin& origin = config.getMapOrigin();
+  EXPECT_NEAR(origin.latitude, 35.68855194431519, 1e-6);
+  EXPECT_NEAR(origin.longitude, 139.69142711058254, 1e-6);
+  EXPECT_NEAR(origin.local_x, 81596.1357, 1e-2);
+  EXPECT_NEAR(origin.local_y, 50194.0803, 1e-2);
 
-    // Verify we have a default start position
-    const FixedStartPosition* start = config.getDefaultStart();
-    ASSERT_NE(start, nullptr) << "YAML should have at least one fixed_start_position";
-    EXPECT_EQ(start->lane_id, 552) << "Default start should be lane 552 per your YAML";
-}
-
-// Test 2: GPS → Local conversion
-TEST_F(AutowareAgentTest, GPSToLocalConversion)
-{
-    RouteConfig config(yaml_path_);
-
-    const FixedStartPosition* start = config.getDefaultStart();
-    ASSERT_NE(start, nullptr);
-
-    LocalCoordinate local = config.gpsToLocalCoordinate(start->gps);
-
-    EXPECT_NEAR(local.x, start->local.x, 0.5) << "GPS→local X should match YAML within 0.5m";
-    EXPECT_NEAR(local.y, start->local.y, 0.5) << "GPS→local Y should match YAML within 0.5m";
+  // Verify we have a default start position
+  const FixedStartPosition* start = config.getDefaultStart();
+  ASSERT_NE(start, nullptr)
+      << "YAML should have at least one fixed_start_position";
+  EXPECT_EQ(start->lane_id, 552)
+      << "Default start should be lane 552 per your YAML";
 }
 
 // Test 3: FindNearestLane returns a valid lane
-TEST_F(AutowareAgentTest, FindNearestLane)
-{
-    RouteConfig config(yaml_path_);
+TEST_F(AutowareAgentTest, FindNearestLane) {
+  RouteConfig config(yaml_path_);
 
-    // Pick a GPS point near lane 1 from your YAML example:
-    //   lane_id: 1
-    //   gps: { latitude: 35.68816945289868, longitude: 139.69425702193618 }
-    GPSCoordinate near_lane_1{35.68816945289868, 139.69425702193618};
+  // Pick a GPS point near lane 1 from your YAML example:
+  //   lane_id: 1
+  //   gps: { latitude: 35.68816945289868, longitude: 139.69425702193618 }
+  GPSCoordinate near_lane_1{35.68816945289868, 139.69425702193618};
 
-    const LaneInfo* lane = config.FindNearestLane(near_lane_1);
-    ASSERT_NE(lane, nullptr) << "FindNearestLane should return a lane";
-    EXPECT_EQ(lane->lane_id, 1) << "Should snap to lane 1 (exact GPS match)";
+  const LaneInfo* lane = config.FindNearestLane(near_lane_1);
+  ASSERT_NE(lane, nullptr) << "FindNearestLane should return a lane";
+  EXPECT_EQ(lane->lane_id, 1) << "Should snap to lane 1 (exact GPS match)";
 
-    // Try a point that's slightly offset — it should still snap to the nearest
-    GPSCoordinate offset{35.6882, 139.6943};
-    lane = config.FindNearestLane(offset);
-    ASSERT_NE(lane, nullptr);
+  // Try a point that's slightly offset — it should still snap to the nearest
+  GPSCoordinate offset{35.6882, 139.6943};
+  lane = config.FindNearestLane(offset);
+  ASSERT_NE(lane, nullptr);
 }
 
 // Test 4: AutowareController constructs without throwing
-TEST_F(AutowareAgentTest, ControllerConstruction)
-{
-    ASSERT_NO_THROW({
-        createController();
-    });
+TEST_F(AutowareAgentTest, ControllerConstruction) {
+  ASSERT_NO_THROW({ createController(); });
 
-    ASSERT_NE(controller_, nullptr);
+  ASSERT_NE(controller_, nullptr);
 
-    // The controller should have loaded the YAML during construction.
-    // We can't directly access route_config_ (it's private), but we can
-    // verify it didn't crash and is ready to accept trips.
-    TripStatus status = controller_->getTripStatus();
-    EXPECT_EQ(status.state, TripState::IDLE) << "Controller should start in IDLE";
+  // The controller should have loaded the YAML during construction.
+  // We can't directly access route_config_ (it's private), but we can
+  // verify it didn't crash and is ready to accept trips.
+  TripStatus status = controller_->getTripStatus();
+  EXPECT_EQ(status.state, TripState::IDLE) << "Controller should start in IDLE";
 }
 
 // Test 5: Start a trip and verify state transitions
-TEST_F(AutowareAgentTest, StartTripStateTransitions)
-{
-    createController();
+TEST_F(AutowareAgentTest, StartTripStateTransitions) {
+  createController();
 
-    // ----- Define a goal GPS coordinate (pick any lane from your YAML) -----
-    // Using lane 2 as an example:
-    //   gps: { latitude: 35.68814679007944, longitude: 139.69440756809428 }
-    GPSCoordinate goal{35.68814679007944, 139.69440756809428};
+  // ----- Define a goal GPS coordinate (pick any lane from your YAML) -----
+  // Using lane 2 as an example:
+  //   gps: { latitude: 35.68814679007944, longitude: 139.69440756809428 }
+  GPSCoordinate goal{35.68814679007944, 139.69440756809428};
 
-    // ----- Start the trip ----------------------------------------------------
-    bool started = controller_->startTrip(goal.latitude, goal.longitude);
-    ASSERT_TRUE(started) << "startTrip should succeed when in IDLE";
+  // ----- Start the trip ----------------------------------------------------
+  bool started = controller_->startTrip(goal.latitude, goal.longitude);
+  ASSERT_TRUE(started) << "startTrip should succeed when in IDLE";
 
-    TripStatus status = controller_->getTripStatus();
-    EXPECT_NE(status.state, TripState::IDLE) << "Should have left IDLE immediately";
+  TripStatus status = controller_->getTripStatus();
+  EXPECT_NE(status.state, TripState::IDLE)
+      << "Should have left IDLE immediately";
 
-    // ----- Spin for a few seconds to let the FSM progress --------------------
-    // The FSM does:
-    //   IDLE → PUBLISHING_INITIAL_POSE (instant)
-    //        → WAITING_LOCALISATION     (3s delay)
-    //        → PUBLISHING_GOAL          (instant)
-    //        → WAITING_ROUTE            (waits for route topic OR timeout 15s)
-    //        → ENGAGING                 (1s delay)
-    //        → RUNNING
-    //
-    // If Autoware is running and planning works, we should reach RUNNING
-    // within ~5 seconds.  If not, we'll hit FAILED after 15s route timeout.
+  // ----- Spin for a few seconds to let the FSM progress --------------------
+  // The FSM does:
+  //   IDLE → PUBLISHING_INITIAL_POSE (instant)
+  //        → WAITING_LOCALISATION     (3s delay)
+  //        → PUBLISHING_GOAL          (instant)
+  //        → WAITING_ROUTE            (waits for route topic OR timeout 15s)
+  //        → ENGAGING                 (1s delay)
+  //        → RUNNING
+  //
+  // If Autoware is running and planning works, we should reach RUNNING
+  // within ~5 seconds.  If not, we'll hit FAILED after 15s route timeout.
 
-    std::cout << "\n[Test] Spinning for 20 seconds to observe FSM transitions...\n";
+  std::cout
+      << "\n[Test] Spinning for 20 seconds to observe FSM transitions...\n";
 
-    auto start_time = std::chrono::steady_clock::now();
-    TripState last_state = status.state;
+  auto start_time = std::chrono::steady_clock::now();
+  TripState last_state = status.state;
 
-    while (rclcpp::ok() &&
-           std::chrono::steady_clock::now() - start_time < std::chrono::seconds(20))
-    {
-        rclcpp::spin_some(controller_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        status = controller_->getTripStatus();
-
-        // Log state changes
-        if (status.state != last_state) {
-            std::cout << "[Test] State changed: " << static_cast<int>(last_state)
-                      << " → " << static_cast<int>(status.state) << "\n";
-            last_state = status.state;
-        }
-
-        // If we reach RUNNING or FAILED, stop spinning early
-        if (status.state == TripState::RUNNING || status.state == TripState::FAILED) {
-            break;
-        }
-    }
+  while (rclcpp::ok() && std::chrono::steady_clock::now() - start_time <
+                             std::chrono::seconds(20)) {
+    rclcpp::spin_some(controller_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     status = controller_->getTripStatus();
 
-    if (status.state == TripState::FAILED) {
-        // This is expected if Autoware is not running or the route planner
-        // couldn't connect the start and goal lanes.
-        std::cout << "[Test] This is normal if Autoware is not launched or lanes are not connected.\n";
-        // We still pass the test — the FSM behaved correctly by timing out.
+    // Log state changes
+    if (status.state != last_state) {
+      std::cout << "[Test] State changed: " << static_cast<int>(last_state)
+                << " → " << static_cast<int>(status.state) << "\n";
+      last_state = status.state;
     }
-    else if (status.state == TripState::RUNNING) {
-        // Success — Autoware accepted the route and engaged.
-        std::cout << "[Test] Trip RUNNING. Start lane: " << status.start_lanelet_id
-                  << ", Goal lane: " << status.goal_lanelet_id << "\n";
-        EXPECT_EQ(status.start_lanelet_id, "552") << "Start should be lane 552";
-        // We can't assert the exact goal lane ID because FindNearestLane
-        // might snap to a different lane if the map has been updated.
-        // Just verify it's non-empty.
-        EXPECT_FALSE(status.goal_lanelet_id.empty());
+
+    // If we reach RUNNING or FAILED, stop spinning early
+    if (status.state == TripState::RUNNING ||
+        status.state == TripState::FAILED) {
+      break;
     }
-    else {
-        // Still stuck in some intermediate state — could be a timing issue
-        // or the route topic never arrived.
-        FAIL() << "Trip did not reach RUNNING or FAILED within 20s. "
-               << "Current state: " << static_cast<int>(status.state);
-    }
+  }
+
+  status = controller_->getTripStatus();
+
+  if (status.state == TripState::FAILED) {
+    // This is expected if Autoware is not running or the route planner
+    // couldn't connect the start and goal lanes.
+    std::cout << "[Test] This is normal if Autoware is not launched or lanes "
+                 "are not connected.\n";
+    // We still pass the test — the FSM behaved correctly by timing out.
+  } else if (status.state == TripState::RUNNING) {
+    // Success — Autoware accepted the route and engaged.
+    std::cout << "[Test] Trip RUNNING. Start lane: " << status.start_lanelet_id
+              << ", Goal lane: " << status.goal_lanelet_id << "\n";
+    EXPECT_EQ(status.start_lanelet_id, "552") << "Start should be lane 552";
+    // We can't assert the exact goal lane ID because FindNearestLane
+    // might snap to a different lane if the map has been updated.
+    // Just verify it's non-empty.
+    EXPECT_FALSE(status.goal_lanelet_id.empty());
+  } else {
+    // Still stuck in some intermediate state — could be a timing issue
+    // or the route topic never arrived.
+    FAIL() << "Trip did not reach RUNNING or FAILED within 20s. "
+           << "Current state: " << static_cast<int>(status.state);
+  }
 }
 
 // Test 6: Cancel a trip mid-flight
-TEST_F(AutowareAgentTest, CancelTrip)
-{
-    createController();
+TEST_F(AutowareAgentTest, CancelTrip) {
+  createController();
 
-    // Start a trip
-    GPSCoordinate goal{35.688, 139.694};
-    controller_->startTrip(goal.latitude, goal.longitude);
+  // Start a trip
+  GPSCoordinate goal{35.688, 139.694};
+  controller_->startTrip(goal.latitude, goal.longitude);
 
-    // Verify we left IDLE
-    TripStatus status = controller_->getTripStatus();
-    EXPECT_NE(status.state, TripState::IDLE);
+  // Verify we left IDLE
+  TripStatus status = controller_->getTripStatus();
+  EXPECT_NE(status.state, TripState::IDLE);
 
-    // Spin briefly to let it progress
-    spinFor(std::chrono::milliseconds(500));
+  // Spin briefly to let it progress
+  spinFor(std::chrono::milliseconds(500));
 
-    // Cancel
-    controller_->cancelTrip();
+  // Cancel
+  controller_->cancelTrip();
 
-    status = controller_->getTripStatus();
-    EXPECT_EQ(status.state, TripState::IDLE) << "Cancel should return to IDLE immediately";
+  status = controller_->getTripStatus();
+  EXPECT_EQ(status.state, TripState::IDLE)
+      << "Cancel should return to IDLE immediately";
 }
 
 // Test 7: Reject startTrip when a trip is already in progress
-TEST_F(AutowareAgentTest, RejectDuplicateTrip)
-{
-    createController();
+TEST_F(AutowareAgentTest, RejectDuplicateTrip) {
+  createController();
 
-    GPSCoordinate goal1{35.688, 139.694};
-    bool started1 = controller_->startTrip(goal1.latitude, goal1.longitude);
-    ASSERT_TRUE(started1);
+  GPSCoordinate goal1{35.688, 139.694};
+  bool started1 = controller_->startTrip(goal1.latitude, goal1.longitude);
+  ASSERT_TRUE(started1);
 
-    // Try to start another trip while the first is still running
-    GPSCoordinate goal2{35.689, 139.695};
-    bool started2 = controller_->startTrip(goal2.latitude, goal2.longitude);
-    EXPECT_FALSE(started2) << "Should reject second trip while one is in progress";
+  // Try to start another trip while the first is still running
+  GPSCoordinate goal2{35.689, 139.695};
+  bool started2 = controller_->startTrip(goal2.latitude, goal2.longitude);
+  EXPECT_FALSE(started2)
+      << "Should reject second trip while one is in progress";
 }

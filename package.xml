@@ -23,6 +23,7 @@
     <depend>libboost-system-dev</depend>
     <depend>protobuf-dev</depend>
     <depend>grpc++</depend>
+    <depend>geographiclib</depend>
 
     <depend>tier4_external_api_msgs</depend>
     <depend>fmt</depend>

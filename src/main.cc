@@ -26,20 +26,23 @@
 
 static std::atomic<bool> g_shutdown_requested{false};
 
-void signalHandler(int /*signal*/)
-{
-  g_shutdown_requested.store(true);
-}
+void signalHandler(int /*signal*/) { g_shutdown_requested.store(true); }
 
-int main(int argc,char** argv) {
-  rclcpp::init(argc,argv);
+int main(int argc, char** argv) {
+  rclcpp::init(argc, argv);
 
-  std::signal(SIGINT,signalHandler);
-  std::signal(SIGTERM,signalHandler);
+  std::signal(SIGINT, signalHandler);
+  std::signal(SIGTERM, signalHandler);
 
-  RCLCPP_INFO(rclcpp::get_logger("main"),"[AutowareAgent] Yaml configs loaded: %s",std::string(AutowareAgent::SRC_MAP_DIR).c_str());
-  spdlog::info("[AutowareAgent] Yaml configs loaded : {}",AutowareAgent::SRC_MAP_DIR);
-  auto controller = std::make_shared<AutowareAgent::AutowareController>(std::string(AutowareAgent::SRC_MAP_DIR));
+  RCLCPP_INFO(
+      rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
+      (std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml")
+          .c_str());
+  spdlog::info(
+      "[AutowareAgent] Yaml configs loaded : {}",
+      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml");
+  auto controller = std::make_shared<AutowareAgent::AutowareController>(
+      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml");
 
   // TODO: start the gRPC server on a background thread
 

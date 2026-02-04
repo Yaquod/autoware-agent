@@ -148,7 +148,7 @@ void TripController::tick() {
 
     case TripState::PUBLISHING_GOAL:
       doPublishGoal();
-      transitionTo(TripState::PUBLISHING_GOAL);
+      transitionTo(TripState::WAITING_ROUTE);
       break;
 
     case TripState::WAITING_ROUTE:
@@ -176,28 +176,33 @@ void TripController::setStateChangeCallback(StateChangeCb cb) {
 
 void TripController::doEngage() {
   if (!engage_client_->service_is_ready()) {
-    RCLCPP_WARN(node_->get_logger(),"[AutowareAgent] Engage service is not ready");
+    RCLCPP_WARN(node_->get_logger(),
+                "[AutowareAgent] Engage service is not ready");
     spdlog::warn("[AutowareAgent] Engage service is not ready");
     return;
   }
 
-  auto request = std::make_shared<tier4_external_api_msgs::srv::Engage::Request>();
+  auto request =
+      std::make_shared<tier4_external_api_msgs::srv::Engage::Request>();
   request->engage = true;
   engage_client_->async_send_request(request);
-  RCLCPP_INFO(node_->get_logger(),"[AutowareAgent] Engage request sent");
+  RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Engage request sent");
   spdlog::info("[AutowareAgent] Engage request sent");
 }
 
 void TripController::doPollRoute() {
   if (route_received_) {
-    RCLCPP_INFO(node_->get_logger(),"[AutowareAgent] Route received moving to engaging.");
+    RCLCPP_INFO(node_->get_logger(),
+                "[AutowareAgent] Route received moving to engaging.");
     spdlog::info("[AutowareAgent] Route received moving to engaging");
     transitionTo(TripState::ENGAGING);
   }
 
   if (elapsed_ms(state_entered_at_) >= timings_.route_timeout_ms) {
-    std::string error = "[AutowareAgent] Timeout waiting for route lanes" + status_.start_lanelet_id + " and " + status_.goal_lanelet_id  + " may not be connected";
-    RCLCPP_ERROR(node_->get_logger(),error.c_str());
+    std::string error = "[AutowareAgent] Timeout waiting for route lanes" +
+                        status_.start_lanelet_id + " and " +
+                        status_.goal_lanelet_id + " may not be connected";
+    RCLCPP_ERROR(node_->get_logger(), error.c_str());
     spdlog::error(error);
     transitionTo(TripState::FAILED);
   }
@@ -217,8 +222,11 @@ void TripController::doPublishGoal() {
   msg.pose.orientation.w = status_.goal_qw;
 
   goal_pub_->publish(msg);
-  RCLCPP_INFO(node_->get_logger(),"[AutowareAgent] Published goal (%.2f, %.2f)",status_.goal_x,status_.goal_y);
-  spdlog::info("[AutowareAgent] Published goal (%.2f, %.2f)",status_.goal_x,status_.goal_y);
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] Published goal (%.2f, %.2f)", status_.goal_x,
+              status_.goal_y);
+  spdlog::info("[AutowareAgent] Published goal (%.2f, %.2f)", status_.goal_x,
+               status_.goal_y);
 }
 
 void TripController::doPublishInitialPose() {
@@ -241,8 +249,11 @@ void TripController::doPublishInitialPose() {
   msg.pose.covariance[35] = 0.06853891909122467;
 
   initial_pose_pub_->publish(msg);
-  RCLCPP_INFO(node_->get_logger(),"[AutowareAgent] Published initial pose (%.2f,%0.2f)",status_.start_x,status_.start_y);
-  spdlog::info("[AutowareAgent] Published initial pose (%.2f,%0.2f)",status_.start_x,status_.start_y);
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] Published initial pose (%.2f,%0.2f)",
+              status_.start_x, status_.start_y);
+  spdlog::info("[AutowareAgent] Published initial pose (%.2f,%0.2f)",
+               status_.start_x, status_.start_y);
 }
 
 void TripController::onRouteReceived(
@@ -257,8 +268,7 @@ void TripController::transitionTo(TripState next) {
   status_.last_state_change = std::chrono::steady_clock::now();
   state_entered_at_ = status_.last_state_change;
 
-  if (on_state_change_)
-    on_state_change_(prev,next);
+  if (on_state_change_) on_state_change_(prev, next);
 }
 
 long TripController::elapsed_ms(std::chrono::steady_clock::time_point since) {

@@ -13,10 +13,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-option(BUILD_TESTS            "Build unit tests"          ON)
+option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
-option(ENABLE_COVERAGE        "Enable code coverage"     OFF)
-option(ENABLE_SANITIZERS      "Enable sanitizers"        OFF)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -33,47 +33,47 @@ endif ()
 
 find_package(Threads REQUIRED)
 
-find_package(rclcpp   REQUIRED)
-find_package(fastcdr  REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(fastcdr REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(Boost    REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(GRPC     REQUIRED grpc++ gpr)
+pkg_check_modules(GRPC REQUIRED grpc++ gpr)
 pkg_check_modules(Protobuf REQUIRED protobuf)
 
 if (NOT TARGET gRPC::grpc++)
     add_library(gRPC::grpc++ INTERFACE IMPORTED)
-    target_link_libraries     (gRPC::grpc++ INTERFACE ${GRPC_LIBRARIES})
+    target_link_libraries(gRPC::grpc++ INTERFACE ${GRPC_LIBRARIES})
     target_include_directories(gRPC::grpc++ INTERFACE ${GRPC_INCLUDE_DIRS})
-    target_link_directories   (gRPC::grpc++ INTERFACE ${GRPC_LIBRARY_DIRS})
+    target_link_directories(gRPC::grpc++ INTERFACE ${GRPC_LIBRARY_DIRS})
 endif ()
 
 if (NOT TARGET protobuf::libprotobuf)
     add_library(protobuf::libprotobuf INTERFACE IMPORTED)
-    target_link_libraries     (protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARIES})
+    target_link_libraries(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARIES})
     target_include_directories(protobuf::libprotobuf INTERFACE ${Protobuf_INCLUDE_DIRS})
-    target_link_directories   (protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARY_DIRS})
+    target_link_directories(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARY_DIRS})
 endif ()
 
-find_program(PROTOC           NAMES protoc          REQUIRED)
-find_program(GRPC_CPP_PLUGIN  NAMES grpc_cpp_plugin REQUIRED)
+find_program(PROTOC NAMES protoc REQUIRED)
+find_program(GRPC_CPP_PLUGIN NAMES grpc_cpp_plugin REQUIRED)
 
-set(PROTO_SRC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/proto)
-set(PROTO_GEN_DIR  ${CMAKE_CURRENT_BINARY_DIR}/generated)
+set(PROTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_GEN_DIR})
 
-set(PROTO_FILE   ${PROTO_SRC_DIR}/vehicle_gateway.proto)
+set(PROTO_FILE ${PROTO_SRC_DIR}/vehicle_gateway.proto)
 
-set(PROTO_SRCS   ${PROTO_GEN_DIR}/vehicle_gateway.pb.cc)
-set(PROTO_HDRS   ${PROTO_GEN_DIR}/vehicle_gateway.pb.h)
-set(GRPC_SRCS    ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.cc)
-set(GRPC_HDRS    ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.h)
+set(PROTO_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.pb.cc)
+set(PROTO_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.pb.h)
+set(GRPC_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.cc)
+set(GRPC_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.h)
 
 add_custom_command(
-        OUTPUT   ${PROTO_SRCS} ${PROTO_HDRS} ${GRPC_SRCS} ${GRPC_HDRS}
-        COMMAND  ${PROTOC}
+        OUTPUT ${PROTO_SRCS} ${PROTO_HDRS} ${GRPC_SRCS} ${GRPC_HDRS}
+        COMMAND ${PROTOC}
         ARGS
         --grpc_out=${PROTO_GEN_DIR}
         --cpp_out=${PROTO_GEN_DIR}
@@ -81,8 +81,8 @@ add_custom_command(
         --experimental_allow_proto3_optional
         -I${PROTO_SRC_DIR}
         ${PROTO_FILE}
-        DEPENDS  ${PROTO_FILE}
-        COMMENT  "Generating gRPC + Protobuf stubs"
+        DEPENDS ${PROTO_FILE}
+        COMMENT "Generating gRPC + Protobuf stubs"
         VERBATIM
 )
 add_custom_target(generate_proto_code DEPENDS ${PROTO_SRCS} ${GRPC_SRCS})
@@ -122,8 +122,8 @@ target_include_directories(autoware_agent PRIVATE
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     add_custom_command(TARGET autoware_agent POST_BUILD
-            COMMAND  ${CMAKE_STRIP} $<TARGET_FILE:autoware_agent>
-            COMMENT  "Stripping autoware_agent"
+            COMMAND ${CMAKE_STRIP} $<TARGET_FILE:autoware_agent>
+            COMMENT "Stripping autoware_agent"
     )
 endif ()
 
