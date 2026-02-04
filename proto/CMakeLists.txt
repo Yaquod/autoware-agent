@@ -1,6 +1,6 @@
 file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 
-if(NOT PROTO_FILES)
+if (NOT PROTO_FILES)
     message(WARNING "No .proto files found in ${CMAKE_CURRENT_SOURCE_DIR}")
     add_library(proto_lib INTERFACE)
     target_link_libraries(proto_lib INTERFACE
@@ -8,7 +8,7 @@ if(NOT PROTO_FILES)
             protobuf::libprotobuf
     )
     return()
-endif()
+endif ()
 
 message(STATUS "Found ${CMAKE_CURRENT_LIST_LENGTH} .proto files")
 
@@ -16,7 +16,7 @@ add_library(proto_lib STATIC)
 
 set(GENERATED_SOURCES)
 
-foreach(PROTO_FILE ${PROTO_FILES})
+foreach (PROTO_FILE ${PROTO_FILES})
     get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
     get_filename_component(PROTO_ABS ${PROTO_FILE} ABSOLUTE)
 
@@ -42,7 +42,7 @@ foreach(PROTO_FILE ${PROTO_FILES})
     )
 
     list(APPEND GENERATED_SOURCES ${PROTO_SRC} ${GRPC_SRC})
-endforeach()
+endforeach ()
 
 target_sources(proto_lib PRIVATE ${GENERATED_SOURCES})
 

@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-#pragma once
-#include <string_view>
+#ifndef VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H
+#define VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H
 
-namespace AutowareAgent {
-constexpr std::string_view SRC_MAP_DIR = "@CMAKE_SOURCE_DIR@/src/map_routes";
-constexpr std::string_view TEST_MAP_DIR = "@CMAKE_SOURCE_DIR@/tests/unit";
-constexpr std::string_view INSTALL_MAP_DIR = "@CMAKE_INSTALL_PREFIX@/share/autoware_agent/maps";
-}
+struct TripTimings {
+  int initial_pose_delay_ms = 3000;
+  int goal_delay_ms = 3000;
+  int route_poll_interval_ms = 500;
+  int route_timeout_ms = 15000;  // give up waiting for route
+  int engage_delay_ms = 1000;    // pause before engage call
+};
+#endif  // VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H

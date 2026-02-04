@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
-if(POLICY CMP0167)
+if (POLICY CMP0167)
     cmake_policy(SET CMP0167 OLD)
-endif()
+endif ()
 
 project(VehicleAutowareAgent VERSION 1.0.0 LANGUAGES CXX C)
 
@@ -16,90 +16,131 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
-option(ENABLE_SANITIZERS "Enable address/thread sanitizers" OFF)
+option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CompilerWarnings.cmake")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CompilerWarnings.cmake")
     include(CompilerWarnings)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SubmoduleHelpers.cmake")
+endif ()
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SubmoduleHelpers.cmake")
     include(SubmoduleHelpers)
-endif()
-
-if(ENABLE_SANITIZERS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Sanitizers.cmake")
+endif ()
+if (ENABLE_SANITIZERS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Sanitizers.cmake")
     include(Sanitizers)
     enable_sanitizers()
-endif()
+endif ()
 
-message(STATUS "Finding system dependencies...")
-
-# Threading
 find_package(Threads REQUIRED)
 
+find_package(rclcpp REQUIRED)
+find_package(fastcdr REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
+
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(GRPC REQUIRED grpc++ gpr)
+pkg_check_modules(Protobuf REQUIRED protobuf)
 
-if(NOT TARGET gRPC::grpc)
-    add_library(gRPC::grpc INTERFACE IMPORTED)
-    target_link_libraries(gRPC::grpc INTERFACE ${GRPC_LIBRARIES})
-    target_include_directories(gRPC::grpc INTERFACE ${GRPC_INCLUDE_DIRS})
-endif()
+if (NOT TARGET gRPC::grpc++)
+    add_library(gRPC::grpc++ INTERFACE IMPORTED)
+    target_link_libraries(gRPC::grpc++ INTERFACE ${GRPC_LIBRARIES})
+    target_include_directories(gRPC::grpc++ INTERFACE ${GRPC_INCLUDE_DIRS})
+    target_link_directories(gRPC::grpc++ INTERFACE ${GRPC_LIBRARY_DIRS})
+endif ()
 
-find_program(gRPC_CPP_PLUGIN_PATH NAMES grpc_cpp_plugin)
+if (NOT TARGET protobuf::libprotobuf)
+    add_library(protobuf::libprotobuf INTERFACE IMPORTED)
+    target_link_libraries(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARIES})
+    target_include_directories(protobuf::libprotobuf INTERFACE ${Protobuf_INCLUDE_DIRS})
+    target_link_directories(protobuf::libprotobuf INTERFACE ${Protobuf_LIBRARY_DIRS})
+endif ()
 
-if(gRPC_CPP_PLUGIN_PATH AND NOT TARGET gRPC::grpc_cpp_plugin)
-    add_executable(gRPC::grpc_cpp_plugin IMPORTED)
-    set_target_properties(gRPC::grpc_cpp_plugin PROPERTIES
-            IMPORTED_LOCATION "${gRPC_CPP_PLUGIN_PATH}")
-endif()
+find_program(PROTOC NAMES protoc REQUIRED)
+find_program(GRPC_CPP_PLUGIN NAMES grpc_cpp_plugin REQUIRED)
 
-find_package(Protobuf REQUIRED)
-if(NOT TARGET protobuf::libprotobuf)
-    add_library(protobuf::libprotobuf ALIAS Protobuf::libprotobuf)
-endif()
+set(PROTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${PROTO_GEN_DIR})
 
-#add_subdirectory(src/gateway_bridge)
+set(PROTO_FILE ${PROTO_SRC_DIR}/vehicle_gateway.proto)
 
-add_subdirectory(src/map_routes)
+set(PROTO_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.pb.cc)
+set(PROTO_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.pb.h)
+set(GRPC_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.cc)
+set(GRPC_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.grpc.pb.h)
 
-add_executable(autoware_agent src/main.cc)
-target_link_libraries(autoware_agent PRIVATE autoware_lib)
+add_custom_command(
+        OUTPUT ${PROTO_SRCS} ${PROTO_HDRS} ${GRPC_SRCS} ${GRPC_HDRS}
+        COMMAND ${PROTOC}
+        ARGS
+        --grpc_out=${PROTO_GEN_DIR}
+        --cpp_out=${PROTO_GEN_DIR}
+        --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
+        --experimental_allow_proto3_optional
+        -I${PROTO_SRC_DIR}
+        ${PROTO_FILE}
+        DEPENDS ${PROTO_FILE}
+        COMMENT "Generating gRPC + Protobuf stubs"
+        VERBATIM
+)
+add_custom_target(generate_proto_code DEPENDS ${PROTO_SRCS} ${GRPC_SRCS})
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_custom_command(TARGET autoware_agent POST_BUILD
-            COMMAND ${CMAKE_STRIP} $<TARGET_FILE:autoware_agent>
-            COMMENT "Stripping autoware_agent binary"
-    )
-endif()
-
-# Root CMakeLists.txt
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Config.h.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/Config.h"
+        "${PROTO_GEN_DIR}/Config.h"
         @ONLY
 )
+add_library(config_header INTERFACE)
+target_include_directories(config_header INTERFACE ${PROTO_GEN_DIR})
 
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/generated")
+add_subdirectory(src/map_routes)
+add_subdirectory(src/gateway_bridge)
 
-# Tests
-if(BUILD_TESTS)
+add_executable(autoware_agent
+        src/main.cc
+        ${PROTO_SRCS}
+        ${GRPC_SRCS}
+)
+
+add_dependencies(autoware_agent generate_proto_code)
+
+target_link_libraries(autoware_agent PRIVATE
+        autoware_controller
+        map_routes_lib
+        ${GRPC_LIBRARIES}
+        ${Protobuf_LIBRARIES}
+        Threads::Threads
+)
+
+target_include_directories(autoware_agent PRIVATE
+        ${PROTO_GEN_DIR}
+        ${GRPC_INCLUDE_DIRS}
+        ${Protobuf_INCLUDE_DIRS}
+)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET autoware_agent POST_BUILD
+            COMMAND ${CMAKE_STRIP} $<TARGET_FILE:autoware_agent>
+            COMMENT "Stripping autoware_agent"
+    )
+endif ()
+
+if (BUILD_TESTS)
     find_package(GTest REQUIRED)
-endif()
-if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
-endif()
+endif ()
 
-#install(TARGETS Autoware_Agent
-#        RUNTIME DESTINATION bin)
-
-# Install systemd service file only on Linux.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systemd/autoware-agent.service")
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux"
+        AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systemd/autoware-agent.service")
     install(FILES systemd/autoware-agent.service
             DESTINATION /lib/systemd/system)
-endif()
+endif ()
+
+install(TARGETS autoware_agent
+        RUNTIME DESTINATION bin)
 
 message(STATUS "==========================================")
 message(STATUS "Vehicle Autoware Agent")
@@ -108,9 +149,13 @@ message(STATUS "Version:           ${PROJECT_VERSION}")
 message(STATUS "Build type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Standard:      ${CMAKE_CXX_STANDARD}")
 message(STATUS "")
-if(BUILD_TESTS)
-    message(STATUS "  GoogleTest")
-endif()
+message(STATUS "Libraries:")
+message(STATUS "  map_routes_lib      (RouteConfig)")
+message(STATUS "  autoware_controller (AutowareController + TripController)")
+message(STATUS "")
+if (BUILD_TESTS)
+    message(STATUS "  Tests: GoogleTest")
+endif ()
 message(STATUS "")
 message(STATUS "Build options:")
 message(STATUS "  Tests:           ${BUILD_TESTS}")

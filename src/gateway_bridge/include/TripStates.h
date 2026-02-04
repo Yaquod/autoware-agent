@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
-#pragma once
-#include <string_view>
+#ifndef VEHICLEAUTOWAREAGENT_TRIPSTATES_H
+#define VEHICLEAUTOWAREAGENT_TRIPSTATES_H
 
-namespace AutowareAgent {
-constexpr std::string_view SRC_MAP_DIR = "@CMAKE_SOURCE_DIR@/src/map_routes";
-constexpr std::string_view TEST_MAP_DIR = "@CMAKE_SOURCE_DIR@/tests/unit";
-constexpr std::string_view INSTALL_MAP_DIR = "@CMAKE_INSTALL_PREFIX@/share/autoware_agent/maps";
-}
+enum class TripState {
+  IDLE,
+  PUBLISHING_INITIAL_POSE,
+  WAITING_LOCALISATION,
+  PUBLISHING_GOAL,
+  WAITING_ROUTE,
+  ENGAGING,
+  RUNNING,
+  COMPLETED,
+  FAILED
+};
+
+#endif  // VEHICLEAUTOWAREAGENT_TRIPSTATES_H

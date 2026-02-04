@@ -4,11 +4,6 @@ package vehicle_gateway;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-// ==============================================================================
-// Service Definitions
-// ==============================================================================
-
-// Service for streaming sensor data from CARLA
 service SensorService {
   // Subscribe to a stream of sensor data
   rpc StreamSensorData(SensorSubscription) returns (stream SensorData);
@@ -48,16 +43,9 @@ service TripService {
   rpc StreamTripUpdates(stream TripUpdate) returns (google.protobuf.Empty);
 }
 
-// Service for HD Map data
 service MapService {
-  // Request a chunk of the HD map
   rpc GetMapChunk(MapRequest) returns (MapChunk);
 }
-
-
-// ==============================================================================
-// Common Message Types
-// ==============================================================================
 
 message Vector3D {
   double x = 1;
@@ -67,20 +55,16 @@ message Vector3D {
 
 message Transform {
   Vector3D location = 1;
-  Vector3D rotation = 2; // Euler angles: roll, pitch, yaw
+  Vector3D rotation = 2;
 }
 
 // Geographic coordinates
 message Location {
-    double latitude = 1;
-    double longitude = 2;
-    double altitude = 3;
-    string address = 4;
+  double latitude = 1;
+  double longitude = 2;
+  double altitude = 3;
+  string address = 4;
 }
-
-// ==============================================================================
-// Sensor Service Messages
-// ==============================================================================
 
 message SensorSubscription {
   string sensor_id = 1;
@@ -141,16 +125,10 @@ message ImuData {
   Transform transform = 3;
 }
 
-
-// ==============================================================================
-// Vehicle Service Messages
-// ==============================================================================
-
 message VehicleStreamRequest {
   string vin_number = 1;
 }
 
-// Represents the physical state of the vehicle
 message VehicleState {
   google.protobuf.Timestamp timestamp = 1;
   Transform transform = 2;
@@ -160,19 +138,14 @@ message VehicleState {
   double speed_kmh = 6;
 }
 
-// Represents a command to control the vehicle
 message VehicleControl {
-  double throttle = 1; // [0.0, 1.0]
-  double steer = 2;    // [-1.0, 1.0]
-  double brake = 3;    // [0.0, 1.0]
+  double throttle = 1;
+  double steer = 2;
+  double brake = 3;
   bool hand_brake = 4;
   bool reverse = 5;
   int32 gear = 6;
 }
-
-// ==============================================================================
-// Perception Service Messages
-// ==============================================================================
 
 message PerceptionRequest {
   string vin_number = 1;
@@ -180,12 +153,12 @@ message PerceptionRequest {
 
 message BoundingBox3D {
   Transform center = 1;
-  Vector3D size = 2; // length, width, height
+  Vector3D size = 2;
 }
 
 message DetectedObject {
   uint32 id = 1;
-  string label = 2; // e.g., "car", "pedestrian"
+  string label = 2;
   float score = 3;
   BoundingBox3D bounding_box = 4;
   Vector3D velocity = 5;
@@ -223,10 +196,6 @@ message LaneList {
   repeated Lane lanes = 2;
 }
 
-// ==============================================================================
-// Planning Service Messages
-// ==============================================================================
-
 message PlanningRequest {
   string vin_number = 1;
 }
@@ -242,39 +211,31 @@ message Trajectory {
   repeated TrajectoryPoint points = 2;
 }
 
-// ==============================================================================
-// Map Service Messages
-// ==============================================================================
-
+// Map Service Message
 message MapRequest {
   Location center = 1;
   float radius = 2; // in meters
 }
 
 message MapChunk {
-  bytes data = 1; // e.g., OpenDRIVE format
+  bytes data = 1;
 }
 
-
-// ==============================================================================
-// Trip Service Messages (Original)
-// ==============================================================================
-
 message LoginRequest {
-    string vin_number = 1;
-    string trip_id = 2;
+  string vin_number = 1;
+  string trip_id = 2;
 }
 
 message LoginResponse {
-    bool success = 1;
-    string message = 2;
+  bool success = 1;
+  string message = 2;
 }
 
 message EtaRequest {
-    string vin_number = 1;
-    string trip_id = 2;
-    double time = 3;
-    double fare = 4;
+  string vin_number = 1;
+  string trip_id = 2;
+  double time = 3;
+  double fare = 4;
 }
 
 message EtaResponse {
@@ -307,36 +268,36 @@ message ArriveResponse{
 }
 
 message Waypoint {
-    Location location = 1;
-    double heading = 2;
-    string name = 3;
+  Location location = 1;
+  double heading = 2;
+  string name = 3;
 }
 
 message StartTripRequest {
-    string vin_number = 1;
-    string trip_id = 2;
-    Location pickup_location = 3;
-    Location destination_location = 4;
-    google.protobuf.Timestamp requested_pickup_time = 5;
-    string passenger_id = 6;
-    int32 passenger_count = 7;
+  string vin_number = 1;
+  string trip_id = 2;
+  Location pickup_location = 3;
+  Location destination_location = 4;
+  google.protobuf.Timestamp requested_pickup_time = 5;
+  string passenger_id = 6;
+  int32 passenger_count = 7;
 }
 
 message StartTripResponse {
-    bool success = 1;
-    string message = 2;
-    string trip_id = 3;
-    TripState trip_state = 4;
-    double distance_traveled = 5;
-    double distance_remaining = 6;
-    double eta_seconds = 7;
-    string current_leg = 8;
-    double progress_percent = 9;
+  bool success = 1;
+  string message = 2;
+  string trip_id = 3;
+  TripState trip_state = 4;
+  double distance_traveled = 5;
+  double distance_remaining = 6;
+  double eta_seconds = 7;
+  string current_leg = 8;
+  double progress_percent = 9;
 }
 
 message CancelTripResponse {
-    bool success = 1;
-    string message = 2;
+  bool success = 1;
+  string message = 2;
 }
 
 message TripStatusRequest {
