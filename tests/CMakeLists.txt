@@ -4,6 +4,7 @@ set(UNIT_TEST_SOURCES
 
 set(INTEGRATION_TEST_SOURCES
         integration/autoware_agent/autoware_agent_test.cc
+        integration/autoware_agent/full_trip_test.cc
 )
 
 find_package(rclcpp REQUIRED)
@@ -50,6 +51,7 @@ if (BUILD_INTEGRATION_TESTS)
     find_package(geometry_msgs REQUIRED)
     find_package(autoware_vehicle_msgs REQUIRED)
     find_package(autoware_adapi_v1_msgs REQUIRED)
+    find_package(autoware_planning_msgs REQUIRED)
     find_package(tier4_external_api_msgs REQUIRED)
     find_package(fmt REQUIRED)
     find_package(Boost REQUIRED COMPONENTS system)
@@ -73,6 +75,7 @@ if (BUILD_INTEGRATION_TESTS)
             ${geometry_msgs_TARGETS}
             ${autoware_vehicle_msgs_TARGETS}
             ${autoware_adapi_v1_msgs_TARGETS}
+            ${autoware_planning_msgs_TARGETS}
             ${tier4_external_api_msgs_TARGETS}
             fmt::fmt
             yaml-cpp

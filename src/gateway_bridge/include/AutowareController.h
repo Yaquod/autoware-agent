@@ -17,6 +17,9 @@
 #ifndef VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H
 #define VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H
 
+#include <boost/asio/executor_work_guard.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/strand.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include "TripController.h"
@@ -36,22 +39,37 @@ class AutowareController : public rclcpp::Node {
  public:
   AutowareController(const std::string& map_path, double tick_hz = 10.0);
 
-  ~AutowareController() = default;
+  ~AutowareController() override;
 
-  bool startTrip(double latitude, double longitude);
+  void initialize();
+
+  void startTrip(double latitude, double longitude,
+                 std::function<void(bool)> callback);
 
   void cancelTrip();
 
-  TripStatus getTripStatus() const;
+  void getTripStatus(std::function<void(TripStatus)> callback) const;
 
  private:
   std::unique_ptr<RouteConfig> route_config_;
   std::unique_ptr<TripController> trip_ctrl_;
   rclcpp::TimerBase::SharedPtr tick_timer_;
+  double tick_hz_;
+  std::shared_ptr<boost::asio::io_context> io_context_;
+  std::shared_ptr<boost::asio::io_context::strand> strand_;
+  std::unique_ptr<boost::asio::io_context::work> work_guard_;
+  std::thread io_thread_;
 
   void onTickTimer();
 
   void onTripStateChanged(TripState prev, TripState next);
+
+  void startTripImpl(double latitude, double longitude,
+                     std::function<void(bool)> callback);
+
+  void cancelTripImpl();
+
+  void getTripStatusImpl(std::function<void(TripStatus)> callback) const;
 };
 }  // namespace AutowareAgent
 #endif  // VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H
