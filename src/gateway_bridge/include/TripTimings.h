@@ -18,10 +18,10 @@
 #define VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H
 
 struct TripTimings {
-  int initial_pose_delay_ms = 3000;
-  int goal_delay_ms = 3000;
+  int initial_pose_delay_ms = 15000;
+  int goal_delay_ms = 9000;
   int route_poll_interval_ms = 500;
-  int route_timeout_ms = 15000;  // give up waiting for route
-  int engage_delay_ms = 1000;    // pause before engage call
+  int route_timeout_ms = 30000;
+  int engage_delay_ms = 5000;
 };
 #endif  // VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H

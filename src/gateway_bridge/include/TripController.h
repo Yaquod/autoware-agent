@@ -17,13 +17,18 @@
 #ifndef VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 #define VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 
+#include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
+#include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include <autoware_adapi_v1_msgs/msg/route_state.hpp>
+#include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
+#include <boost/asio.hpp>
 #include <chrono>
 #include <functional>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
-#include <string>
 #include <tier4_external_api_msgs/srv/engage.hpp>
 
 #include "RouteConfig.h"
@@ -32,79 +37,71 @@
 #include "TripTimings.h"
 
 namespace AutowareAgent {
-/**
- * Owns the "send a trip" lifecycle as a state machine Lives inside
- * AutowareController, driven by that node's periodic tick() call.
- */
+
+using StateChangeCb = std::function<void(TripState prev, TripState next)>;
+
 class TripController {
  public:
   TripController(rclcpp::Node::SharedPtr node, const RouteConfig& route_config,
-                 TripTimings timings = {});
+                 std::shared_ptr<boost::asio::io_context::strand> strand,
+                 TripTimings timings = TripTimings{});
 
-  ~TripController() = default;
-
-  /**
-   * @brief Kick off a new trip to the given GPS coordinate.
-   * @param goal_gps Location of the goal needed to go to.
-   * @return Returns false only if the trip is in progress.
-   */
   bool startTrip(GPSCoordinate goal_gps);
-
-  /**
-   * @brief Advance the state machine by one tick.
-   */
+  void cancel();
   void tick();
 
-  /**
-   * @brief Cancel the current trip.
-   */
-  void cancel();
-
-  /**
-   * @brief A snapshot from a trip without blocking or throwing exceptions.
-   * @return Returns a Read-only snapshot from a trip.
-   */
   TripStatus status() const;
-
-  /**
-   * @brief Callback fired on every state transition.  Pass nullptr to clear.
-   */
-  using StateChangeCb = std::function<void(TripState priv, TripState next)>;
-
   void setStateChangeCallback(StateChangeCb cb);
 
  private:
+  void doPublishInitialPose();
+  void doPublishGoal();
+  void doPollRoute();
+  void doEngage();
+
+  // FIXED: Changed parameter type to match subscription
+  void onRouteReceived(const autoware_planning_msgs::msg::LaneletRoute& msg);
+
+  void transitionTo(TripState next);
+  long elapsed_ms(std::chrono::steady_clock::time_point since);
+
   rclcpp::Node::SharedPtr node_;
+  const RouteConfig& route_config_;
+  std::shared_ptr<boost::asio::io_context::strand> strand_;
+  TripTimings timings_;
+
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
       initial_pose_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr
+      mode_client_;
   rclcpp::Client<tier4_external_api_msgs::srv::Engage>::SharedPtr
       engage_client_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr
-      route_sub_;  // TODO: The only thing we read is the route_received_ flag;
-  //  the actual message type can be swapped later ,
-  //  for the real autoware_planning_msgs/LaneletRoute without changing logic.
+  rclcpp::Subscription<autoware_planning_msgs::msg::LaneletRoute>::SharedPtr
+      route_sub_;
+  rclcpp::Subscription<
+      autoware_adapi_v1_msgs::msg::LocalizationInitializationState>::SharedPtr
+      loc_state_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr
+      route_state_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::
+      SharedPtr mode_state_sub_;
 
-  const RouteConfig& route_config_;
+  // Thread-safe state storage
+  autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr
+      current_loc_state_;
+  autoware_adapi_v1_msgs::msg::RouteState::SharedPtr current_route_state_;
+  autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr
+      current_mode_state_;
+
+  std::chrono::steady_clock::time_point last_publish_time_;
+
   TripStatus status_;
-  TripTimings timings_;
   StateChangeCb on_state_change_;
-  bool route_received_{false};
   std::chrono::steady_clock::time_point state_entered_at_;
-
-  void transitionTo(TripState next);
-
-  void doPublishInitialPose();
-
-  void doPublishGoal();
-
-  void doPollRoute();
-
-  void doEngage();
-
-  void onRouteReceived(const geometry_msgs::msg::PoseStamped& msg);
-
-  static long elapsed_ms(std::chrono::steady_clock::time_point since);
+  bool route_received_ = false;
 };
+
 }  // namespace AutowareAgent
+
 #endif  // VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H

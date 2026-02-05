@@ -18,6 +18,7 @@
     <depend>std_msgs</depend>
     <depend>autoware_vehicle_msgs</depend>
     <depend>autoware_adapi_v1_msgs</depend>
+    <depend>autoware_planning_msgs</depend>
 
     <depend>yaml-cpp</depend>
     <depend>libboost-system-dev</depend>

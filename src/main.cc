@@ -34,25 +34,35 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
 
-  RCLCPP_INFO(
-      rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
-      (std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml")
-          .c_str());
-  spdlog::info(
-      "[AutowareAgent] Yaml configs loaded : {}",
-      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml");
-  auto controller = std::make_shared<AutowareAgent::AutowareController>(
-      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml");
+  std::string yaml_path =
+      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+
+  RCLCPP_INFO(rclcpp::get_logger("main"),
+              "[AutowareAgent] Yaml configs loaded: %s", yaml_path.c_str());
+  spdlog::info("[AutowareAgent] Yaml configs loaded : {}", yaml_path);
+
+  // Create controller
+  auto controller =
+      std::make_shared<AutowareAgent::AutowareController>(yaml_path, 10.0);
+
+  controller->initialize();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Controller ready");
+  spdlog::info("[AutowareAgent] Controller ready");
 
   // TODO: start the gRPC server on a background thread
 
   // rclcpp::spin blocks until shutdown is requested
   while (rclcpp::ok() && !g_shutdown_requested.load()) {
-    rclcpp::spin(controller);
+    rclcpp::spin_some(controller);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
+  spdlog::info("[main] Shutting down…");
+
   rclcpp::shutdown();
   return 0;
 }

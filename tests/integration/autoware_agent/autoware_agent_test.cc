@@ -16,7 +16,9 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
+#include <future>
 #include <rclcpp/rclcpp.hpp>
 #include <thread>
 
@@ -40,7 +42,9 @@ class AutowareAgentTest : public ::testing::Test {
   void TearDown() override { controller_.reset(); }
 
   void createController() {
-    controller_ = std::make_shared<AutowareController>(yaml_path_);
+    controller_ = std::make_shared<AutowareController>(yaml_path_, 10.0);
+    controller_->initialize();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   void spinFor(std::chrono::milliseconds duration) const {
@@ -50,6 +54,27 @@ class AutowareAgentTest : public ::testing::Test {
       rclcpp::spin_some(controller_);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+  }
+
+  TripStatus getStatusSync() {
+    std::promise<TripStatus> promise;
+    auto future = promise.get_future();
+
+    controller_->getTripStatus(
+        [&promise](TripStatus status) { promise.set_value(status); });
+
+    return future.get();
+  }
+
+  // Helper: Start trip synchronously
+  bool startTripSync(double lat, double lon) {
+    std::promise<bool> promise;
+    auto future = promise.get_future();
+
+    controller_->startTrip(
+        lat, lon, [&promise](bool success) { promise.set_value(success); });
+
+    return future.get();
   }
 
   std::string yaml_path_;
@@ -106,10 +131,9 @@ TEST_F(AutowareAgentTest, ControllerConstruction) {
 
   ASSERT_NE(controller_, nullptr);
 
-  // The controller should have loaded the YAML during construction.
-  // We can't directly access route_config_ (it's private), but we can
-  // verify it didn't crash and is ready to accept trips.
-  TripStatus status = controller_->getTripStatus();
+  // Get status using callback-based API
+  TripStatus status = getStatusSync();
+
   EXPECT_EQ(status.state, TripState::IDLE) << "Controller should start in IDLE";
 }
 
@@ -123,25 +147,17 @@ TEST_F(AutowareAgentTest, StartTripStateTransitions) {
   GPSCoordinate goal{35.68814679007944, 139.69440756809428};
 
   // ----- Start the trip ----------------------------------------------------
-  bool started = controller_->startTrip(goal.latitude, goal.longitude);
+  bool started = startTripSync(goal.latitude, goal.longitude);
   ASSERT_TRUE(started) << "startTrip should succeed when in IDLE";
 
-  TripStatus status = controller_->getTripStatus();
+  // Give the strand time to process
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  TripStatus status = getStatusSync();
   EXPECT_NE(status.state, TripState::IDLE)
       << "Should have left IDLE immediately";
 
   // ----- Spin for a few seconds to let the FSM progress --------------------
-  // The FSM does:
-  //   IDLE → PUBLISHING_INITIAL_POSE (instant)
-  //        → WAITING_LOCALISATION     (3s delay)
-  //        → PUBLISHING_GOAL          (instant)
-  //        → WAITING_ROUTE            (waits for route topic OR timeout 15s)
-  //        → ENGAGING                 (1s delay)
-  //        → RUNNING
-  //
-  // If Autoware is running and planning works, we should reach RUNNING
-  // within ~5 seconds.  If not, we'll hit FAILED after 15s route timeout.
-
   std::cout
       << "\n[Test] Spinning for 20 seconds to observe FSM transitions...\n";
 
@@ -153,7 +169,7 @@ TEST_F(AutowareAgentTest, StartTripStateTransitions) {
     rclcpp::spin_some(controller_);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    status = controller_->getTripStatus();
+    status = getStatusSync();
 
     // Log state changes
     if (status.state != last_state) {
@@ -169,12 +185,13 @@ TEST_F(AutowareAgentTest, StartTripStateTransitions) {
     }
   }
 
-  status = controller_->getTripStatus();
+  status = getStatusSync();
 
   if (status.state == TripState::FAILED) {
     // This is expected if Autoware is not running or the route planner
     // couldn't connect the start and goal lanes.
-    std::cout << "[Test] This is normal if Autoware is not launched or lanes "
+    std::cout << "[Test] Trip FAILED. "
+              << "This is normal if Autoware is not launched or lanes "
                  "are not connected.\n";
     // We still pass the test — the FSM behaved correctly by timing out.
   } else if (status.state == TripState::RUNNING) {
@@ -200,10 +217,14 @@ TEST_F(AutowareAgentTest, CancelTrip) {
 
   // Start a trip
   GPSCoordinate goal{35.688, 139.694};
-  controller_->startTrip(goal.latitude, goal.longitude);
+  bool started = startTripSync(goal.latitude, goal.longitude);
+  EXPECT_TRUE(started);
+
+  // Give strand time to process
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Verify we left IDLE
-  TripStatus status = controller_->getTripStatus();
+  TripStatus status = getStatusSync();
   EXPECT_NE(status.state, TripState::IDLE);
 
   // Spin briefly to let it progress
@@ -212,7 +233,10 @@ TEST_F(AutowareAgentTest, CancelTrip) {
   // Cancel
   controller_->cancelTrip();
 
-  status = controller_->getTripStatus();
+  // Give strand time to process cancel
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  status = getStatusSync();
   EXPECT_EQ(status.state, TripState::IDLE)
       << "Cancel should return to IDLE immediately";
 }
@@ -222,12 +246,15 @@ TEST_F(AutowareAgentTest, RejectDuplicateTrip) {
   createController();
 
   GPSCoordinate goal1{35.688, 139.694};
-  bool started1 = controller_->startTrip(goal1.latitude, goal1.longitude);
+  bool started1 = startTripSync(goal1.latitude, goal1.longitude);
   ASSERT_TRUE(started1);
+
+  // Give strand time to process
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Try to start another trip while the first is still running
   GPSCoordinate goal2{35.689, 139.695};
-  bool started2 = controller_->startTrip(goal2.latitude, goal2.longitude);
+  bool started2 = startTripSync(goal2.latitude, goal2.longitude);
   EXPECT_FALSE(started2)
       << "Should reject second trip while one is in progress";
 }

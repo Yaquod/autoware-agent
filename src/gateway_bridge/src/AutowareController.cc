@@ -22,7 +22,7 @@ namespace AutowareAgent {
 
 AutowareController::AutowareController(const std::string& map_path,
                                        double tick_hz)
-    : rclcpp::Node("autoware_controller") {
+    : rclcpp::Node("autoware_controller"), tick_hz_(tick_hz) {
   RCLCPP_INFO(get_logger(), "[AutowareAgent] Booting..");
   spdlog::info("[AutowareAgent] Booting..");
 
@@ -42,31 +42,99 @@ AutowareController::AutowareController(const std::string& map_path,
       route_config_->getMapName(), route_config_->getLanesCount(),
       route_config_->getDefaultStart() ? 1u : 0u);
 
-  trip_ctrl_ = std::make_unique<TripController>(
-      std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*) {}),
-      *route_config_);
+  io_context_ = std::make_shared<boost::asio::io_context>();
+  strand_ = std::make_shared<boost::asio::io_context::strand>(*io_context_);
+  work_guard_ = std::make_unique<boost::asio::io_context::work>(*io_context_);
+}
 
-  trip_ctrl_->setStateChangeCallback([this](TripState prev, TripState next) {
-    onTripStateChanged(prev, next);
+AutowareController::~AutowareController() {
+  if (work_guard_) work_guard_.reset();
+  if (io_context_) io_context_->stop();
+  if (io_thread_.joinable()) io_thread_.join();
+}
+
+void AutowareController::initialize() {
+  strand_->post([this]() {
+    trip_ctrl_ = std::make_unique<TripController>(shared_from_this(),
+                                                  *route_config_, strand_);
+
+    trip_ctrl_->setStateChangeCallback([this](TripState prev, TripState next) {
+      onTripStateChanged(prev, next);
+    });
+
+    RCLCPP_INFO(get_logger(), "[AutowareAgent] Initialization complete");
+    spdlog::info("[AutowareAgent] Initialization complete");
   });
 
-  // periodic tick
-  int period_timer = static_cast<int>(1000.0 / tick_hz);
-  tick_timer_ = create_wall_timer(std::chrono::milliseconds(period_timer),
-                                  [this]() { onTickTimer(); });
+  int period_timer = static_cast<int>(1000.0 / tick_hz_);
+  tick_timer_ = create_wall_timer(
+      std::chrono::milliseconds(period_timer),
+      [this]() { strand_->post([this]() { onTickTimer(); }); });
+
+  io_thread_ = std::thread([this]() { io_context_->run(); });
 }
 
-bool AutowareController::startTrip(double latitude, double longitude) {
-  return trip_ctrl_->startTrip(GPSCoordinate{latitude, longitude});
+void AutowareController::startTrip(double latitude, double longitude,
+                                   std::function<void(bool)> callback) {
+  strand_->post([this, latitude, longitude, callback]() {
+    startTripImpl(latitude, longitude, callback);
+  });
 }
 
-void AutowareController::cancelTrip() { trip_ctrl_->cancel(); }
-
-TripStatus AutowareController::getTripStatus() const {
-  return trip_ctrl_->status();
+void AutowareController::startTripImpl(double latitude, double longitude,
+                                       std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    RCLCPP_ERROR(get_logger(),
+                 "[AutowareAgent] TripController not initialized. Call "
+                 "initialize() first.");
+    spdlog::error(
+        "[AutowareAgent] TripController not initialized. Call initialize() "
+        "first.");
+    if (callback) {
+      callback(false);
+    }
+    return;
+  }
+  bool result = trip_ctrl_->startTrip(GPSCoordinate{latitude, longitude});
+  if (callback) {
+    callback(result);
+  }
 }
 
-void AutowareController::onTickTimer() { trip_ctrl_->tick(); }
+void AutowareController::cancelTrip() {
+  strand_->post([this]() { cancelTripImpl(); });
+}
+
+void AutowareController::cancelTripImpl() {
+  if (trip_ctrl_) {
+    trip_ctrl_->cancel();
+  }
+}
+
+void AutowareController::getTripStatus(
+    std::function<void(TripStatus)> callback) const {
+  strand_->post([this, callback]() { getTripStatusImpl(callback); });
+}
+
+void AutowareController::getTripStatusImpl(
+    std::function<void(TripStatus)> callback) const {
+  if (!trip_ctrl_) {
+    if (callback) {
+      callback(TripStatus{});
+    }
+    return;
+  }
+  TripStatus status = trip_ctrl_->status();
+  if (callback) {
+    callback(status);
+  }
+}
+
+void AutowareController::onTickTimer() {
+  if (trip_ctrl_) {
+    trip_ctrl_->tick();
+  }
+}
 
 void AutowareController::onTripStateChanged(TripState prev, TripState next) {
   auto name = [](TripState s) -> const char* {
@@ -108,4 +176,5 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
                  st.start_lanelet_id, st.goal_lanelet_id);
   }
 }
+
 }  // namespace AutowareAgent

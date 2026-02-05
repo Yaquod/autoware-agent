@@ -3,6 +3,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(autoware_vehicle_msgs REQUIRED)
 find_package(tier4_external_api_msgs REQUIRED)
 find_package(autoware_adapi_v1_msgs REQUIRED)
+find_package(autoware_planning_msgs REQUIRED)
 find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
@@ -17,6 +18,7 @@ target_link_libraries(autoware_controller
         PUBLIC ${geometry_msgs_TARGETS}
         PUBLIC ${autoware_vehicle_msgs_TARGETS}
         PUBLIC ${autoware_adapi_v1_msgs_TARGETS}
+        PUBLIC ${autoware_planning_msgs_TARGETS}
         PUBLIC ${tier4_external_api_msgs_TARGETS}
         PUBLIC map_routes_lib
         PUBLIC config_header
