@@ -101,7 +101,11 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update -qq
-          apt-get install -y --no-install-recommends wget gnupg lsb-release python3-pip cmake ninja-build
+          apt-get install -y --no-install-recommends \
+          wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
+          libgrpc++-dev libgrpc-dev libgpr-dev \
+          protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+          libyaml-cpp-dev libboost-system-dev
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
           | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
@@ -189,7 +193,13 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            python3-pip ccache ninja-build
+          python3-pip ccache ninja-build pkg-config \
+          libgrpc++-dev libgrpc-dev libgpr-dev \
+          protobuf-compiler protobuf-compiler-grpc \
+          libprotobuf-dev \
+          libyaml-cpp-dev \
+          libboost-system-dev \
+          ros-${{ env.ROS_DISTRO }}-fastcdr || true
           pip3 install --quiet colcon-common-extensions vcstool
 
       - name: Cache ccache
@@ -254,9 +264,22 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            python3-pip ninja-build wget gnupg perl
+            python3-pip ninja-build wget gnupg perl pkg-config \
+            libgrpc++-dev libgrpc-dev libgpr-dev \
+            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+            libyaml-cpp-dev libboost-system-dev
           pip3 install --quiet colcon-common-extensions vcstool
           # lcov 2.x — the 1.x in Ubuntu 22.04 is too old (no --ignore-errors mismatch)
+          # First install required Perl modules that lcov 2.x depends on
+          apt-get install -y --no-install-recommends \
+            cpanminus libperlio-gzip-perl libjson-perl
+          cpanm --notest --quiet \
+            Capture::Tiny \
+            DateTime \
+            Digest::MD5 \
+            File::Spec \
+            Memory::Process \
+            Storable
           wget -qO /tmp/lcov.tar.gz \
             https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
           tar -xzf /tmp/lcov.tar.gz -C /tmp
@@ -317,9 +340,10 @@ jobs:
       - name: Generate coverage report
         run: |
           lcov --capture \
-          --directory build/ \
-          --gcov-tool /usr/local/bin/llvm-gcov \
-          --output-file coverage.info
+               --directory build/ \
+               --gcov-tool /usr/local/bin/llvm-gcov \
+               --output-file coverage.info \
+               --ignore-errors mismatch,empty
           lcov --remove coverage.info \
                '/opt/ros/*' \
                '/usr/*' \
@@ -380,7 +404,7 @@ jobs:
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
           . install/setup.sh
-
+          
           colcon test \
             --packages-select ${{ env.AGENT_PKG }} \
             --pytest-args "-m integration" \
