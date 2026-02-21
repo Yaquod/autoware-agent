@@ -350,11 +350,15 @@ jobs:
       - name: Generate coverage report
         run: |
           lcov --capture \
-               --directory build/ \
-               --output-file coverage.info
+          --directory build/ \
+          --output-file coverage.info \
+          --ignore-errors inconsistent,inconsistent \
+          --ignore-errors usage,usage \
+          --rc geninfo_unexecuted_blocks=1 \
           lcov --remove coverage.info \
-               '/opt/ros/*' '/usr/*' '*/test/*' '*/mock/*' \
-               --output-file coverage_filtered.info
+          '/opt/ros/*' '/usr/*' '*/test/*' '*/mock/*' \
+          --output-file coverage_filtered.info \
+          --ignore-errors inconsistent,inconsistent \
           lcov --summary coverage_filtered.info
           genhtml coverage_filtered.info \
                   --output-directory coverage_html \
