@@ -101,12 +101,15 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update -qq
+          apt-get install -y --no-install-recommends wget gnupg lsb-release python3-pip cmake ninja-build
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+          | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
+          > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq
           apt-get install -y --no-install-recommends \
-            clang-${{ env.CLANG_VERSION }} \
-            clang-tidy-${{ env.CLANG_VERSION }} \
-            python3-pip \
-            cmake \
-            ninja-build
+          clang-${{ env.CLANG_VERSION }} \
+          clang-tidy-${{ env.CLANG_VERSION }}
           ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
           pip3 install --quiet colcon-common-extensions vcstool
 
