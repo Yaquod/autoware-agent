@@ -281,10 +281,12 @@ jobs:
           cpanm --notest --quiet \
             Capture::Tiny \
             DateTime \
+            Date::Parse \
             Digest::MD5 \
             File::Spec \
             Memory::Process \
-            Storable
+            Storable \
+            JSON::XS
           wget -qO /tmp/lcov.tar.gz \
             https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
           tar -xzf /tmp/lcov.tar.gz -C /tmp
