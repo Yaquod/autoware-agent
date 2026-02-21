@@ -245,7 +245,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     container:
-      image: ghcr.io/autowarefoundation/autoware:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
