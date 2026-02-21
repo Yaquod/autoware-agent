@@ -103,7 +103,7 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev libgpr-dev \
+            libgrpc++-dev libgrpc-dev \
             protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
             libyaml-cpp-dev libboost-system-dev
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
@@ -194,7 +194,7 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             python3-pip ccache ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev libgpr-dev \
+            libgrpc++-dev libgrpc-dev \
             protobuf-compiler protobuf-compiler-grpc \
             libprotobuf-dev \
             libyaml-cpp-dev \
@@ -265,7 +265,7 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             python3-pip ninja-build wget gnupg perl pkg-config \
-            libgrpc++-dev libgrpc-dev libgpr-dev \
+            libgrpc++-dev libgrpc-dev \
             protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
             libyaml-cpp-dev libboost-system-dev
           pip3 install --quiet colcon-common-extensions vcstool
