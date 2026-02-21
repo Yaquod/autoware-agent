@@ -81,7 +81,7 @@ bool TripController::startTrip(GPSCoordinate goal_gps) {
   if (status_.state != TripState::IDLE) {
     spdlog::warn("[AutowareAgent] Trip already in progress");
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] Trip already in progress (state=%d)",
-                status_.state);
+                static_cast<int>(status_.state));
     return false;
   }
 
