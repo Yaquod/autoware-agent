@@ -16,80 +16,69 @@
 
 #include "../include/TripController.h"
 
-#include <spdlog/spdlog.h>
-
 #include <boost/asio/post.hpp>
 
-namespace AutowareAgent {
-TripController::TripController(
-    rclcpp::Node::SharedPtr node, const RouteConfig& route_config,
-    std::shared_ptr<boost::asio::io_context::strand> strand,
-    TripTimings timings)
-    : node_(std::move(node)),
-      route_config_(route_config),
-      strand_(strand),
-      timings_(timings) {
-  auto pose_qos = rclcpp::QoS(1).reliable().durability_volatile();
-  initial_pose_pub_ =
-      node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-          "/initialpose", pose_qos);
+#include <spdlog/spdlog.h>
 
-  goal_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
-      "/planning/mission_planning/goal", 1);
+namespace AutowareAgent {
+TripController::TripController(rclcpp::Node::SharedPtr node, const RouteConfig& route_config,
+                               std::shared_ptr<boost::asio::io_context::strand> strand,
+                               TripTimings timings)
+  : node_(std::move(node))
+  , route_config_(route_config)
+  , strand_(strand)
+  , timings_(timings) {
+  auto pose_qos = rclcpp::QoS(1).reliable().durability_volatile();
+  initial_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "/initialpose", pose_qos);
+
+  goal_pub_ =
+    node_->create_publisher<geometry_msgs::msg::PoseStamped>("/planning/mission_planning/goal", 1);
 
   auto state_qos = rclcpp::QoS(1).reliable().transient_local();
 
-  loc_state_sub_ = node_->create_subscription<
-      autoware_adapi_v1_msgs::msg::LocalizationInitializationState>(
+  loc_state_sub_ =
+    node_->create_subscription<autoware_adapi_v1_msgs::msg::LocalizationInitializationState>(
       "/api/localization/initialization_state", state_qos,
-      [this](const autoware_adapi_v1_msgs::msg::
-                 LocalizationInitializationState::SharedPtr msg) {
+      [this](const autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr msg) {
         strand_->post([this, msg]() { current_loc_state_ = msg; });
       });
 
-  route_state_sub_ =
-      node_->create_subscription<autoware_adapi_v1_msgs::msg::RouteState>(
-          "/api/routing/state", state_qos,
-          [this](const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg) {
-            strand_->post([this, msg]() { current_route_state_ = msg; });
-          });
+  route_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::RouteState>(
+    "/api/routing/state", state_qos,
+    [this](const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg) {
+      strand_->post([this, msg]() { current_route_state_ = msg; });
+    });
 
-  mode_state_sub_ = node_->create_subscription<
-      autoware_adapi_v1_msgs::msg::OperationModeState>(
-      "/api/operation_mode/state", state_qos,
-      [this](const autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr
-                 msg) {
-        strand_->post([this, msg]() { current_mode_state_ = msg; });
-      });
+  mode_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::OperationModeState>(
+    "/api/operation_mode/state", state_qos,
+    [this](const autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg) {
+      strand_->post([this, msg]() { current_mode_state_ = msg; });
+    });
 
-  engage_client_ = node_->create_client<tier4_external_api_msgs::srv::Engage>(
-      "/api/autoware/set/engage");
+  engage_client_ =
+    node_->create_client<tier4_external_api_msgs::srv::Engage>("/api/autoware/set/engage");
 
-  mode_client_ =
-      node_->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
-          "/api/operation_mode/change_to_autonomous");
+  mode_client_ = node_->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
+    "/api/operation_mode/change_to_autonomous");
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1))
-                 .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
-                 .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+               .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
+               .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
-  route_sub_ =
-      node_->create_subscription<autoware_planning_msgs::msg::LaneletRoute>(
-          "/planning/mission_planning/route", qos,
-          [this](
-              const autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg) {
-            strand_->post([this, msg]() { onRouteReceived(*msg); });
-          });
+  route_sub_ = node_->create_subscription<autoware_planning_msgs::msg::LaneletRoute>(
+    "/planning/mission_planning/route", qos,
+    [this](const autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg) {
+      strand_->post([this, msg]() { onRouteReceived(*msg); });
+    });
 
-  RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] TripController initialized");
+  RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] TripController initialized");
   spdlog::info("[AutowareAgent] TripController initialized");
 }
 
 bool TripController::startTrip(GPSCoordinate goal_gps) {
   if (status_.state != TripState::IDLE) {
     spdlog::warn("[AutowareAgent] Trip already in progress");
-    RCLCPP_WARN(node_->get_logger(),
-                "[AutowareAgent] Trip already in progress (state=%d)",
+    RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] Trip already in progress (state=%d)",
                 status_.state);
     return false;
   }
@@ -132,26 +121,23 @@ bool TripController::startTrip(GPSCoordinate goal_gps) {
   double dy = goal_lane->local.y - raw_local.y;
   status_.goal_distance_m = std::sqrt(dx * dx + dy * dy);
 
-  RCLCPP_INFO(
-      node_->get_logger(),
-      "[AutowareAgent] Starting trip\n"
-      "  start: lane %s  (%.2f, %.2f, %.2f)  qz=%.6f qw=%.6f\n"
-      "  goal:  lane %s  (%.2f, %.2f, %.2f)  qz=%.6f qw=%.6f  [snap %.2f m]",
-      status_.start_lanelet_id.c_str(), status_.start_x, status_.start_y,
-      status_.start_z, status_.start_qz, status_.start_qw,
-      status_.goal_lanelet_id.c_str(), status_.goal_x, status_.goal_y,
-      status_.goal_z, status_.goal_qz, status_.goal_qw,
-      status_.goal_distance_m);
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] Starting trip\n"
+              "  start: lane %s  (%.2f, %.2f, %.2f)  qz=%.6f qw=%.6f\n"
+              "  goal:  lane %s  (%.2f, %.2f, %.2f)  qz=%.6f qw=%.6f  [snap %.2f m]",
+              status_.start_lanelet_id.c_str(), status_.start_x, status_.start_y, status_.start_z,
+              status_.start_qz, status_.start_qw, status_.goal_lanelet_id.c_str(), status_.goal_x,
+              status_.goal_y, status_.goal_z, status_.goal_qz, status_.goal_qw,
+              status_.goal_distance_m);
 
   spdlog::info(
-      "[AutowareAgent] Starting trip\n"
-      "  start: lane {} ({:.2f}, {:.2f}, {:.2f}) qz={:.6f} qw={:.6f}\n"
-      "  goal:  lane {} ({:.2f}, {:.2f}, {:.2f}) qz={:.6f} qw={:.6f} [snap "
-      "{:.2f} m]",
-      status_.start_lanelet_id, status_.start_x, status_.start_y,
-      status_.start_z, status_.start_qz, status_.start_qw,
-      status_.goal_lanelet_id, status_.goal_x, status_.goal_y, status_.goal_z,
-      status_.goal_qz, status_.goal_qw, status_.goal_distance_m);
+    "[AutowareAgent] Starting trip\n"
+    "  start: lane {} ({:.2f}, {:.2f}, {:.2f}) qz={:.6f} qw={:.6f}\n"
+    "  goal:  lane {} ({:.2f}, {:.2f}, {:.2f}) qz={:.6f} qw={:.6f} [snap "
+    "{:.2f} m]",
+    status_.start_lanelet_id, status_.start_x, status_.start_y, status_.start_z, status_.start_qz,
+    status_.start_qw, status_.goal_lanelet_id, status_.goal_x, status_.goal_y, status_.goal_z,
+    status_.goal_qz, status_.goal_qw, status_.goal_distance_m);
 
   transitionTo(TripState::PUBLISHING_INITIAL_POSE);
   return true;
@@ -182,15 +168,13 @@ void TripController::tick() {
     case TripState::WAITING_LOCALISATION:
       if (!current_loc_state_ ||
           current_loc_state_->state !=
-              autoware_adapi_v1_msgs::msg::LocalizationInitializationState::
-                  INITIALIZED) {
+            autoware_adapi_v1_msgs::msg::LocalizationInitializationState::INITIALIZED) {
         if (elapsed_ms(last_publish_time_) >= 1000) {
           doPublishInitialPose();
           last_publish_time_ = std::chrono::steady_clock::now();
         }
       } else {
-        RCLCPP_INFO(node_->get_logger(),
-                    "Localization INITIALIZED. Moving to Goal.");
+        RCLCPP_INFO(node_->get_logger(), "Localization INITIALIZED. Moving to Goal.");
         transitionTo(TripState::PUBLISHING_GOAL);
       }
       break;
@@ -202,8 +186,7 @@ void TripController::tick() {
 
     case TripState::WAITING_ROUTE:
       if (!current_route_state_ ||
-          current_route_state_->state !=
-              autoware_adapi_v1_msgs::msg::RouteState::SET) {
+          current_route_state_->state != autoware_adapi_v1_msgs::msg::RouteState::SET) {
         if (elapsed_ms(last_publish_time_) >= 2000) {
           doPublishGoal();
           last_publish_time_ = std::chrono::steady_clock::now();
@@ -227,61 +210,56 @@ void TripController::tick() {
   }
 }
 
-TripStatus TripController::status() const { return status_; }
+TripStatus TripController::status() const {
+  return status_;
+}
 
 void TripController::setStateChangeCallback(StateChangeCb cb) {
   on_state_change_ = std::move(cb);
 }
 void TripController::doEngage() {
-  if (!mode_client_->service_is_ready() ||
-      !engage_client_->service_is_ready()) {
+  if (!mode_client_->service_is_ready() || !engage_client_->service_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "Engagement services not ready yet");
     return;
   }
 
-  auto mode_request = std::make_shared<
-      autoware_adapi_v1_msgs::srv::ChangeOperationMode::Request>();
+  auto mode_request = std::make_shared<autoware_adapi_v1_msgs::srv::ChangeOperationMode::Request>();
 
   mode_client_->async_send_request(
-      mode_request,
-      [this](rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::
-                 SharedFuture mode_future) {
-        auto mode_response = mode_future.get();
-        if (!mode_response->status.success) {
-          RCLCPP_ERROR(node_->get_logger(), "Failed to change mode: %s",
-                       mode_response->status.message.c_str());
-          return;
-        }
+    mode_request,
+    [this](
+      rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedFuture mode_future) {
+      auto mode_response = mode_future.get();
+      if (!mode_response->status.success) {
+        RCLCPP_ERROR(node_->get_logger(), "Failed to change mode: %s",
+                     mode_response->status.message.c_str());
+        return;
+      }
 
-        RCLCPP_INFO(node_->get_logger(),
-                    "Mode changed to Autonomous. Sending Engage signal...");
+      RCLCPP_INFO(node_->get_logger(), "Mode changed to Autonomous. Sending Engage signal...");
 
-        auto engage_req =
-            std::make_shared<tier4_external_api_msgs::srv::Engage::Request>();
-        engage_req->engage = true;
+      auto engage_req = std::make_shared<tier4_external_api_msgs::srv::Engage::Request>();
+      engage_req->engage = true;
 
-        engage_client_->async_send_request(
-            engage_req,
-            [this](rclcpp::Client<tier4_external_api_msgs::srv::Engage>::
-                       SharedFuture engage_future) {
-              auto engage_res = engage_future.get();
-              if (engage_res->status.code == 1) {
-                RCLCPP_INFO(node_->get_logger(),
-                            "Car Engaged! Motion started.");
+      engage_client_->async_send_request(
+        engage_req,
+        [this](rclcpp::Client<tier4_external_api_msgs::srv::Engage>::SharedFuture engage_future) {
+          auto engage_res = engage_future.get();
+          if (engage_res->status.code == 1) {
+            RCLCPP_INFO(node_->get_logger(), "Car Engaged! Motion started.");
 
-                strand_->post([this]() { transitionTo(TripState::RUNNING); });
-              } else {
-                RCLCPP_ERROR(node_->get_logger(), "Engage failed: %s",
-                             engage_res->status.message.c_str());
-              }
-            });
-      });
+            strand_->post([this]() { transitionTo(TripState::RUNNING); });
+          } else {
+            RCLCPP_ERROR(node_->get_logger(), "Engage failed: %s",
+                         engage_res->status.message.c_str());
+          }
+        });
+    });
 }
 
 void TripController::doPollRoute() {
   if (route_received_) {
-    RCLCPP_INFO(node_->get_logger(),
-                "[AutowareAgent] Route received, moving to engaging.");
+    RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Route received, moving to engaging.");
     spdlog::info("[AutowareAgent] Route received, moving to engaging");
     transitionTo(TripState::ENGAGING);
     return;
@@ -289,8 +267,8 @@ void TripController::doPollRoute() {
 
   if (elapsed_ms(state_entered_at_) >= timings_.route_timeout_ms) {
     std::string error = "[AutowareAgent] Timeout waiting for route. Lanes " +
-                        status_.start_lanelet_id + " and " +
-                        status_.goal_lanelet_id + " may not be connected";
+                        status_.start_lanelet_id + " and " + status_.goal_lanelet_id +
+                        " may not be connected";
     RCLCPP_ERROR(node_->get_logger(), "%s", error.c_str());
     spdlog::error(error);
     transitionTo(TripState::FAILED);
@@ -311,11 +289,9 @@ void TripController::doPublishGoal() {
   msg.pose.orientation.w = status_.goal_qw;
 
   goal_pub_->publish(msg);
-  RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] Published goal (%.2f, %.2f)", status_.goal_x,
+  RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Published goal (%.2f, %.2f)", status_.goal_x,
               status_.goal_y);
-  spdlog::info("[AutowareAgent] Published goal ({:.2f}, {:.2f})",
-               status_.goal_x, status_.goal_y);
+  spdlog::info("[AutowareAgent] Published goal ({:.2f}, {:.2f})", status_.goal_x, status_.goal_y);
 }
 
 void TripController::doPublishInitialPose() {
@@ -338,39 +314,36 @@ void TripController::doPublishInitialPose() {
   msg.pose.covariance[35] = 0.06853891909122467;
 
   initial_pose_pub_->publish(msg);
-  RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] Published initial pose (%.2f, %.2f)",
+  RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Published initial pose (%.2f, %.2f)",
               status_.start_x, status_.start_y);
-  spdlog::info("[AutowareAgent] Published initial pose ({:.2f}, {:.2f})",
-               status_.start_x, status_.start_y);
+  spdlog::info("[AutowareAgent] Published initial pose ({:.2f}, {:.2f})", status_.start_x,
+               status_.start_y);
 }
 
-void TripController::onRouteReceived(
-    const autoware_planning_msgs::msg::LaneletRoute& msg) {
+void TripController::onRouteReceived(const autoware_planning_msgs::msg::LaneletRoute& msg) {
   RCLCPP_INFO(
-      node_->get_logger(),
-      "[AutowareAgent] Route callback executed! Start lane: %ld, segments: %zu",
-      msg.segments.empty() ? -1 : msg.segments[0].preferred_primitive.id,
-      msg.segments.size());
-  spdlog::info("[AutowareAgent] Route callback executed! Segments: {}",
-               msg.segments.size());
+    node_->get_logger(), "[AutowareAgent] Route callback executed! Start lane: %ld, segments: %zu",
+    msg.segments.empty() ? -1 : msg.segments[0].preferred_primitive.id, msg.segments.size());
+  spdlog::info("[AutowareAgent] Route callback executed! Segments: {}", msg.segments.size());
   route_received_ = true;
 }
 
 void TripController::transitionTo(TripState next) {
   TripState prev = status_.state;
-  if (prev == next) return;
+  if (prev == next)
+    return;
   status_.state = next;
   status_.last_state_change = std::chrono::steady_clock::now();
   state_entered_at_ = status_.last_state_change;
 
-  if (on_state_change_) on_state_change_(prev, next);
+  if (on_state_change_)
+    on_state_change_(prev, next);
 }
 
 long TripController::elapsed_ms(std::chrono::steady_clock::time_point since) {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now() - since)
-      .count();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                               since)
+    .count();
 }
 
 }  // namespace AutowareAgent

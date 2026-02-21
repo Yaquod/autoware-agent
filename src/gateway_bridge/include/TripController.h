@@ -17,24 +17,27 @@
 #ifndef VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 #define VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 
+#include "RouteConfig.h"
+#include "TripStates.h"
+#include "TripStatus.h"
+#include "TripTimings.h"
+
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/route_state.hpp>
 #include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
-#include <boost/asio.hpp>
-#include <chrono>
-#include <functional>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <memory>
 #include <rclcpp/rclcpp.hpp>
-#include <tier4_external_api_msgs/srv/engage.hpp>
 
-#include "RouteConfig.h"
-#include "TripStates.h"
-#include "TripStatus.h"
-#include "TripTimings.h"
+#include <boost/asio.hpp>
+
+#include <chrono>
+#include <functional>
+#include <memory>
+
+#include <tier4_external_api_msgs/srv/engage.hpp>
 
 namespace AutowareAgent {
 
@@ -70,29 +73,20 @@ class TripController {
   std::shared_ptr<boost::asio::io_context::strand> strand_;
   TripTimings timings_;
 
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-      initial_pose_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
-  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr
-      mode_client_;
-  rclcpp::Client<tier4_external_api_msgs::srv::Engage>::SharedPtr
-      engage_client_;
-  rclcpp::Subscription<autoware_planning_msgs::msg::LaneletRoute>::SharedPtr
-      route_sub_;
-  rclcpp::Subscription<
-      autoware_adapi_v1_msgs::msg::LocalizationInitializationState>::SharedPtr
-      loc_state_sub_;
-  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr
-      route_state_sub_;
-  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::
-      SharedPtr mode_state_sub_;
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr mode_client_;
+  rclcpp::Client<tier4_external_api_msgs::srv::Engage>::SharedPtr engage_client_;
+  rclcpp::Subscription<autoware_planning_msgs::msg::LaneletRoute>::SharedPtr route_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::LocalizationInitializationState>::SharedPtr
+    loc_state_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr route_state_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr mode_state_sub_;
 
   // Thread-safe state storage
-  autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr
-      current_loc_state_;
+  autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr current_loc_state_;
   autoware_adapi_v1_msgs::msg::RouteState::SharedPtr current_route_state_;
-  autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr
-      current_mode_state_;
+  autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr current_mode_state_;
 
   std::chrono::steady_clock::time_point last_publish_time_;
 

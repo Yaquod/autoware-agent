@@ -1,0 +1,389 @@
+name: AutowareAgent CI
+
+on:
+  push:
+    branches: [main, develop, "release/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Cancel in-flight runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ROS_DISTRO: humble
+  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:humble-latest
+  AGENT_PKG: autoware_agent
+  CLANG_VERSION: 17
+
+jobs:
+  clang-format:
+    name: "clang-format"
+    runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-format-${{ env.CLANG_VERSION }}
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-format-${{ env.CLANG_VERSION }}
+          ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
+
+      - name: Run clang-format (changed files on PR, all files on push)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Only check files changed in this PR
+            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+                    | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
+          else
+            # Check all source files on direct push
+            FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
+                                   -o -name "*.cc"  -o -name "*.h"   \
+                                   -o -name "*.cxx" -o -name "*.hxx" \) \
+                    | grep -v "build/" | grep -v ".colcon/" || true)
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "No C/C++ files to check."
+            exit 0
+          fi
+
+          echo "=== Files to check ==="
+          echo "$FILES"
+
+          FAILED=0
+          for f in $FILES; do
+            DIFF=$(clang-format --style=file --dry-run --Werror "$f" 2>&1 || true)
+            if [ -n "$DIFF" ]; then
+              echo "Format violation: $f"
+              clang-format --style=file "$f" | diff "$f" - || true
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" = "1" ]; then
+            echo ""
+            echo "Fix with: clang-format --style=file -i <file>"
+            exit 1
+          fi
+          echo "All files pass clang-format."
+
+      - name: Upload format diff (on failure)
+        if: failure()
+        run: |
+          find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \
+            | grep -v build | xargs clang-format --style=file > /tmp/formatted_diff.patch 2>/dev/null || true
+
+  clang-tidy:
+    name: "clang-tidy"
+    runs-on: ubuntu-22.04
+    needs: clang-format
+    container:
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-${{ env.CLANG_VERSION }} \
+            clang-tidy-${{ env.CLANG_VERSION }} \
+            python3-pip \
+            cmake \
+            ninja-build
+          ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
+          pip3 install --quiet colcon-common-extensions vcstool
+
+      - name: Source ROS2 + import Autoware deps
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          # Import any additional workspace deps declared in .repos file
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+
+      - name: Build with compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS)
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
+              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+
+        shell: bash
+
+      - name: Run clang-tidy
+        run: |
+          python3 -c "
+          import json, glob, os
+          all_cmds = []
+          for f in glob.glob('build/**/compile_commands.json', recursive=True):
+              with open(f) as fh:
+                  all_cmds.extend(json.load(fh))
+          with open('compile_commands.json', 'w') as out:
+              json.dump(all_cmds, out)
+          print(f'Merged {len(all_cmds)} compile commands')
+          "
+
+          # Collect source files (exclude generated/build)
+          FILES=$(find src/${{ env.AGENT_PKG }} -type f \
+                  \( -name "*.cpp" -o -name "*.cc" \) \
+                  | grep -v "/build/" | grep -v "/test/" || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No source files found for tidy."
+            exit 0
+          fi
+
+          FAILED=0
+          for f in $FILES; do
+            echo "--- Checking: $f"
+            clang-tidy \
+              -p compile_commands.json \
+              --config-file=.clang-tidy \
+              --warnings-as-errors='*' \
+              "$f" 2>&1 || FAILED=1
+          done
+
+          [ "$FAILED" = "0" ] && echo "clang-tidy passed." || exit 1
+
+  build:
+    name: "build (${{ matrix.build_type }})"
+    runs-on: ubuntu-22.04
+    needs: clang-format
+    container:
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release, RelWithDebInfo]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            python3-pip ccache ninja-build
+          pip3 install --quiet colcon-common-extensions vcstool
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.ROS_DISTRO }}-${{ matrix.build_type }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ env.ROS_DISTRO }}-${{ matrix.build_type }}-
+            ccache-${{ env.ROS_DISTRO }}-
+
+      - name: Import workspace deps
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
+          rosdep install -y \
+            --rosdistro=${{ env.ROS_DISTRO }} \
+            --from-paths src \
+            --ignore-src
+
+      - name: Build
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          export CCACHE_DIR=~/.ccache
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --symlink-install
+          echo "Build (${{ matrix.build_type }}) succeeded."
+
+      - name: ccache stats
+        run: ccache --show-stats
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.build_type }}
+          path: |
+            install/
+            build/*/compile_commands.json
+          retention-days: 3
+
+  unit-tests:
+    name: "unit-tests"
+    runs-on: ubuntu-22.04
+    needs: build
+    container:
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            python3-pip lcov
+          pip3 install --quiet colcon-common-extensions vcstool
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-RelWithDebInfo
+
+      - name: Import workspace + rosdep
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
+          rosdep install -y --rosdistro=${{ env.ROS_DISTRO }} \
+            --from-paths src --ignore-src
+
+      - name: Build with coverage flags
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+              -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+
+
+      - name: Run tests
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          . install/setup.sh
+          colcon test \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+          colcon test-result --verbose
+
+      - name: Generate coverage report
+        run: |
+          lcov --capture \
+               --directory build/ \
+               --output-file coverage.info \
+               --ignore-errors mismatch
+          lcov --remove coverage.info \
+               '/opt/ros/*' \
+               '/usr/*' \
+               '*/test/*' \
+               '*/mock/*' \
+               --output-file coverage_filtered.info
+          lcov --summary coverage_filtered.info
+          genhtml coverage_filtered.info \
+                  --output-directory coverage_html \
+                  --title "AutowareAgent Coverage"
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage_html/
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/**/test_results/**/*.xml
+          retention-days: 14
+
+      - name: Publish test results
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "build/**/test_results/**/*.xml"
+          check_name: "Unit Test Results"
+
+  integration-tests:
+    name: "integration-tests"
+    runs-on: ubuntu-22.04
+    needs: unit-tests
+    container:
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
+      options: --shm-size=512m
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3-pip
+          pip3 install --quiet colcon-common-extensions
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-RelWithDebInfo
+
+      - name: Run integration tests
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          . install/setup.sh
+
+          colcon test \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --pytest-args "-m integration" \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: build/**/test_results/**/*.xml
+          retention-days: 7
+
+  ci-gate:
+    name: "CI Gate"
+    runs-on: ubuntu-22.04
+    needs:
+      - clang-format
+      - clang-tidy
+      - build
+      - unit-tests
+      - integration-tests
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          RESULTS="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "One or more CI jobs failed."
+              exit 1
+            fi
+          done
+          echo "All CI checks passed. Ready to merge."
