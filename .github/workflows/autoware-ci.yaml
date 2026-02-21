@@ -316,12 +316,10 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          # Use llvm-cov as the gcov backend for clang-compiled binaries
           lcov --capture \
-               --directory build/ \
-               --gcov-tool /usr/local/bin/llvm-gcov \
-               --output-file coverage.info \
-               --ignore-errors mismatch,empty
+          --directory build/ \
+          --gcov-tool /usr/local/bin/llvm-gcov \
+          --output-file coverage.info
           lcov --remove coverage.info \
                '/opt/ros/*' \
                '/usr/*' \
