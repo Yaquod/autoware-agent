@@ -15,7 +15,7 @@ concurrency:
 env:
   ROS_DISTRO: humble
   AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
-  AGENT_PKG: autoware_agent
+  AGENT_PKG: VehicleAutowareAgent
   CLANG_VERSION: 17
 
 jobs:
