@@ -245,7 +245,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/autowarefoundation/autoware:humble-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -254,8 +254,26 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            python3-pip lcov
+            python3-pip ninja-build wget gnupg perl
           pip3 install --quiet colcon-common-extensions vcstool
+          # lcov 2.x — the 1.x in Ubuntu 22.04 is too old (no --ignore-errors mismatch)
+          wget -qO /tmp/lcov.tar.gz \
+            https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
+          tar -xzf /tmp/lcov.tar.gz -C /tmp
+          make -C /tmp/lcov-2.1 install PREFIX=/usr/local -j$(nproc)
+          # clang + llvm-cov so lcov reads clang .gcda files correctly
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
+            > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-${{ env.CLANG_VERSION }} \
+            llvm-${{ env.CLANG_VERSION }}
+          # Shim: lcov --gcov-tool calls this instead of system gcov
+          printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' \
+            "${{ env.CLANG_VERSION }}" > /usr/local/bin/llvm-gcov
+          chmod +x /usr/local/bin/llvm-gcov
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -279,8 +297,10 @@ jobs:
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
-              -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+              -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
+              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+              "-DCMAKE_CXX_FLAGS=--coverage -fprofile-arcs -ftest-coverage" \
+              "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
@@ -296,15 +316,18 @@ jobs:
 
       - name: Generate coverage report
         run: |
+          # Use llvm-cov as the gcov backend for clang-compiled binaries
           lcov --capture \
                --directory build/ \
+               --gcov-tool /usr/local/bin/llvm-gcov \
                --output-file coverage.info \
-               --ignore-errors mismatch
+               --ignore-errors mismatch,empty
           lcov --remove coverage.info \
                '/opt/ros/*' \
                '/usr/*' \
                '*/test/*' \
                '*/mock/*' \
+               --gcov-tool /usr/local/bin/llvm-gcov \
                --output-file coverage_filtered.info
           lcov --summary coverage_filtered.info
           genhtml coverage_filtered.info \
