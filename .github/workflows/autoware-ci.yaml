@@ -129,6 +129,7 @@ jobs:
       - name: Build with compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS)
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -218,15 +219,18 @@ jobs:
             mkdir -p src
             vcs import src < autoware_agent.repos
           fi
+          rosdep init 2>/dev/null || true
           rosdep update --rosdistro=${{ env.ROS_DISTRO }}
           rosdep install -y \
-            --rosdistro=${{ env.ROS_DISTRO }} \
-            --from-paths src \
-            --ignore-src
+          --rosdistro=${{ env.ROS_DISTRO }} \
+          --from-paths . \
+          --ignore-src \
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib"
 
       - name: Build
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           export CCACHE_DIR=~/.ccache
           colcon build \
             --cmake-args \
@@ -308,13 +312,18 @@ jobs:
             mkdir -p src
             vcs import src < autoware_agent.repos
           fi
+          rrosdep init 2>/dev/null || true
           rosdep update --rosdistro=${{ env.ROS_DISTRO }}
-          rosdep install -y --rosdistro=${{ env.ROS_DISTRO }} \
-            --from-paths src --ignore-src
+          rosdep install -y \
+          --rosdistro=${{ env.ROS_DISTRO }} \
+          --from-paths . \
+          --ignore-src \
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib"
 
       - name: Build with coverage flags
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
