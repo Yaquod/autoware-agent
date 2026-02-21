@@ -330,10 +330,8 @@ jobs:
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
-              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
-              "-DCMAKE_CXX_FLAGS=-fprofile-instr-generate -fcoverage-mapping"
-              "-DCMAKE_EXE_LINKER_FLAGS=-fprofile-instr-generate"\
+              "-DCMAKE_CXX_FLAGS=--coverage"
+              "-DCMAKE_EXE_LINKER_FLAGS=--coverage"
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
@@ -351,18 +349,12 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          llvm-profdata-${{ env.CLANG_VERSION }} merge \
-            --sparse build/**/*.profraw \
-            -o coverage.profdata
-
-          llvm-cov-${{ env.CLANG_VERSION }} export \
-            --format=lcov \
-            --instr-profile=coverage.profdata \
-            --ignore-filename-regex="(/opt/ros|/usr|test/|mock/)" \
-            $(find build/ -name "*.so" -o -name "autoware_tests" | \
-              head -1 | xargs -I{} echo "--object={}") \
-            > coverage_filtered.info
-
+          lcov --capture \
+               --directory build/ \
+               --output-file coverage.info
+          lcov --remove coverage.info \
+               '/opt/ros/*' '/usr/*' '*/test/*' '*/mock/*' \
+               --output-file coverage_filtered.info
           lcov --summary coverage_filtered.info
           genhtml coverage_filtered.info \
                   --output-directory coverage_html \
