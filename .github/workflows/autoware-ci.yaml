@@ -332,14 +332,16 @@ jobs:
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
               -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
-              "-DCMAKE_CXX_FLAGS=--coverage -fprofile-arcs -ftest-coverage" \
-              "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
+              "-DCMAKE_CXX_FLAGS=-fprofile-instr-generate -fcoverage-mapping"
+              "-DCMAKE_EXE_LINKER_FLAGS=-fprofile-instr-generate"\
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
       - name: Run tests
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          export LLVM_PROFILE_FILE="build/%p.profraw"
           . install/setup.sh
           colcon test \
             --packages-select ${{ env.AGENT_PKG }} \
@@ -349,18 +351,18 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          lcov --capture \
-               --directory build/ \
-               --gcov-tool /usr/local/bin/llvm-gcov \
-               --output-file coverage.info \
-               --ignore-errors mismatch,empty
-          lcov --remove coverage.info \
-               '/opt/ros/*' \
-               '/usr/*' \
-               '*/test/*' \
-               '*/mock/*' \
-               --gcov-tool /usr/local/bin/llvm-gcov \
-               --output-file coverage_filtered.info
+          llvm-profdata-${{ env.CLANG_VERSION }} merge \
+            --sparse build/**/*.profraw \
+            -o coverage.profdata
+
+          llvm-cov-${{ env.CLANG_VERSION }} export \
+            --format=lcov \
+            --instr-profile=coverage.profdata \
+            --ignore-filename-regex="(/opt/ros|/usr|test/|mock/)" \
+            $(find build/ -name "*.so" -o -name "autoware_tests" | \
+              head -1 | xargs -I{} echo "--object={}") \
+            > coverage_filtered.info
+
           lcov --summary coverage_filtered.info
           genhtml coverage_filtered.info \
                   --output-directory coverage_html \
