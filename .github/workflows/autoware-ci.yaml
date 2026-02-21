@@ -35,15 +35,15 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends wget gnupg lsb-release
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-          | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-          > /etc/apt/sources.list.d/llvm.list
+            > /etc/apt/sources.list.d/llvm.list
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-          clang-format-${{ env.CLANG_VERSION }}
+            clang-format-${{ env.CLANG_VERSION }}
           ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
 
-      - name: Run clang-format
+      - name: Run clang-format (changed files on PR, all files on push)
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             # Only check files changed in this PR
@@ -102,18 +102,18 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-          wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
-          libgrpc++-dev libgrpc-dev libgpr-dev \
-          protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-          libyaml-cpp-dev libboost-system-dev
+            wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
+            libgrpc++-dev libgrpc-dev libgpr-dev \
+            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+            libyaml-cpp-dev libboost-system-dev
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-          | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-          > /etc/apt/sources.list.d/llvm.list
+            > /etc/apt/sources.list.d/llvm.list
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-          clang-${{ env.CLANG_VERSION }} \
-          clang-tidy-${{ env.CLANG_VERSION }}
+            clang-${{ env.CLANG_VERSION }} \
+            clang-tidy-${{ env.CLANG_VERSION }}
           ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
           pip3 install --quiet colcon-common-extensions vcstool
 
@@ -193,13 +193,13 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-          python3-pip ccache ninja-build pkg-config \
-          libgrpc++-dev libgrpc-dev libgpr-dev \
-          protobuf-compiler protobuf-compiler-grpc \
-          libprotobuf-dev \
-          libyaml-cpp-dev \
-          libboost-system-dev \
-          ros-${{ env.ROS_DISTRO }}-fastcdr || true
+            python3-pip ccache ninja-build pkg-config \
+            libgrpc++-dev libgrpc-dev libgpr-dev \
+            protobuf-compiler protobuf-compiler-grpc \
+            libprotobuf-dev \
+            libyaml-cpp-dev \
+            libboost-system-dev \
+            ros-${{ env.ROS_DISTRO }}-fastcdr || true
           pip3 install --quiet colcon-common-extensions vcstool
 
       - name: Cache ccache
@@ -269,8 +269,6 @@ jobs:
             protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
             libyaml-cpp-dev libboost-system-dev
           pip3 install --quiet colcon-common-extensions vcstool
-          # lcov 2.x — the 1.x in Ubuntu 22.04 is too old (no --ignore-errors mismatch)
-          # First install required Perl modules that lcov 2.x depends on
           apt-get install -y --no-install-recommends \
             cpanminus libperlio-gzip-perl libjson-perl
           cpanm --notest --quiet \
@@ -404,7 +402,7 @@ jobs:
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
           . install/setup.sh
-          
+
           colcon test \
             --packages-select ${{ env.AGENT_PKG }} \
             --pytest-args "-m integration" \
