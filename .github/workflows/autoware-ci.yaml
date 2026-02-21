@@ -259,6 +259,9 @@ jobs:
   unit-tests:
     name: "unit-tests"
     runs-on: ubuntu-22.04
+    permissions:
+      checks: write
+      contents: read
     needs: build
     container:
       image: ghcr.io/autowarefoundation/autoware:universe-devel
@@ -406,21 +409,19 @@ jobs:
           apt-get install -y --no-install-recommends python3-pip
           pip3 install --quiet colcon-common-extensions
 
-      - name: Download build
-        uses: actions/download-artifact@v4
-        with:
-          name: build-RelWithDebInfo
-
-      - name: Run integration tests
+      - name: Build + run integration tests
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          colcon build \
+            --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            --packages-select ${{ env.AGENT_PKG }}
           . install/setup.sh
-
           colcon test \
             --packages-select ${{ env.AGENT_PKG }} \
-            --pytest-args "-m integration" \
             --event-handlers console_cohesion+ \
             --return-code-on-test-failure
+          colcon test-result --verbose
 
       - name: Upload integration test results
         if: always()
