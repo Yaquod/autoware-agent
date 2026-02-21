@@ -37,7 +37,7 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
               route_config_->getDefaultStart() ? 1u : 0u);
   spdlog::info("[AutowareAgent] Route config loaded — map \"{}\", {} lanes, {} start(s)",
                route_config_->getMapName(), route_config_->getLanesCount(),
-               route_config_->getDefaultStart() ? 1u : 0u);
+               (route_config_->getDefaultStart() != nullptr) ? 1u : 0u);
 
   io_context_ = std::make_shared<boost::asio::io_context>();
   strand_ = std::make_shared<boost::asio::io_context::strand>(*io_context_);
@@ -45,10 +45,12 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
 }
 
 AutowareController::~AutowareController() {
-  if (work_guard_)
+  if (work_guard_) {
     work_guard_.reset();
-  if (io_context_)
+  }
+  if (io_context_) {
     io_context_->stop();
+  }
   if (io_thread_.joinable())
     io_thread_.join();
 }

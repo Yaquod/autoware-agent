@@ -18,6 +18,8 @@
 
 #include <boost/asio/post.hpp>
 
+#include <utility>
+
 #include <spdlog/spdlog.h>
 
 namespace AutowareAgent {
@@ -26,7 +28,7 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const RouteConfig& 
                                TripTimings timings)
   : node_(std::move(node))
   , route_config_(route_config)
-  , strand_(strand)
+  , strand_(std::move(std::move(strand)))
   , timings_(timings) {
   auto pose_qos = rclcpp::QoS(1).reliable().durability_volatile();
   initial_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -46,8 +48,8 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const RouteConfig& 
 
   route_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::RouteState>(
     "/api/routing/state", state_qos,
-    [this](const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg) {
-      strand_->post([this, msg]() { current_route_state_ = msg; });
+    [this](const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr MSG) {
+      strand_->post([this, MSG]() { current_route_state_ = MSG; });
     });
 
   mode_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::OperationModeState>(
@@ -103,7 +105,7 @@ bool TripController::startTrip(GPSCoordinate goal_gps) {
 
   // FindNearestLane does GPS -> local internally.
   const LaneInfo* goal_lane = route_config_.FindNearestLane(goal_gps);
-  if (!goal_lane) {
+  if (goal_lane == nullptr) {
     spdlog::error("[AutowareAgent] Find nearest lane failed");
     transitionTo(TripState::FAILED);
     return false;
@@ -116,7 +118,7 @@ bool TripController::startTrip(GPSCoordinate goal_gps) {
   status_.goal_qw = goal_lane->orientation.w;
   status_.goal_qz = goal_lane->orientation.z;
 
-  LocalCoordinate raw_local = route_config_.gpsToLocalCoordinate(goal_gps);
+  LocalCoordinate const raw_local = route_config_.gpsToLocalCoordinate(goal_gps);
   double dx = goal_lane->local.x - raw_local.x;
   double dy = goal_lane->local.y - raw_local.y;
   status_.goal_distance_m = std::sqrt(dx * dx + dy * dy);
@@ -229,7 +231,7 @@ void TripController::doEngage() {
     mode_request,
     [this](
       rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedFuture mode_future) {
-      auto mode_response = mode_future.get();
+      const auto& mode_response = mode_future.get();
       if (!mode_response->status.success) {
         RCLCPP_ERROR(node_->get_logger(), "Failed to change mode: %s",
                      mode_response->status.message.c_str());
@@ -244,7 +246,7 @@ void TripController::doEngage() {
       engage_client_->async_send_request(
         engage_req,
         [this](rclcpp::Client<tier4_external_api_msgs::srv::Engage>::SharedFuture engage_future) {
-          auto engage_res = engage_future.get();
+          const auto& engage_res = engage_future.get();
           if (engage_res->status.code == 1) {
             RCLCPP_INFO(node_->get_logger(), "Car Engaged! Motion started.");
 
@@ -329,9 +331,10 @@ void TripController::onRouteReceived(const autoware_planning_msgs::msg::LaneletR
 }
 
 void TripController::transitionTo(TripState next) {
-  TripState prev = status_.state;
-  if (prev == next)
+  TripState const prev = status_.state;
+  if (prev == next) {
     return;
+  }
   status_.state = next;
   status_.last_state_change = std::chrono::steady_clock::now();
   state_entered_at_ = status_.last_state_change;

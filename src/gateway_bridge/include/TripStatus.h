@@ -16,8 +16,11 @@
 
 #ifndef VEHICLEAUTOWAREAGENT_TRIPSTATUS_H
 #define VEHICLEAUTOWAREAGENT_TRIPSTATUS_H
+
 #include "TripStates.h"
 #include "map_routes/RouteConfig.h"
+
+#include <chrono>
 
 struct TripStatus {
   TripState state{TripState::IDLE};
