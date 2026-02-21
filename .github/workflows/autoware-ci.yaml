@@ -14,7 +14,7 @@ concurrency:
 
 env:
   ROS_DISTRO: humble
-  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
   AGENT_PKG: autoware_agent
   CLANG_VERSION: 17
 
@@ -23,7 +23,7 @@ jobs:
     name: "clang-format"
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -166,7 +166,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
     strategy:
       fail-fast: false
       matrix:
@@ -236,7 +236,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     container:
-      image: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -329,7 +329,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: unit-tests
     container:
-      image: ghcr.io/autowarefoundation/autoware-universe:humble-latest
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
       options: --shm-size=512m
     steps:
       - name: Checkout
