@@ -1,4 +1,4 @@
-ARG AUTOWARE_IMAGE=ghcr.io/autowarefoundation/autoware:humble-latest
+ARG AUTOWARE_IMAGE=ghcr.io/autowarefoundation/autoware-universe:humble-latest
 FROM ${AUTOWARE_IMAGE}
 
 ARG CLANG_VERSION=17
