@@ -105,7 +105,8 @@ jobs:
             wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
             libgrpc++-dev libgrpc-dev \
             protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev
+            libyaml-cpp-dev libboost-system-dev \
+            libgmock-dev libgtest-dev
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
             | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
@@ -199,6 +200,7 @@ jobs:
             protobuf-compiler protobuf-compiler-grpc \
             libprotobuf-dev \
             libyaml-cpp-dev \
+            libgmock-dev libgtest-dev \
             libboost-system-dev \
             ros-${{ env.ROS_DISTRO }}-fastcdr || true
           pip3 install --quiet colcon-common-extensions vcstool
@@ -271,7 +273,8 @@ jobs:
             python3-pip ninja-build wget gnupg perl pkg-config \
             libgrpc++-dev libgrpc-dev \
             protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev
+            libyaml-cpp-dev libboost-system-dev \
+            libgmock-dev libgtest-dev
           pip3 install --quiet colcon-common-extensions vcstool
           apt-get install -y --no-install-recommends \
             cpanminus libperlio-gzip-perl libjson-perl
