@@ -20,27 +20,24 @@
 
 namespace AutowareAgent {
 
-AutowareController::AutowareController(const std::string& map_path,
-                                       double tick_hz)
-    : rclcpp::Node("autoware_controller"), tick_hz_(tick_hz) {
+AutowareController::AutowareController(const std::string& map_path, double tick_hz)
+  : rclcpp::Node("autoware_controller")
+  , tick_hz_(tick_hz) {
   RCLCPP_INFO(get_logger(), "[AutowareAgent] Booting..");
   spdlog::info("[AutowareAgent] Booting..");
 
-  RCLCPP_INFO(get_logger(), "[AutowareAgent] Loading Route configs: %s",
-              map_path.c_str());
+  RCLCPP_INFO(get_logger(), "[AutowareAgent] Loading Route configs: %s", map_path.c_str());
   spdlog::info("[AutowareAgent] Loading Route configs: {}", map_path);
 
   route_config_ = std::make_unique<RouteConfig>(map_path);
   RCLCPP_INFO(get_logger(),
-              "[AutowareAgent] Route config loaded — map \"%s\", %zu lanes, "
-              "%zu start(s)",
-              route_config_->getMapName().c_str(),
-              route_config_->getLanesCount(),
+              "[AutowareAgent] Route config loaded — map \"%s\", %u lanes, "
+              "%u start(s)",
+              route_config_->getMapName().c_str(), route_config_->getLanesCount(),
               route_config_->getDefaultStart() ? 1u : 0u);
-  spdlog::info(
-      "[AutowareAgent] Route config loaded — map \"{}\", {} lanes, {} start(s)",
-      route_config_->getMapName(), route_config_->getLanesCount(),
-      route_config_->getDefaultStart() ? 1u : 0u);
+  spdlog::info("[AutowareAgent] Route config loaded — map \"{}\", {} lanes, {} start(s)",
+               route_config_->getMapName(), route_config_->getLanesCount(),
+               (route_config_->getDefaultStart() != nullptr) ? 1u : 0u);
 
   io_context_ = std::make_shared<boost::asio::io_context>();
   strand_ = std::make_shared<boost::asio::io_context::strand>(*io_context_);
@@ -48,37 +45,38 @@ AutowareController::AutowareController(const std::string& map_path,
 }
 
 AutowareController::~AutowareController() {
-  if (work_guard_) work_guard_.reset();
-  if (io_context_) io_context_->stop();
-  if (io_thread_.joinable()) io_thread_.join();
+  if (work_guard_) {
+    work_guard_.reset();
+  }
+  if (io_context_) {
+    io_context_->stop();
+  }
+  if (io_thread_.joinable())
+    io_thread_.join();
 }
 
 void AutowareController::initialize() {
   strand_->post([this]() {
-    trip_ctrl_ = std::make_unique<TripController>(shared_from_this(),
-                                                  *route_config_, strand_);
+    trip_ctrl_ = std::make_unique<TripController>(shared_from_this(), *route_config_, strand_);
 
-    trip_ctrl_->setStateChangeCallback([this](TripState prev, TripState next) {
-      onTripStateChanged(prev, next);
-    });
+    trip_ctrl_->setStateChangeCallback(
+      [this](TripState prev, TripState next) { onTripStateChanged(prev, next); });
 
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Initialization complete");
     spdlog::info("[AutowareAgent] Initialization complete");
   });
 
   int period_timer = static_cast<int>(1000.0 / tick_hz_);
-  tick_timer_ = create_wall_timer(
-      std::chrono::milliseconds(period_timer),
-      [this]() { strand_->post([this]() { onTickTimer(); }); });
+  tick_timer_ = create_wall_timer(std::chrono::milliseconds(period_timer),
+                                  [this]() { strand_->post([this]() { onTickTimer(); }); });
 
   io_thread_ = std::thread([this]() { io_context_->run(); });
 }
 
 void AutowareController::startTrip(double latitude, double longitude,
                                    std::function<void(bool)> callback) {
-  strand_->post([this, latitude, longitude, callback]() {
-    startTripImpl(latitude, longitude, callback);
-  });
+  strand_->post(
+    [this, latitude, longitude, callback]() { startTripImpl(latitude, longitude, callback); });
 }
 
 void AutowareController::startTripImpl(double latitude, double longitude,
@@ -88,8 +86,8 @@ void AutowareController::startTripImpl(double latitude, double longitude,
                  "[AutowareAgent] TripController not initialized. Call "
                  "initialize() first.");
     spdlog::error(
-        "[AutowareAgent] TripController not initialized. Call initialize() "
-        "first.");
+      "[AutowareAgent] TripController not initialized. Call initialize() "
+      "first.");
     if (callback) {
       callback(false);
     }
@@ -111,13 +109,11 @@ void AutowareController::cancelTripImpl() {
   }
 }
 
-void AutowareController::getTripStatus(
-    std::function<void(TripStatus)> callback) const {
+void AutowareController::getTripStatus(std::function<void(TripStatus)> callback) const {
   strand_->post([this, callback]() { getTripStatusImpl(callback); });
 }
 
-void AutowareController::getTripStatusImpl(
-    std::function<void(TripStatus)> callback) const {
+void AutowareController::getTripStatusImpl(std::function<void(TripStatus)> callback) const {
   if (!trip_ctrl_) {
     if (callback) {
       callback(TripStatus{});
@@ -172,8 +168,8 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
     auto st = trip_ctrl_->status();
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Trip live: lane %s → lane %s",
                 st.start_lanelet_id.c_str(), st.goal_lanelet_id.c_str());
-    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}",
-                 st.start_lanelet_id, st.goal_lanelet_id);
+    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}", st.start_lanelet_id,
+                 st.goal_lanelet_id);
   }
 }
 

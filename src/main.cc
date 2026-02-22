@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-#include <spdlog/spdlog.h>
-
-#include <csignal>
-#include <memory>
-#include <rclcpp/rclcpp.hpp>
-#include <string>
-
 #include "AutowareController.h"
 #include "Config.h"
 
+#include <rclcpp/rclcpp.hpp>
+
+#include <csignal>
+#include <memory>
+#include <string>
+
+#include <spdlog/spdlog.h>
+
 static std::atomic<bool> g_shutdown_requested{false};
 
-void signalHandler(int /*signal*/) { g_shutdown_requested.store(true); }
+void signalHandler(int /*signal*/) {
+  g_shutdown_requested.store(true);
+}
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
@@ -34,16 +37,14 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
 
-  std::string yaml_path =
-      std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  std::string yaml_path = std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
 
-  RCLCPP_INFO(rclcpp::get_logger("main"),
-              "[AutowareAgent] Yaml configs loaded: %s", yaml_path.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
+              yaml_path.c_str());
   spdlog::info("[AutowareAgent] Yaml configs loaded : {}", yaml_path);
 
   // Create controller
-  auto controller =
-      std::make_shared<AutowareAgent::AutowareController>(yaml_path, 10.0);
+  auto controller = std::make_shared<AutowareAgent::AutowareController>(yaml_path, 10.0);
 
   controller->initialize();
 

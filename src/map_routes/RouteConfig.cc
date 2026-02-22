@@ -16,11 +16,11 @@
 
 #include "RouteConfig.h"
 
+#include "Config.h"
+
 #include <cstdlib>
 #include <filesystem>
 #include <stdexcept>
-
-#include "Config.h"
 
 namespace fs = std::filesystem;
 
@@ -30,10 +30,18 @@ RouteConfig::RouteConfig(const std::string& config_file) {
   loadFromYaml(config_file);
 }
 
-const std::string& RouteConfig::getMapName() const { return map_name_; }
-const MapOrigin& RouteConfig::getMapOrigin() const { return map_origin_; }
-const std::vector<LaneInfo>& RouteConfig::getAllLanes() const { return lanes_; }
-size_t RouteConfig::getLanesCount() const { return lanes_.size(); }
+const std::string& RouteConfig::getMapName() const {
+  return map_name_;
+}
+const MapOrigin& RouteConfig::getMapOrigin() const {
+  return map_origin_;
+}
+const std::vector<LaneInfo>& RouteConfig::getAllLanes() const {
+  return lanes_;
+}
+size_t RouteConfig::getLanesCount() const {
+  return lanes_.size();
+}
 
 void RouteConfig::loadFromYaml(const std::string& config_file) {
   try {
@@ -98,25 +106,20 @@ void RouteConfig::loadFromYaml(const std::string& config_file) {
 
       lane.orientation.z = item["orientation"]["z"].as<double>();
       lane.orientation.w = item["orientation"]["w"].as<double>();
-      lane.orientation.yaw_degrees =
-          item["orientation"]["yaw_degrees"].as<double>();
+      lane.orientation.yaw_degrees = item["orientation"]["yaw_degrees"].as<double>();
 
       lanes_.emplace_back(lane);
     }
 
   } catch (const YAML::BadFile& e) {
-    throw std::runtime_error("failed to load route config: " +
-                             std::string(e.what()));
+    throw std::runtime_error("failed to load route config: " + std::string(e.what()));
   } catch (const std::exception& e) {
-    throw std::runtime_error("failed to load route config: " +
-                             std::string(e.what()));
+    throw std::runtime_error("failed to load route config: " + std::string(e.what()));
   }
 }
 
-LocalCoordinate RouteConfig::gpsToLocalCoordinate(
-    const GPSCoordinate& gps) const {
-  GeographicLib::LocalCartesian proj(map_origin_.latitude,
-                                     map_origin_.longitude, 0.0);
+LocalCoordinate RouteConfig::gpsToLocalCoordinate(const GPSCoordinate& gps) const {
+  GeographicLib::LocalCartesian proj(map_origin_.latitude, map_origin_.longitude, 0.0);
 
   double x, y, z;
   proj.Forward(gps.latitude, gps.longitude, 0.0, x, y, z);
@@ -144,7 +147,8 @@ const LaneInfo* RouteConfig::FindNearestLane(const GPSCoordinate& gps) const {
 
 const LaneInfo* RouteConfig::getLaneByID(int lane_id) const {
   for (const auto& lane : lanes_) {
-    if (lane.lane_id == lane_id) return &lane;
+    if (lane.lane_id == lane_id)
+      return &lane;
   }
   return nullptr;
 }
@@ -155,16 +159,20 @@ const FixedStartPosition* RouteConfig::getDefaultStart() const {
 
 std::string RouteConfig::resolveConfigPath(const std::string& filename) {
   fs::path input(filename);
-  if (input.is_absolute()) return input.string();
+  if (input.is_absolute())
+    return input.string();
 
   fs::path test_path = fs::path(AutowareAgent::TEST_MAP_DIR) / filename;
-  if (fs::exists(test_path)) return test_path.string();
+  if (fs::exists(test_path))
+    return test_path.string();
 
   fs::path src_path = fs::path(AutowareAgent::SRC_MAP_DIR) / filename;
-  if (fs::exists(src_path)) return src_path.string();
+  if (fs::exists(src_path))
+    return src_path.string();
 
   fs::path install_path = fs::path(AutowareAgent::INSTALL_MAP_DIR) / filename;
-  if (fs::exists(install_path)) return install_path.string();
+  if (fs::exists(install_path))
+    return install_path.string();
 
   throw std::runtime_error("Could not find config file: " + filename);
 }

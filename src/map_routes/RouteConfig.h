@@ -17,12 +17,12 @@
 #ifndef AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
 #define AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
 
-#include <yaml-cpp/yaml.h>
-
-#include <GeographicLib/LocalCartesian.hpp>
 #include <cmath>
 #include <string>
 #include <vector>
+
+#include <GeographicLib/LocalCartesian.hpp>
+#include <yaml-cpp/yaml.h>
 
 namespace AutowareAgent {
 struct GPSCoordinate {
@@ -82,8 +82,7 @@ class RouteConfig {
 
   void loadFromYaml(const std::string& config_file);
 
-  [[nodiscard]] LocalCoordinate gpsToLocalCoordinate(
-      const GPSCoordinate& gps) const;
+  [[nodiscard]] LocalCoordinate gpsToLocalCoordinate(const GPSCoordinate& gps) const;
 
   [[nodiscard]] const LaneInfo* FindNearestLane(const GPSCoordinate& gps) const;
 

@@ -1,0 +1,466 @@
+name: AutowareAgent CI
+
+on:
+  push:
+    branches: [main, develop, "release/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Cancel in-flight runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ROS_DISTRO: humble
+  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
+  AGENT_PKG: VehicleAutowareAgent
+  CLANG_VERSION: 17
+
+jobs:
+  clang-format:
+    name: "clang-format"
+    runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-format-${{ env.CLANG_VERSION }}
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends wget gnupg lsb-release
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
+            > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-format-${{ env.CLANG_VERSION }}
+          ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
+
+      - name: Run clang-format (changed files on PR, all files on push)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Only check files changed in this PR
+            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+                    | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
+          else
+            # Check all source files on direct push
+            FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
+                                   -o -name "*.cc"  -o -name "*.h"   \
+                                   -o -name "*.cxx" -o -name "*.hxx" \) \
+                    | grep -v "build/" | grep -v ".colcon/" || true)
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "No C/C++ files to check."
+            exit 0
+          fi
+
+          echo "=== Files to check ==="
+          echo "$FILES"
+
+          FAILED=0
+          for f in $FILES; do
+            DIFF=$(clang-format --style=file --dry-run --Werror "$f" 2>&1 || true)
+            if [ -n "$DIFF" ]; then
+              echo "Format violation: $f"
+              clang-format --style=file "$f" | diff "$f" - || true
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" = "1" ]; then
+            echo ""
+            echo "Fix with: clang-format --style=file -i <file>"
+            exit 1
+          fi
+          echo "All files pass clang-format."
+
+      - name: Upload format diff (on failure)
+        if: failure()
+        run: |
+          find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \
+            | grep -v build | xargs clang-format --style=file > /tmp/formatted_diff.patch 2>/dev/null || true
+
+  clang-tidy:
+    name: "clang-tidy"
+    runs-on: ubuntu-22.04
+    needs: clang-format
+    container:
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
+            libgrpc++-dev libgrpc-dev \
+            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+            libyaml-cpp-dev libboost-system-dev \
+            libgmock-dev libgtest-dev
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
+            > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-${{ env.CLANG_VERSION }} \
+            clang-tidy-${{ env.CLANG_VERSION }}
+          ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
+          pip3 install --quiet colcon-common-extensions vcstool
+
+      - name: Source ROS2 + import Autoware deps
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          # Import any additional workspace deps declared in .repos file
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+
+      - name: Build with compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS)
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
+              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+
+        shell: bash
+
+      - name: Run clang-tidy
+        run: |
+          python3 -c "
+          import json, glob, os
+          all_cmds = []
+          for f in glob.glob('build/**/compile_commands.json', recursive=True):
+              with open(f) as fh:
+                  all_cmds.extend(json.load(fh))
+          with open('compile_commands.json', 'w') as out:
+              json.dump(all_cmds, out)
+          print(f'Merged {len(all_cmds)} compile commands')
+          "
+
+          # Collect source files (exclude generated/build)
+          FILES=$(find src/${{ env.AGENT_PKG }} -type f \
+                  \( -name "*.cpp" -o -name "*.cc" \) \
+                  | grep -v "/build/" | grep -v "/test/" || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No source files found for tidy."
+            exit 0
+          fi
+
+          FAILED=0
+          for f in $FILES; do
+            echo "--- Checking: $f"
+            clang-tidy \
+              -p compile_commands.json \
+              --config-file=.clang-tidy \
+              --warnings-as-errors='*' \
+              "$f" 2>&1 || FAILED=1
+          done
+
+          [ "$FAILED" = "0" ] && echo "clang-tidy passed." || exit 1
+
+  build:
+    name: "build (${{ matrix.build_type }})"
+    runs-on: ubuntu-22.04
+    needs: clang-format
+    container:
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release, RelWithDebInfo]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            python3-pip ccache ninja-build pkg-config \
+            libgrpc++-dev libgrpc-dev \
+            protobuf-compiler protobuf-compiler-grpc \
+            libprotobuf-dev \
+            libyaml-cpp-dev \
+            libgmock-dev libgtest-dev \
+            libboost-system-dev \
+            ros-${{ env.ROS_DISTRO }}-fastcdr || true
+          pip3 install --quiet colcon-common-extensions vcstool
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.ROS_DISTRO }}-${{ matrix.build_type }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ env.ROS_DISTRO }}-${{ matrix.build_type }}-
+            ccache-${{ env.ROS_DISTRO }}-
+
+      - name: Import workspace deps
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+          rosdep init 2>/dev/null || true
+          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
+          rosdep install -y \
+          --rosdistro=${{ env.ROS_DISTRO }} \
+          --from-paths . \
+          --ignore-src \
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+
+      - name: Build
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          export CCACHE_DIR=~/.ccache
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --symlink-install
+          echo "Build (${{ matrix.build_type }}) succeeded."
+
+      - name: ccache stats
+        run: ccache --show-stats
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.build_type }}
+          path: |
+            install/
+            build/*/compile_commands.json
+          retention-days: 3
+
+  unit-tests:
+    name: "unit-tests"
+    runs-on: ubuntu-22.04
+    permissions:
+      checks: write
+      contents: read
+    needs: build
+    container:
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            python3-pip ninja-build wget gnupg perl pkg-config \
+            libgrpc++-dev libgrpc-dev \
+            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+            libyaml-cpp-dev libboost-system-dev \
+            libgmock-dev libgtest-dev
+          pip3 install --quiet colcon-common-extensions vcstool
+          apt-get install -y --no-install-recommends \
+            cpanminus libperlio-gzip-perl libjson-perl
+          cpanm --notest --quiet \
+            Capture::Tiny \
+            DateTime \
+            Date::Parse \
+            Digest::MD5 \
+            File::Spec \
+            Memory::Process \
+            Storable \
+            JSON::XS
+          wget -qO /tmp/lcov.tar.gz \
+            https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
+          tar -xzf /tmp/lcov.tar.gz -C /tmp
+          make -C /tmp/lcov-2.1 install PREFIX=/usr/local -j$(nproc)
+          # clang + llvm-cov so lcov reads clang .gcda files correctly
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
+            > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            clang-${{ env.CLANG_VERSION }} \
+            llvm-${{ env.CLANG_VERSION }}
+          # Shim: lcov --gcov-tool calls this instead of system gcov
+          printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' \
+            "${{ env.CLANG_VERSION }}" > /usr/local/bin/llvm-gcov
+          chmod +x /usr/local/bin/llvm-gcov
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-RelWithDebInfo
+
+      - name: Import workspace + rosdep
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f autoware_agent.repos ]; then
+            mkdir -p src
+            vcs import src < autoware_agent.repos
+          fi
+          rrosdep init 2>/dev/null || true
+          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
+          rosdep install -y \
+          --rosdistro=${{ env.ROS_DISTRO }} \
+          --from-paths . \
+          --ignore-src \
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+
+      - name: Build with coverage flags
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          colcon build \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              "-DCMAKE_CXX_FLAGS=--coverage" \
+              "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+
+
+      - name: Run tests
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          export LLVM_PROFILE_FILE="build/%p.profraw"
+          . install/setup.sh
+          colcon test \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+          colcon test-result --verbose
+
+      - name: Generate coverage report
+        run: |
+          lcov --capture \
+            --directory build/ \
+            --output-file coverage.info \
+            --ignore-errors inconsistent,inconsistent \
+            --ignore-errors usage,usage \
+            --rc geninfo_unexecuted_blocks=1
+          lcov --remove coverage.info \
+            '/usr/*' '*/test/*' '*/mock/*' \
+            --output-file coverage_filtered.info \
+            --ignore-errors inconsistent,inconsistent \
+            --ignore-errors unused,unused
+          lcov --summary coverage_filtered.info
+          genhtml coverage_filtered.info \
+                  --output-directory coverage_html \
+                  --title "AutowareAgent Coverage"
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage_html/
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/**/test_results/**/*.xml
+          retention-days: 14
+
+      - name: Publish test results
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "build/**/test_results/**/*.xml"
+          check_name: "Unit Test Results"
+
+  integration-tests:
+    name: "integration-tests"
+    runs-on: ubuntu-22.04
+    needs: unit-tests
+    container:
+      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      options: --shm-size=512m
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            python3-pip ninja-build pkg-config \
+            libgrpc++-dev libgrpc-dev \
+            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
+            libyaml-cpp-dev libboost-system-dev libgmock-dev libgtest-dev
+          pip3 install --quiet colcon-common-extensions vcstool
+          rosdep init 2>/dev/null || true
+          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
+          rosdep install -y \
+            --rosdistro=${{ env.ROS_DISTRO }} \
+            --from-paths . \
+            --ignore-src \
+            --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+
+      - name: Build + run integration tests
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          colcon build \
+            --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            --packages-select ${{ env.AGENT_PKG }}
+          . install/setup.sh
+          colcon test \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+          colcon test-result --verbose
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: build/**/test_results/**/*.xml
+          retention-days: 7
+
+  ci-gate:
+    name: "CI Gate"
+    runs-on: ubuntu-22.04
+    needs:
+      - clang-format
+      - clang-tidy
+      - build
+      - unit-tests
+      - integration-tests
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          RESULTS="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "One or more CI jobs failed."
+              exit 1
+            fi
+          done
+          echo "All CI checks passed. Ready to merge."
