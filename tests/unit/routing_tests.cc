@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
+#include "map_routes/RouteConfig.h"
 
 #include <fstream>
 
-#include "map_routes/RouteConfig.h"
+#include <gtest/gtest.h>
 
 using namespace AutowareAgent;
 
@@ -79,7 +79,9 @@ class RouteConfigTest : public ::testing::Test {
     test_yaml.close();
   }
 
-  void TearDown() override { std::remove("test_routes.yaml"); }
+  void TearDown() override {
+    std::remove("test_routes.yaml");
+  }
 
   RouteConfig route_config_;
 };

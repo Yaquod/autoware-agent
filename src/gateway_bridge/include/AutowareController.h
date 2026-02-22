@@ -17,13 +17,14 @@
 #ifndef VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H
 #define VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H
 
+#include "TripController.h"
+#include "TripStatus.h"
+
+#include <rclcpp/rclcpp.hpp>
+
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
-#include <rclcpp/rclcpp.hpp>
-
-#include "TripController.h"
-#include "TripStatus.h"
 
 namespace AutowareAgent {
 
@@ -43,8 +44,7 @@ class AutowareController : public rclcpp::Node {
 
   void initialize();
 
-  void startTrip(double latitude, double longitude,
-                 std::function<void(bool)> callback);
+  void startTrip(double latitude, double longitude, std::function<void(bool)> callback);
 
   void cancelTrip();
 
@@ -64,8 +64,7 @@ class AutowareController : public rclcpp::Node {
 
   void onTripStateChanged(TripState prev, TripState next);
 
-  void startTripImpl(double latitude, double longitude,
-                     std::function<void(bool)> callback);
+  void startTripImpl(double latitude, double longitude, std::function<void(bool)> callback);
 
   void cancelTripImpl();
 

@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
-#include <atomic>
-#include <chrono>
-#include <future>
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <thread>
-
 #include "AutowareController.h"
 #include "Config.h"
 #include "RouteConfig.h"
 #include "TripController.h"
 #include "TripStates.h"
 #include "TripStatus.h"
+
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <future>
+#include <thread>
+
+#include <gtest/gtest.h>
 
 using namespace AutowareAgent;
 using namespace std::chrono_literals;
@@ -55,8 +56,7 @@ class FullTripTest : public ::testing::Test {
     std::promise<TripStatus> promise;
     auto future = promise.get_future();
 
-    controller_->getTripStatus(
-        [&promise](TripStatus status) { promise.set_value(status); });
+    controller_->getTripStatus([&promise](TripStatus status) { promise.set_value(status); });
 
     return future.get();
   }
@@ -65,8 +65,7 @@ class FullTripTest : public ::testing::Test {
     std::promise<bool> promise;
     auto future = promise.get_future();
 
-    controller_->startTrip(
-        lat, lon, [&promise](bool success) { promise.set_value(success); });
+    controller_->startTrip(lat, lon, [&promise](bool success) { promise.set_value(success); });
 
     return future.get();
   }
@@ -80,45 +79,38 @@ class FullTripTest : public ::testing::Test {
     // Subscribe to topics
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
 
-    initial_pose_sub_ = monitor_node_->create_subscription<
-        geometry_msgs::msg::PoseWithCovarianceStamped>(
+    initial_pose_sub_ =
+      monitor_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
         "/initialpose", qos,
-        [this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr
-                   msg) {
+        [this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
           initial_pose_received_ = true;
           last_initial_pose_ = *msg;
-          std::cout << "  [Monitor] Initial pose received at ("
-                    << msg->pose.pose.position.x << ", "
+          std::cout << "  [Monitor] Initial pose received at (" << msg->pose.pose.position.x << ", "
                     << msg->pose.pose.position.y << ")\n";
         });
 
-    goal_sub_ =
-        monitor_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/planning/mission_planning/goal", qos,
-            [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-              goal_received_ = true;
-              last_goal_ = *msg;
-              std::cout << "  [Monitor] Goal received at ("
-                        << msg->pose.position.x << ", " << msg->pose.position.y
-                        << ")\n";
-            });
+    goal_sub_ = monitor_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+      "/planning/mission_planning/goal", qos,
+      [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+        goal_received_ = true;
+        last_goal_ = *msg;
+        std::cout << "  [Monitor] Goal received at (" << msg->pose.position.x << ", "
+                  << msg->pose.position.y << ")\n";
+      });
 
     odom_sub_ = monitor_node_->create_subscription<nav_msgs::msg::Odometry>(
-        "/localization/kinematic_state", qos,
-        [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
-          last_odom_ = *msg;
-          odom_received_ = true;
+      "/localization/kinematic_state", qos, [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+        last_odom_ = *msg;
+        odom_received_ = true;
 
-          double speed =
-              std::sqrt(msg->twist.twist.linear.x * msg->twist.twist.linear.x +
-                        msg->twist.twist.linear.y * msg->twist.twist.linear.y);
+        double speed = std::sqrt(msg->twist.twist.linear.x * msg->twist.twist.linear.x +
+                                 msg->twist.twist.linear.y * msg->twist.twist.linear.y);
 
-          if (speed > 0.1 && !vehicle_is_moving_) {
-            vehicle_is_moving_ = true;
-            std::cout << "  [Monitor] Vehicle started moving! Speed: " << speed
-                      << " m/s\n";
-          }
-        });
+        if (speed > 0.1 && !vehicle_is_moving_) {
+          vehicle_is_moving_ = true;
+          std::cout << "  [Monitor] Vehicle started moving! Speed: " << speed << " m/s\n";
+        }
+      });
 
     // Give initialization time
     std::this_thread::sleep_for(200ms);
@@ -127,8 +119,7 @@ class FullTripTest : public ::testing::Test {
   void spinFor(std::chrono::milliseconds duration,
                std::function<bool()> break_condition = nullptr) {
     auto start = std::chrono::steady_clock::now();
-    while (rclcpp::ok() &&
-           std::chrono::steady_clock::now() - start < duration) {
+    while (rclcpp::ok() && std::chrono::steady_clock::now() - start < duration) {
       // Spin BOTH nodes
       rclcpp::spin_some(controller_);
       if (monitor_node_) {
@@ -143,7 +134,8 @@ class FullTripTest : public ::testing::Test {
   }
 
   bool hasArrivedAtGoal(double threshold_m = 2.0) {
-    if (!odom_received_) return false;
+    if (!odom_received_)
+      return false;
 
     TripStatus status = getStatusSync();
     double dx = last_odom_.pose.pose.position.x - status.goal_x;
@@ -158,8 +150,7 @@ class FullTripTest : public ::testing::Test {
   std::shared_ptr<AutowareController> controller_;
   std::shared_ptr<rclcpp::Node> monitor_node_;
 
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-      initial_pose_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
@@ -226,8 +217,8 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   spinFor(35s, [this, &last_state]() {
     TripStatus s = getStatusSync();
     if (s.state != last_state) {
-      std::cout << "  State transition: " << static_cast<int>(last_state)
-                << " → " << static_cast<int>(s.state) << "\n";
+      std::cout << "  State transition: " << static_cast<int>(last_state) << " → "
+                << static_cast<int>(s.state) << "\n";
       last_state = s.state;
     }
 
@@ -240,8 +231,7 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   });
 
   status = getStatusSync();
-  std::cout << "  Final state after phase 4: " << static_cast<int>(status.state)
-            << "\n";
+  std::cout << "  Final state after phase 4: " << static_cast<int>(status.state) << "\n";
   std::cout << "  Monitor route flag: " << route_received_.load() << "\n";
 
   if (status.state == TripState::FAILED) {
@@ -278,8 +268,7 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   std::cout << "\n========================================\n";
   std::cout << "Test Summary\n";
   std::cout << "========================================\n";
-  std::cout << "Initial pose:     " << (initial_pose_received_ ? "✓" : "✗")
-            << "\n";
+  std::cout << "Initial pose:     " << (initial_pose_received_ ? "✓" : "✗") << "\n";
   std::cout << "Goal published:   " << (goal_received_ ? "✓" : "✗") << "\n";
   std::cout << "Route received:   " << (route_received_ ? "✓" : "✗") << "\n";
   std::cout << "Final state:      " << static_cast<int>(status.state) << "\n";
@@ -305,11 +294,9 @@ TEST_F(FullTripTest, BasicPublishTest) {
 
     TripStatus status = getStatusSync();
     if (i % 10 == 0) {
-      std::cout << "  t=" << i / 10
-                << "s  State=" << static_cast<int>(status.state)
-                << "  InitPose=" << initial_pose_received_
-                << "  Goal=" << goal_received_ << "  Route=" << route_received_
-                << "\n";
+      std::cout << "  t=" << i / 10 << "s  State=" << static_cast<int>(status.state)
+                << "  InitPose=" << initial_pose_received_ << "  Goal=" << goal_received_
+                << "  Route=" << route_received_ << "\n";
     }
   }
 

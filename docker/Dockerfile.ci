@@ -1,0 +1,55 @@
+ARG AUTOWARE_IMAGE=ghcr.io/autowarefoundation/autoware:universe-devel
+FROM ${AUTOWARE_IMAGE}
+
+ARG CLANG_VERSION=17
+ARG DEBIAN_FRONTEND=noninteractive
+
+LABEL maintainer="yaqoud-team"
+LABEL description="AutowareAgent CI image with clang, tidy, format, coverage tools"
+
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    # Clang toolchain
+    clang-${CLANG_VERSION} \
+    clang-format-${CLANG_VERSION} \
+    clang-tidy-${CLANG_VERSION} \
+    lld-${CLANG_VERSION} \
+    # Build
+    ninja-build \
+    ccache \
+    # Coverage
+    lcov \
+    gcovr \
+    # Utilities
+    git \
+    curl \
+    wget \
+    jq \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN for tool in clang clang++ clang-format clang-tidy; do \
+      ln -sf "/usr/bin/${tool}-${CLANG_VERSION}" "/usr/local/bin/${tool}"; \
+    done
+
+RUN pip3 install --no-cache-dir \
+    colcon-common-extensions \
+    colcon-mixin \
+    vcstool \
+    pre-commit \
+    pytest \
+    pytest-xdist
+
+ENV CCACHE_DIR=/ccache
+ENV CCACHE_MAXSIZE=5G
+ENV CCACHE_COMPRESS=1
+RUN mkdir -p /ccache && chmod 777 /ccache
+
+SHELL ["/bin/bash", "-c"]
+RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
+
+WORKDIR /workspace
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]
