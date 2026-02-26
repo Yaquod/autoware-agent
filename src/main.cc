@@ -16,6 +16,7 @@
 
 #include "AutowareController.h"
 #include "Config.h"
+#include "cluster_bridge/include/ClusterBridge.h"
 
 #include <rclcpp/rclcpp.hpp>
 

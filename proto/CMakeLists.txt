@@ -1,4 +1,4 @@
-file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
+file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*")
 
 if (NOT PROTO_FILES)
     message(WARNING "No .proto files found in ${CMAKE_CURRENT_SOURCE_DIR}")

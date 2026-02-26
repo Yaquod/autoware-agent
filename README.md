@@ -149,6 +149,23 @@ docker run --rm \
 ```
 
 ---
+## Run Autoware
+
+we are using Shinjuku-Map from AWSIM
+https://tier4.github.io/AWSIM/Downloads/
+
+```bash
+# Set the map path
+export MAP_PATH=~/nishishinjuku_autoware_map
+
+# Launch Autoware (typical command structure)
+ros2 launch autoware_launch planning_simulator.launch.xml \
+    map_path:=$MAP_PATH \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=sample_sensor_kit
+```
+
+---
 
 ## 6. Run Tests
 
