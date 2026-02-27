@@ -100,8 +100,9 @@ pip3 install colcon-common-extensions vcstool
 git clone https://github.com/your-org/autoware-agent.git
 cd autoware-agent
 
-# Source ROS2
+# Source ROS2 and Autoware
 source /opt/ros/humble/setup.bash
+~/
 
 # Install remaining ROS2 deps from package.xml
 rosdep install -y \
@@ -146,6 +147,23 @@ docker run --rm \
       --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       --packages-select vehicle_autoware_agent
   "
+```
+
+---
+## Run Autoware
+
+we are using Shinjuku-Map from AWSIM
+https://tier4.github.io/AWSIM/Downloads/
+
+```bash
+# Set the map path
+export MAP_PATH=~/nishishinjuku_autoware_map
+
+# Launch Autoware (typical command structure)
+ros2 launch autoware_launch planning_simulator.launch.xml \
+    map_path:=$MAP_PATH \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=sample_sensor_kit
 ```
 
 ---

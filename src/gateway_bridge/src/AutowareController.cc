@@ -51,8 +51,9 @@ AutowareController::~AutowareController() {
   if (io_context_) {
     io_context_->stop();
   }
-  if (io_thread_.joinable())
+  if (io_thread_.joinable()) {
     io_thread_.join();
+  }
 }
 
 void AutowareController::initialize() {
