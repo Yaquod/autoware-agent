@@ -15,7 +15,7 @@ concurrency:
 env:
   ROS_DISTRO: humble
   AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
-  AGENT_PKG: VehicleAutowareAgent
+  AGENT_PKG: vehicle_autoware_agent
   CLANG_VERSION: 17
 
 jobs:
@@ -227,7 +227,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
 
       - name: Build
         run: |
@@ -326,7 +326,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
 
       - name: Build with coverage flags
         run: |
@@ -415,10 +415,10 @@ jobs:
           rosdep init 2>/dev/null || true
           rosdep update --rosdistro=${{ env.ROS_DISTRO }}
           rosdep install -y \
-            --rosdistro=${{ env.ROS_DISTRO }} \
-            --from-paths . \
-            --ignore-src \
-            --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+          --rosdistro=${{ env.ROS_DISTRO }} \
+          --from-paths . \
+          --ignore-src \
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
 
       - name: Build + run integration tests
         run: |

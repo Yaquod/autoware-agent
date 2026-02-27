@@ -114,7 +114,7 @@ rosdep install -y \
 # Build
 colcon build \
   --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  --packages-select VehicleAutowareAgent
+  --packages-select vehicle_autoware_agent
 
 # Source the workspace
 source install/setup.bash
@@ -145,7 +145,7 @@ docker run --rm \
       libyaml-cpp-dev libboost-system-dev libgtest-dev libgmock-dev && \
     colcon build \
       --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      --packages-select VehicleAutowareAgent
+      --packages-select vehicle_autoware_agent
   "
 ```
 
@@ -175,7 +175,7 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 
 colcon test \
-  --packages-select VehicleAutowareAgent \
+  --packages-select vehicle_autoware_agent \
   --event-handlers console_cohesion+
 
 colcon test-result --verbose
@@ -189,6 +189,6 @@ colcon test-result --verbose
 source /opt/ros/humble/setup.bash
 source install/setup.bash
 
-ros2 run VehicleAutowareAgent autoware_agent \
+ros2 run vehicle_autoware_agent autoware_agent \
   --map-path /path/to/route_config.yaml
 ```
