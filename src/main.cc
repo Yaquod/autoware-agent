@@ -54,7 +54,9 @@ int main(int argc, char** argv) {
   RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Controller ready");
   spdlog::info("[AutowareAgent] Controller ready");
 
-  // TODO: start the gRPC server on a background thread
+  // Create cluster bridge
+  auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
+  std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
 
   // rclcpp::spin blocks until shutdown is requested
   while (rclcpp::ok() && !g_shutdown_requested.load()) {
@@ -65,6 +67,10 @@ int main(int argc, char** argv) {
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");
 
+  cluster_bridge->shutdown();
+  if (cluster_bridge_thread.joinable()) {
+    cluster_bridge_thread.join();
+  }
   rclcpp::shutdown();
   return 0;
 }

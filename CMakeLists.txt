@@ -64,8 +64,10 @@ set(PROTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
 set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_GEN_DIR})
 
-set(PROTO_FILE ${PROTO_SRC_DIR}/vehicle_gateway.proto)
-set(PROTO_FILE ${PROTO_SRC_DIR}/vehicle_frame.proto)
+set(PROTO_FILES
+        ${PROTO_SRC_DIR}/vehicle_gateway.proto
+        ${PROTO_SRC_DIR}/vehicle_frame.proto
+)
 
 set(PROTO_SRCS ${PROTO_GEN_DIR}/vehicle_gateway.pb.cc)
 set(PROTO_HDRS ${PROTO_GEN_DIR}/vehicle_gateway.pb.h)
@@ -87,8 +89,8 @@ add_custom_command(
         --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
         --experimental_allow_proto3_optional
         -I${PROTO_SRC_DIR}
-        ${PROTO_FILE}
-        DEPENDS ${PROTO_FILE}
+        ${PROTO_FILES}
+        DEPENDS ${PROTO_FILES}
         COMMENT "Generating gRPC + Protobuf stubs"
         VERBATIM
 )
@@ -117,6 +119,7 @@ add_dependencies(autoware_agent generate_proto_code)
 target_link_libraries(autoware_agent PRIVATE
         autoware_controller
         map_routes_lib
+        cluster_bridge
         ${GRPC_LIBRARIES}
         ${Protobuf_LIBRARIES}
         Threads::Threads

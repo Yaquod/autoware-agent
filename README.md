@@ -100,8 +100,9 @@ pip3 install colcon-common-extensions vcstool
 git clone https://github.com/your-org/autoware-agent.git
 cd autoware-agent
 
-# Source ROS2
+# Source ROS2 and Autoware
 source /opt/ros/humble/setup.bash
+~/
 
 # Install remaining ROS2 deps from package.xml
 rosdep install -y \
