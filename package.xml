@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-    <name>VehicleAutowareAgent</name>
+    <name>vehicle_autoware_agent</name>
     <version>1.0.0</version>
     <description>GNSS to Gateway gRPC bridge for Autoware-CARLA</description>
     <maintainer email="ahmedadelwafdy782@email.com">Ahmed Wafdy</maintainer>
