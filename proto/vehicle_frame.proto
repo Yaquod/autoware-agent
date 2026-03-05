@@ -16,7 +16,7 @@ enum GearState {
 }
 
 enum TurnSignal {
-  TURN_NONE  = 0;
+      TURN_NONE  = 0;
   TURN_LEFT  = 1;
   TURN_RIGHT = 2;
 }

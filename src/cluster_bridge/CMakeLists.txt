@@ -4,6 +4,7 @@ find_package(autoware_vehicle_msgs REQUIRED)
 find_package(tier4_external_api_msgs REQUIRED)
 find_package(autoware_perception_msgs REQUIRED)
 find_package(autoware_internal_debug_msgs REQUIRED)
+find_package(autoware_internal_msgs REQUIRED)
 find_package(autoware_internal_planning_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tier4_vehicle_msgs REQUIRED)
@@ -29,6 +30,7 @@ target_link_libraries(cluster_bridge
         PUBLIC ${autoware_perception_msgs_TARGETS}
         PUBLIC ${autoware_internal_debug_msgs_TARGETS}
         PUBLIC ${autoware_internal_planning_msgs_TARGETS}
+        PUBLIC ${autoware_internal_msgs_TARGETS}
         PUBLIC ${autoware_auto_planning_msgs_TARGETS}
         PUBLIC ${nav_msgs_TARGETS}
         PUBLIC ${tier4_vehicle_msgs_TARGETS}
