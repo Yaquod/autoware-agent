@@ -35,8 +35,9 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
-#include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
+
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
+#include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
 #include <autoware_vehicle_msgs/msg/gear_report.hpp>
@@ -108,8 +109,10 @@ class ClusterBridge {
     target_velocity_sub_;
   rclcpp::Subscription<autoware_internal_planning_msgs::msg::VelocityLimit>::SharedPtr
     velocity_limit_sub_;
-  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::VehicleKinematics>::SharedPtr Kinematics_status_sub_;
-  rclcpp::Subscription<autoware_internal_msgs::msg::MissionRemainingDistanceTime>::SharedPtr eta_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::VehicleKinematics>::SharedPtr
+    Kinematics_status_sub_;
+  rclcpp::Subscription<autoware_internal_msgs::msg::MissionRemainingDistanceTime>::SharedPtr
+    eta_sub_;
 
   // ROS callbacks that would be posted on strand
   void onVelocity(const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg);
@@ -119,7 +122,7 @@ class ClusterBridge {
   void onSteering(const autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg);
   void onTurnIndicators(const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg);
   void onHazardLights(const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg);
-  void onControlMode(const  autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg);
+  void onControlMode(const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg);
   void onBatteryStatus(const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg);
   void onKinematicsStatus(const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg);
   void onTargetVelocity(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
@@ -127,7 +130,7 @@ class ClusterBridge {
   void onEta(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
   void onTrafficSignals(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
   void onObjects(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
-  //void onSurroundObjects(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
+  // void onSurroundObjects(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
   void onMrmState(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
   // TODO: complete functions
 
@@ -137,14 +140,16 @@ class ClusterBridge {
   void onSteeringImpl(const autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg);
   void onHazardLightsImpl(const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg);
   void onTurnIndicatorsImpl(const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg);
-  void onControlModeImpl(const  autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg);
+  void onControlModeImpl(const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg);
   void onBatteryStatusImpl(const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg);
   void onKinematicsStatusImpl(const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg);
   void onMotionStateImpl(const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg);
   void onTargetVelocityImpl(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
-  void onVelocityLimitImpl(const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
+  void onVelocityLimitImpl(
+    const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
   void onEtaImpl(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
-  void onTrafficSignalsImpl(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
+  void onTrafficSignalsImpl(
+    const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
   void onObjectsImpl(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
   void onSurroundObjectsImpl(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
   void onMrmStateImpl(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
@@ -156,7 +161,7 @@ class ClusterBridge {
   static vehicle_frame::ControlMode toCtrlMode(uint8_t v);
   static vehicle_frame::MotionState toMotionState(uint8_t v);
   static vehicle_frame::MrmBehavior toMrmState(uint8_t v);
-  static bool toHazard(uint8_t v) ;
+  static bool toHazard(uint8_t v);
 };
 
 #endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H

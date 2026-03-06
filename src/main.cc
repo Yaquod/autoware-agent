@@ -55,11 +55,9 @@ int main(int argc, char** argv) {
   spdlog::info("[AutowareAgent] Controller ready");
 
   // Create cluster bridge
- // auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
+  // auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
   auto cluster_bridge = std::make_shared<ClusterBridge>(
-  std::static_pointer_cast<rclcpp::Node>(controller),
-  "0.0.0.0:50052"
-);
+    std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
 
   // rclcpp::spin blocks until shutdown is requested

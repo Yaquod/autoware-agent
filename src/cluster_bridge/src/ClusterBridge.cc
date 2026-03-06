@@ -84,81 +84,84 @@ ClusterBridge::ClusterBridge(rclcpp::Node::SharedPtr node, const std::string& gr
 
   // TODO: complete other subscribers
   gear_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::GearReport>(
-  "/vehicle/status/gear_status" , sensor_qos ,
-  [this](const autoware_vehicle_msgs::msg::GearReport::SharedPtr msg){onGear(msg);}
-  );
+    "/vehicle/status/gear_status", sensor_qos,
+    [this](const autoware_vehicle_msgs::msg::GearReport::SharedPtr msg) { onGear(msg); });
 
   steering_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::SteeringReport>(
-  "/vehicle/status/steering_status" , sensor_qos ,
-  [this](const autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg){onSteering(msg) ;}
-  );
-
+    "/vehicle/status/steering_status", sensor_qos,
+    [this](const autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg) { onSteering(msg); });
 
   hazard_lights_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::HazardLightsReport>(
-    "/vehicle/status/hazard_lights_status" , sensor_qos ,
-    [this](const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg){onHazardLights(msg);}
-  );
+    "/vehicle/status/hazard_lights_status", sensor_qos,
+    [this](const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg) {
+      onHazardLights(msg);
+    });
 
+  turn_indicators_sub_ =
+    node_->create_subscription<autoware_vehicle_msgs::msg::TurnIndicatorsReport>(
+      "/vehicle/status/turn_indicators_status", sensor_qos,
+      [this](const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg) {
+        onTurnIndicators(msg);
+      });
 
-  turn_indicators_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::TurnIndicatorsReport>(
-    "/vehicle/status/turn_indicators_status" , sensor_qos ,
-    [this](const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg){onTurnIndicators(msg);}
-  );
+  control_mode_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::ControlModeReport>(
+    "/vehicle/status/control_mode", sensor_qos,
+    [this](const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg) {
+      onControlMode(msg);
+    });
 
+  battery_status_sub_ = node_->create_subscription<tier4_vehicle_msgs::msg::BatteryStatus>(
+    "/vehicle/status/battery_charge", sensor_qos,
+    [this](const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg) { onBatteryStatus(msg); });
 
-  control_mode_sub_ = node_->create_subscription< autoware_vehicle_msgs::msg::ControlModeReport>(
-  "/vehicle/status/control_mode" , sensor_qos ,
-  [this](const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg){onControlMode(msg);}
-  );
-
-  battery_status_sub_ =  node_->create_subscription<tier4_vehicle_msgs::msg::BatteryStatus>(
-    "/vehicle/status/battery_charge" , sensor_qos ,
-    [this](const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg){onBatteryStatus(msg);}
-    );
-
-  Kinematics_status_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::VehicleKinematics>(
-    "/api/vehicle/kinematics" , sensor_qos ,
-    [this](const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg){onKinematicsStatus(msg);}
-    );
+  Kinematics_status_sub_ =
+    node_->create_subscription<autoware_adapi_v1_msgs::msg::VehicleKinematics>(
+      "/api/vehicle/kinematics", sensor_qos,
+      [this](const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
+        onKinematicsStatus(msg);
+      });
 
   motion_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::MotionState>(
-  "/api/motion/state" , sensor_qos ,
-  [this](const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg){onMotionState(msg);}
-  );
+    "/api/motion/state", sensor_qos,
+    [this](const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg) { onMotionState(msg); });
 
+  target_velocity_sub_ =
+    node_->create_subscription<autoware_internal_debug_msgs::msg::Float32Stamped>(
+      "/planning/scenario_planning/velocity_smoother/closest_velocity", sensor_qos,
+      [this](const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg) {
+        onTargetVelocity(msg);
+      });
 
-  target_velocity_sub_ = node_->create_subscription<autoware_internal_debug_msgs::msg::Float32Stamped>(
-  "/planning/scenario_planning/velocity_smoother/closest_velocity" , sensor_qos ,
-  [this](const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg){onTargetVelocity(msg);}
-  );
-
-  velocity_limit_sub_ = node_->create_subscription<autoware_internal_planning_msgs::msg::VelocityLimit>(
-  "/planning/scenario_planning/current_max_velocity" , sensor_qos ,
-  [this](const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg){onVelocityLimit(msg);}
-  );
-
+  velocity_limit_sub_ =
+    node_->create_subscription<autoware_internal_planning_msgs::msg::VelocityLimit>(
+      "/planning/scenario_planning/current_max_velocity", sensor_qos,
+      [this](const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg) {
+        onVelocityLimit(msg);
+      });
 
   eta_sub_ = node_->create_subscription<autoware_internal_msgs::msg::MissionRemainingDistanceTime>(
-    "/planning/mission_remaining_distance_time" , sensor_qos ,
-    [this](const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg){onEta(msg);}
-  );
+    "/planning/mission_remaining_distance_time", sensor_qos,
+    [this](const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+      onEta(msg);
+    });
 
+  traffic_light_group_array_sub_ =
+    node_->create_subscription<autoware_perception_msgs::msg::TrafficLightGroupArray>(
+      "/perception/traffic_light_recognition/traffic_signals", sensor_qos,
+      [this](const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg) {
+        onTrafficSignals(msg);
+      });
 
-  traffic_light_group_array_sub_ = node_->create_subscription<autoware_perception_msgs::msg::TrafficLightGroupArray>(
-    "/perception/traffic_light_recognition/traffic_signals" , sensor_qos ,
-    [this](const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg){onTrafficSignals(msg);}
-  );
-
-  predicted_object_sub_ = node_->create_subscription<autoware_perception_msgs::msg::PredictedObjects>(
-   "/perception/object_recognition/objects" , sensor_qos ,
-    [this](const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg){onObjects(msg);}
-  );
+  predicted_object_sub_ =
+    node_->create_subscription<autoware_perception_msgs::msg::PredictedObjects>(
+      "/perception/object_recognition/objects", sensor_qos,
+      [this](const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
+        onObjects(msg);
+      });
 
   mrm_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::MrmState>(
-  "/api/fail_safe/mrm_state" , sensor_qos ,
-  [this](const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg){onMrmState(msg);}
-  );
-
+    "/api/fail_safe/mrm_state", sensor_qos,
+    [this](const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg) { onMrmState(msg); });
 
   grpc_service_ = std::make_unique<ClusterServiceImpl>(*this);
   boost::asio::post(strand_, [this]() { scheduleNextTick(); });
@@ -213,10 +216,6 @@ vehicle_frame::VehicleFrame ClusterBridge::buildFrame() {
   frame.mutable_velocity()->set_speed_kmh(state_.speed_kmh);
   frame.set_gear(state_.gear);
 
-
-
-
-
   // TODO: complete all frame from state struct which is being update on ROS callbacks
   frame.set_steering_angle_deg(state_.steering_angle_deg);
   frame.set_hazard_on(state_.hazard_on);
@@ -236,16 +235,13 @@ vehicle_frame::VehicleFrame ClusterBridge::buildFrame() {
   frame.mutable_adas()->set_pedestrian_count(state_.pedestrian_count);
   frame.mutable_adas()->set_vehicle_count(state_.vehicle_count);
   frame.clear_surround_objects();
-  for (const auto & so : state_.surround_objects) {
+  for (const auto& so : state_.surround_objects) {
     frame.add_surround_objects()->CopyFrom(so);
   }
 
   frame.mutable_mrm()->set_is_active(state_.is_active);
   frame.mutable_mrm()->set_description(state_.description);
   frame.mutable_mrm()->set_behavior(state_.mrm_behavior);
-
-
-
 
   return frame;
 }
@@ -269,22 +265,22 @@ void ClusterBridge::onGear(const autoware_vehicle_msgs::msg::GearReport::SharedP
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onGearImpl(msg); });
 }
 
-
 void ClusterBridge::onSteering(autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onSteeringImpl(msg); });
 }
 
-void ClusterBridge::onHazardLights(const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg) {
+void ClusterBridge::onHazardLights(
+  const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onHazardLightsImpl(msg); });
 }
 
-
-void ClusterBridge::onTurnIndicators(const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg) {
+void ClusterBridge::onTurnIndicators(
+  const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onTurnIndicatorsImpl(msg); });
 }
 
-
-void ClusterBridge::onControlMode(const  autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg) {
+void ClusterBridge::onControlMode(
+  const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onControlModeImpl(msg); });
 }
 
@@ -292,56 +288,55 @@ void ClusterBridge::onBatteryStatus(const tier4_vehicle_msgs::msg::BatteryStatus
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onBatteryStatusImpl(msg); });
 }
 
-void ClusterBridge::onKinematicsStatus(const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onKinematicsStatusImpl(msg); });
-
+void ClusterBridge::onKinematicsStatus(
+  const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
+  boost::asio::post(strand_,
+                    [this, msg = std::move(msg)]() mutable { onKinematicsStatusImpl(msg); });
 }
 
 void ClusterBridge::onMotionState(const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onMotionStateImpl(msg); });
-
 }
 
-void ClusterBridge::onTargetVelocity(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg) {
+void ClusterBridge::onTargetVelocity(
+  const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onTargetVelocityImpl(msg); });
-
 }
 
-void ClusterBridge::onVelocityLimit(const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onVelocityLimitImpl(msg); });
-
+void ClusterBridge::onVelocityLimit(
+  const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg) {
+  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onVelocityLimitImpl(msg); });
 }
 
-void ClusterBridge::onEta(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onEtaImpl(msg); });
-
+void ClusterBridge::onEta(
+  const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onEtaImpl(msg); });
 }
 
-void ClusterBridge::onTrafficSignals(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onTrafficSignalsImpl(msg); });
-
+void ClusterBridge::onTrafficSignals(
+  const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg) {
+  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onTrafficSignalsImpl(msg); });
 }
 
-
-void ClusterBridge::onObjects(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onSurroundObjectsImpl(msg);onObjectsImpl(msg); });
-
+void ClusterBridge::onObjects(
+  const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
+  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {
+    onSurroundObjectsImpl(msg);
+    onObjectsImpl(msg);
+  });
 }
 
-
-// void ClusterBridge::onSurroundObjects(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
-//   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onSurroundObjectsImpl(msg); });
+// void ClusterBridge::onSurroundObjects(const
+// autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
+//   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onSurroundObjectsImpl(msg);
+//   });
 //
 // }
 
-
 void ClusterBridge::onMrmState(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg) {
-  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onMrmStateImpl(msg); });
-
+  boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onMrmStateImpl(msg); });
 }
 // TODO: complete all on-##nameImpl functions
-
-
 
 void ClusterBridge::onVelocityImpl(
   const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg) {
@@ -351,70 +346,73 @@ void ClusterBridge::onVelocityImpl(
 
 static constexpr float DEG_PER_RAD = 180.0f / 3.14159265358979323846f;
 
-
 void ClusterBridge::onGearImpl(const autoware_vehicle_msgs::msg::GearReport::SharedPtr msg) {
   state_.gear = toGear(msg->report);
 }
 
 void ClusterBridge::onSteeringImpl(autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg) {
-  state_.steering_angle_deg = msg->steering_tire_angle * DEG_PER_RAD ;
+  state_.steering_angle_deg = msg->steering_tire_angle * DEG_PER_RAD;
 }
 
-
-void ClusterBridge::onHazardLightsImpl(const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg) {
+void ClusterBridge::onHazardLightsImpl(
+  const autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg) {
   state_.hazard_on = toHazard(msg->report);
 }
 
-
-void ClusterBridge::onTurnIndicatorsImpl(const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg) {
+void ClusterBridge::onTurnIndicatorsImpl(
+  const autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg) {
   state_.turn_signal = toTurn(msg->report);
 }
 
-
-void ClusterBridge::onControlModeImpl(const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg) {
+void ClusterBridge::onControlModeImpl(
+  const autoware_vehicle_msgs::msg::ControlModeReport::SharedPtr msg) {
   state_.control_mode = toCtrlMode(msg->mode);
 }
 
-
-void ClusterBridge::onBatteryStatusImpl(const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg) {
+void ClusterBridge::onBatteryStatusImpl(
+  const tier4_vehicle_msgs::msg::BatteryStatus::SharedPtr msg) {
   state_.battery_pct = msg->energy_level * 100.0f;
 }
 
-
-void ClusterBridge::onKinematicsStatusImpl(const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
-  state_.accel_mps2 = msg->accel.accel.accel.linear.x ;
-  state_.yaw_rate  = msg->twist.twist.twist.angular.z;
-
+void ClusterBridge::onKinematicsStatusImpl(
+  const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
+  state_.accel_mps2 = msg->accel.accel.accel.linear.x;
+  state_.yaw_rate = msg->twist.twist.twist.angular.z;
 }
 
-void ClusterBridge::onMotionStateImpl(const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg) {
+void ClusterBridge::onMotionStateImpl(
+  const autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg) {
   state_.motion_state = toMotionState(msg->state);
 }
 
-void ClusterBridge::onTargetVelocityImpl(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg) {
+void ClusterBridge::onTargetVelocityImpl(
+  const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg) {
   state_.target_speed_mps = msg->data;
 }
 
-
-void ClusterBridge::onVelocityLimitImpl(const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg) {
+void ClusterBridge::onVelocityLimitImpl(
+  const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg) {
   state_.speed_limit_mps = msg->max_velocity;
 }
 
-void ClusterBridge::onEtaImpl(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
-  state_.remaining_distance_m = msg->remaining_distance ;
+void ClusterBridge::onEtaImpl(
+  const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+  state_.remaining_distance_m = msg->remaining_distance;
   state_.remaining_time_s = msg->remaining_time;
 }
 
-
-void ClusterBridge::onTrafficSignalsImpl(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg) {
+void ClusterBridge::onTrafficSignalsImpl(
+  const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg) {
   using TLE = autoware_perception_msgs::msg::TrafficLightElement;
-  bool red = false , green = false , yellow = false ;
-  for (const auto& group :msg->traffic_light_groups) {
-    for (const auto & ele : group.elements) {
-      if (ele.color == TLE::RED)red = true;
-      if (ele.color == TLE::GREEN)green= true;
-      if (ele.color == TLE::AMBER)yellow = true;
-
+  bool red = false, green = false, yellow = false;
+  for (const auto& group : msg->traffic_light_groups) {
+    for (const auto& ele : group.elements) {
+      if (ele.color == TLE::RED)
+        red = true;
+      if (ele.color == TLE::GREEN)
+        green = true;
+      if (ele.color == TLE::AMBER)
+        yellow = true;
     }
   }
 
@@ -423,22 +421,24 @@ void ClusterBridge::onTrafficSignalsImpl(const autoware_perception_msgs::msg::Tr
   state_.traffic_light_yellow = yellow;
 }
 
-
-void ClusterBridge::onObjectsImpl(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
+void ClusterBridge::onObjectsImpl(
+  const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
   using OC = autoware_perception_msgs::msg::ObjectClassification;
-  uint32_t obstacle_count   = 0;
+  uint32_t obstacle_count = 0;
   uint32_t pedestrian_count = 0;
-  uint32_t vehicle_count    = 0;
+  uint32_t vehicle_count = 0;
 
-  for (const auto & object : msg->objects) {
-    if (object.classification.empty()) continue;
+  for (const auto& object : msg->objects) {
+    if (object.classification.empty())
+      continue;
     const auto label = object.classification[0].label;
 
-    if (label == OC::CAR || label ==OC::TRUCK || label == OC::BUS || label == OC::TRAILER || label ==OC::MOTORCYCLE)
+    if (label == OC::CAR || label == OC::TRUCK || label == OC::BUS || label == OC::TRAILER ||
+        label == OC::MOTORCYCLE)
       vehicle_count++;
 
     else if (label == OC::PEDESTRIAN)
-      pedestrian_count ++;
+      pedestrian_count++;
 
     obstacle_count++;
   }
@@ -446,20 +446,17 @@ void ClusterBridge::onObjectsImpl(const autoware_perception_msgs::msg::Predicted
   state_.obstacle_count = obstacle_count;
   state_.pedestrian_count = pedestrian_count;
   state_.vehicle_count = vehicle_count;
-
-
 }
 
-
-
-void ClusterBridge::onSurroundObjectsImpl(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg)
-{
+void ClusterBridge::onSurroundObjectsImpl(
+  const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
   using OC = autoware_perception_msgs::msg::ObjectClassification;
   std::vector<vehicle_frame::SurroundObject> surrounds;
-  for (const auto &object : msg->objects)
-    {
-    if (object.classification.empty()) continue;
-    if (object.existence_probability < 0.5f) continue;
+  for (const auto& object : msg->objects) {
+    if (object.classification.empty())
+      continue;
+    if (object.existence_probability < 0.5f)
+      continue;
 
     const auto label = object.classification[0].label;
 
@@ -469,39 +466,42 @@ void ClusterBridge::onSurroundObjectsImpl(const autoware_perception_msgs::msg::P
     so.set_vx(static_cast<float>(object.kinematics.initial_twist_with_covariance.twist.linear.x));
     so.set_vy(static_cast<float>(object.kinematics.initial_twist_with_covariance.twist.linear.y));
 
-  if (label == OC::PEDESTRIAN) {
-    so.set_type("PEDESTRIAN");
+    if (label == OC::PEDESTRIAN) {
+      so.set_type("PEDESTRIAN");
+    } else if (label == OC::CAR || label == OC::TRUCK || label == OC::BUS || label == OC::TRAILER ||
+               label == OC::MOTORCYCLE) {
+      so.set_type("VEHICLE");
+    } else {
+      so.set_type("UNKNOWN");
+    }
+    surrounds.push_back(std::move(so));
   }
-  else if (label == OC::CAR || label == OC::TRUCK ||  label == OC::BUS || label == OC::TRAILER  ||  label == OC::MOTORCYCLE)
-  {
-    so.set_type("VEHICLE");
-  }
-  else {
-    so.set_type("UNKNOWN");
-  }
-  surrounds.push_back(std::move(so));
-}
   state_.surround_objects = std::move(surrounds);
-
 }
-
 
 void ClusterBridge::onMrmStateImpl(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg) {
   using MRM = autoware_adapi_v1_msgs::msg::MrmState;
-  state_.is_active = (msg->state !=MRM::NORMAL && msg->state !=MRM::UNKNOWN);
+  state_.is_active = (msg->state != MRM::NORMAL && msg->state != MRM::UNKNOWN);
   state_.mrm_behavior = toMrmState(msg->behavior);
 
   switch (msg->state) {
-    case MRM::NORMAL:         state_.description = "Normal"; break;
-    case MRM::MRM_OPERATING:   state_.description = "MRM Operating"; break;
-    case MRM::MRM_SUCCEEDED:   state_.description = "MRM Succeeded"; break;
-    case MRM::MRM_FAILED:     state_.description = "MRM Failed"; break;
-    default: state_.description = "Unknown"; break;
-
-
+    case MRM::NORMAL:
+      state_.description = "Normal";
+      break;
+    case MRM::MRM_OPERATING:
+      state_.description = "MRM Operating";
+      break;
+    case MRM::MRM_SUCCEEDED:
+      state_.description = "MRM Succeeded";
+      break;
+    case MRM::MRM_FAILED:
+      state_.description = "MRM Failed";
+      break;
+    default:
+      state_.description = "Unknown";
+      break;
   }
 }
-
 
 vehicle_frame::GearState ClusterBridge::toGear(uint8_t v) {
   using GR = autoware_vehicle_msgs::msg::GearReport;
@@ -522,10 +522,6 @@ vehicle_frame::GearState ClusterBridge::toGear(uint8_t v) {
       return vehicle_frame::GEAR_UNKNOWN;
   }
 }
-
-
-
-
 
 vehicle_frame::TurnSignal ClusterBridge::toTurn(uint8_t v) {
   using TIR = autoware_vehicle_msgs::msg::TurnIndicatorsReport;
@@ -560,9 +556,7 @@ vehicle_frame::MotionState ClusterBridge::toMotionState(uint8_t v) {
   }
 }
 
-bool ClusterBridge::toHazard(uint8_t v)
-{
-
+bool ClusterBridge::toHazard(uint8_t v) {
   switch (v) {
     case 1:
       return false;
@@ -573,13 +567,14 @@ bool ClusterBridge::toHazard(uint8_t v)
   }
 }
 
-
-
-vehicle_frame::MrmBehavior ClusterBridge::toMrmState(uint8_t  v) {
+vehicle_frame::MrmBehavior ClusterBridge::toMrmState(uint8_t v) {
   using MRM = autoware_adapi_v1_msgs::msg::MrmState;
   switch (v) {
-    case MRM::EMERGENCY_STOP:   return vehicle_frame::MRM_EMERGENCY_STOP;
-    case MRM::PULL_OVER:        return vehicle_frame::MRM_PULL_OVER;
-    default:                    return vehicle_frame::MRM_NONE;
+    case MRM::EMERGENCY_STOP:
+      return vehicle_frame::MRM_EMERGENCY_STOP;
+    case MRM::PULL_OVER:
+      return vehicle_frame::MRM_PULL_OVER;
+    default:
+      return vehicle_frame::MRM_NONE;
   }
 }
