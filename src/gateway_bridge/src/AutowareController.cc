@@ -31,8 +31,8 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
 
   route_config_ = std::make_unique<RouteConfig>(map_path);
   RCLCPP_INFO(get_logger(),
-              "[AutowareAgent] Route config loaded — map \"%s\", %u lanes, "
-              "%u start(s)",
+              "[AutowareAgent] Route config loaded — map \"%s\", %zu lanes, "
+              "%zu start(s)",
               route_config_->getMapName().c_str(), route_config_->getLanesCount(),
               route_config_->getDefaultStart() ? 1u : 0u);
   spdlog::info("[AutowareAgent] Route config loaded — map \"{}\", {} lanes, {} start(s)",

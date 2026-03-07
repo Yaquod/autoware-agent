@@ -43,6 +43,8 @@ target_link_libraries(cluster_bridge
         PRIVATE Boost::system
 )
 
+add_dependencies(cluster_bridge generate_proto_code)
+
 target_include_directories(cluster_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../map_routes

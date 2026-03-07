@@ -20,7 +20,7 @@
 
 class ClusterBridge::ClusterServiceImpl final : public vehicle_frame::ClusterService::Service {
  public:
-  explicit ClusterServiceImpl(ClusterBridge& parent) : parent_(parent){};
+  explicit ClusterServiceImpl(ClusterBridge& parent) : parent_(parent) {};
 
   grpc::Status Subscribe(grpc::ServerContext* context,
                          const vehicle_frame::SubscribeRequest* request,
