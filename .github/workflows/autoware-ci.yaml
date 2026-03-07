@@ -49,18 +49,13 @@ jobs:
             git config --global --add safe.directory "$GITHUB_WORKSPACE"
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
-              FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-                      | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
-            else
-              FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
-                                     -o -name "*.cc"  -o -name "*.h"   \
-                                     -o -name "*.cxx" -o -name "*.hxx" \) \
-                      | grep -v "build/" | grep -v ".colcon/" || true)
-            fi
-            
-            if [ -z "$FILES" ]; then
+          
+          FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
+                               -o -name "*.cc"  -o -name "*.h"   \
+                               -o -name "*.cxx" -o -name "*.hxx" \) \
+                | grep -v "build/" | grep -v ".colcon/" | grep -v "/proto/" || true)          
+          
+          if [ -z "$FILES" ]; then
               echo "No C/C++ files to check."
               exit 0
             fi
