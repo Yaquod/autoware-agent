@@ -16,6 +16,7 @@
 
 #include "AutowareController.h"
 #include "Config.h"
+#include "cluster_bridge/include/ClusterBridge.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -53,17 +54,27 @@ int main(int argc, char** argv) {
   RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Controller ready");
   spdlog::info("[AutowareAgent] Controller ready");
 
-  // TODO: start the gRPC server on a background thread
+  // Create cluster bridge
+  // auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
+  auto cluster_bridge = std::make_shared<ClusterBridge>(
+    std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
+  std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
+  std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
-  // rclcpp::spin blocks until shutdown is requested
-  while (rclcpp::ok() && !g_shutdown_requested.load()) {
-    rclcpp::spin_some(controller);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  while (!g_shutdown_requested.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  rclcpp::shutdown();  // signals rclcpp::spin() to exit
+  if (ros_thread.joinable())
+    ros_thread.join();
+
+  cluster_bridge->shutdown();
+  if (cluster_bridge_thread.joinable()) {
+    cluster_bridge_thread.join();
   }
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");
-
-  rclcpp::shutdown();
   return 0;
 }

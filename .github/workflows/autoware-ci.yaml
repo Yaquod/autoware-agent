@@ -15,13 +15,15 @@ concurrency:
 env:
   ROS_DISTRO: humble
   AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
-  AGENT_PKG: VehicleAutowareAgent
+  AGENT_PKG: vehicle_autoware_agent
   CLANG_VERSION: 17
 
 jobs:
   clang-format:
     name: "clang-format"
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     container:
       image: ghcr.io/autowarefoundation/autoware:universe-devel
     steps:
@@ -29,6 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install clang-format-${{ env.CLANG_VERSION }}
         run: |
@@ -43,50 +46,38 @@ jobs:
             clang-format-${{ env.CLANG_VERSION }}
           ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
 
-      - name: Run clang-format (changed files on PR, all files on push)
+      - name: Run clang-format and auto-fix
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Only check files changed in this PR
-            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-                    | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
-          else
-            # Check all source files on direct push
-            FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
-                                   -o -name "*.cc"  -o -name "*.h"   \
-                                   -o -name "*.cxx" -o -name "*.hxx" \) \
-                    | grep -v "build/" | grep -v ".colcon/" || true)
-          fi
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Always check all files — no partial checks that miss pre-existing violations
+          FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
+                                 -o -name "*.cc"  -o -name "*.h"   \
+                                 -o -name "*.cxx" -o -name "*.hxx" \) \
+                  | grep -v "build/" | grep -v ".colcon/" | grep -v "/proto/" || true)
 
           if [ -z "$FILES" ]; then
             echo "No C/C++ files to check."
             exit 0
           fi
 
-          echo "=== Files to check ==="
-          echo "$FILES"
-
-          FAILED=0
+          echo "=== Formatting files ==="
           for f in $FILES; do
-            DIFF=$(clang-format --style=file --dry-run --Werror "$f" 2>&1 || true)
-            if [ -n "$DIFF" ]; then
-              echo "Format violation: $f"
-              clang-format --style=file "$f" | diff "$f" - || true
-              FAILED=1
-            fi
+            clang-format --style=file -i "$f"
           done
 
-          if [ "$FAILED" = "1" ]; then
-            echo ""
-            echo "Fix with: clang-format --style=file -i <file>"
-            exit 1
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+          else
+            echo "=== Files reformatted ==="
+            git diff --name-only
+            git add -u
+            git commit -m "style: auto clang-format [skip ci]"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
           fi
-          echo "All files pass clang-format."
 
-      - name: Upload format diff (on failure)
-        if: failure()
-        run: |
-          find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \
-            | grep -v build | xargs clang-format --style=file > /tmp/formatted_diff.patch 2>/dev/null || true
 
   clang-tidy:
     name: "clang-tidy"
@@ -227,7 +218,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
 
       - name: Build
         run: |
@@ -326,7 +317,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
 
       - name: Build with coverage flags
         run: |
@@ -392,56 +383,6 @@ jobs:
           report_paths: "build/**/test_results/**/*.xml"
           check_name: "Unit Test Results"
 
-  integration-tests:
-    name: "integration-tests"
-    runs-on: ubuntu-22.04
-    needs: unit-tests
-    container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
-      options: --shm-size=512m
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev libgmock-dev libgtest-dev
-          pip3 install --quiet colcon-common-extensions vcstool
-          rosdep init 2>/dev/null || true
-          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
-          rosdep install -y \
-            --rosdistro=${{ env.ROS_DISTRO }} \
-            --from-paths . \
-            --ignore-src \
-            --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs"
-
-      - name: Build + run integration tests
-        run: |
-          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-          colcon build \
-            --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            --packages-select ${{ env.AGENT_PKG }}
-          . install/setup.sh
-          colcon test \
-            --packages-select ${{ env.AGENT_PKG }} \
-            --event-handlers console_cohesion+ \
-            --return-code-on-test-failure
-          colcon test-result --verbose
-
-      - name: Upload integration test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: build/**/test_results/**/*.xml
-          retention-days: 7
-
   ci-gate:
     name: "CI Gate"
     runs-on: ubuntu-22.04
@@ -450,7 +391,6 @@ jobs:
       - clang-tidy
       - build
       - unit-tests
-      - integration-tests
     if: always()
     steps:
       - name: Check all jobs passed

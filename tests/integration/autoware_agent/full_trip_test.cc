@@ -20,6 +20,7 @@
 #include "TripController.h"
 #include "TripStates.h"
 #include "TripStatus.h"
+#include "cluster_bridge/include/ClusterBridge.h"
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -48,6 +49,9 @@ class FullTripTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    rclcpp::shutdown();
+    if (controller_spin_thread_.joinable())
+      controller_spin_thread_.join();
     controller_.reset();
     monitor_node_.reset();
   }
@@ -74,7 +78,13 @@ class FullTripTest : public ::testing::Test {
     controller_ = std::make_shared<AutowareController>(yaml_path_, 10.0);
     controller_->initialize();
 
+    cluster_bridge_ = std::make_shared<ClusterBridge>(
+      std::static_pointer_cast<rclcpp::Node>(controller_), "0.0.0.0:50052");
+    cluster_bridge_thread_ = std::thread([this]() { cluster_bridge_->runGrpcServer(); });
+
     monitor_node_ = std::make_shared<rclcpp::Node>("trip_monitor");
+
+    controller_spin_thread_ = std::thread([this]() { rclcpp::spin(controller_); });
 
     // Subscribe to topics
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
@@ -120,16 +130,10 @@ class FullTripTest : public ::testing::Test {
                std::function<bool()> break_condition = nullptr) {
     auto start = std::chrono::steady_clock::now();
     while (rclcpp::ok() && std::chrono::steady_clock::now() - start < duration) {
-      // Spin BOTH nodes
-      rclcpp::spin_some(controller_);
-      if (monitor_node_) {
-        rclcpp::spin_some(monitor_node_);
-      }
+      rclcpp::spin_some(monitor_node_);
       std::this_thread::sleep_for(10ms);
-
-      if (break_condition && break_condition()) {
+      if (break_condition && break_condition())
         break;
-      }
     }
   }
 
@@ -149,6 +153,9 @@ class FullTripTest : public ::testing::Test {
   GPSCoordinate goal_gps_;
   std::shared_ptr<AutowareController> controller_;
   std::shared_ptr<rclcpp::Node> monitor_node_;
+  std::shared_ptr<ClusterBridge> cluster_bridge_;
+  std::thread cluster_bridge_thread_;
+  std::thread controller_spin_thread_;
 
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
@@ -274,6 +281,8 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   std::cout << "Final state:      " << static_cast<int>(status.state) << "\n";
   std::cout << "Vehicle moving:   " << (vehicle_is_moving_ ? "✓" : "✗") << "\n";
   std::cout << "========================================\n\n";
+  std::cout << "Test complete. Press ENTER to exit...\n";
+  std::cin.get();
 }
 
 // Simpler test for debugging

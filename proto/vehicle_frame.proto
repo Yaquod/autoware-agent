@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package vehicle_frame;
+
+
+//  Master "cluster frame" contract.
+//  Published at 60 Hz by ClusterBridge; the IVI / instrument-cluster
+//  subscribes once via ClusterService::Subscribe and receives every frame.
+
+enum GearState {
+  GEAR_UNKNOWN = 0;
+  GEAR_PARK    = 1;
+  GEAR_REVERSE = 2;
+  GEAR_NEUTRAL = 3;
+  GEAR_DRIVE   = 4;
+}
+
+enum TurnSignal {
+      TURN_NONE  = 0;
+  TURN_LEFT  = 1;
+  TURN_RIGHT = 2;
+}
+
+enum ControlMode {
+  MODE_UNKNOWN = 0;
+  MODE_MANUAL  = 1;
+  MODE_AUTO    = 2;
+}
+
+enum MotionState {
+  MOTION_UNKNOWN      = 0;
+  MOTION_STOPPED      = 1;
+  MOTION_MOVING       = 2;
+  MOTION_DECELERATING = 3;
+}
+
+enum MrmBehavior {
+  MRM_NONE           = 0;
+  MRM_PULL_OVER      = 1;
+  MRM_EMERGENCY_STOP = 2;
+}
+
+message VelocityData {
+  float speed_mps = 1;
+  float speed_kmh = 2;
+}
+
+message KinematicsData {
+  float accel_mps2 = 1;
+  float yaw_rate   = 2;
+}
+
+message MetricsData {
+  float odometer_m = 1;
+  float energy_kwh = 2;
+}
+
+message AdasSummary {
+  uint32 obstacle_count       = 1;
+  bool   traffic_light_red    = 2;
+  bool   traffic_light_yellow = 3;
+  bool   traffic_light_green  = 4;
+  uint32 pedestrian_count     = 5;
+  uint32 vehicle_count        = 6;
+}
+
+message SurroundObject {
+  float  x    = 1;
+  float  y    = 2;
+  float  vx   = 3;
+  float  vy   = 4;
+  string type = 5;   // "VEHICLE" | "PEDESTRIAN" | "UNKNOWN"
+}
+
+message EtaData {
+  float remaining_distance_m = 1;
+  float remaining_time_s     = 2;
+}
+
+message MrmState {
+  bool        is_active   = 1;
+  MrmBehavior behavior    = 2;
+  string      description = 3;
+}
+
+message VehicleFrame {
+  int64  stamp_ns = 1;   // ROS time in nanoseconds
+  uint64 seq      = 2;   // monotonically increasing frame counter
+
+  // 60 Hz sources
+  VelocityData velocity = 3;
+  MrmState     mrm      = 4;
+
+  // 30 Hz sources
+  GearState  gear             = 5;
+  float      target_speed_mps = 6;
+  TurnSignal turn_signal      = 7;
+
+  // 15 Hz sources
+  repeated SurroundObject surround_objects = 8;
+
+  // 10 Hz sources
+  float       speed_limit_mps = 9;
+  ControlMode control_mode    = 10;
+  AdasSummary adas            = 11;
+
+  // async 50 Hz
+  KinematicsData kinematics         = 12;
+  MotionState    motion_state       = 13;
+  float          steering_angle_deg = 14;
+
+  // 1 Hz sources
+  float       battery_pct = 15;
+  bool        hazard_on   = 16;
+  MetricsData metrics     = 17;
+  EtaData     eta         = 18;
+}
+
+service ClusterService {
+  rpc Subscribe     (SubscribeRequest) returns (stream VehicleFrame);
+  rpc GetLatestFrame(SubscribeRequest) returns (VehicleFrame);
+}
+
+message SubscribeRequest {
+  string client_id = 1;
+}
