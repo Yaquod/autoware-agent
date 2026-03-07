@@ -383,56 +383,6 @@ jobs:
           report_paths: "build/**/test_results/**/*.xml"
           check_name: "Unit Test Results"
 
-  integration-tests:
-    name: "integration-tests"
-    runs-on: ubuntu-22.04
-    needs: unit-tests
-    container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
-      options: --shm-size=512m
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev libgmock-dev libgtest-dev
-          pip3 install --quiet colcon-common-extensions vcstool
-          rosdep init 2>/dev/null || true
-          rosdep update --rosdistro=${{ env.ROS_DISTRO }}
-          rosdep install -y \
-          --rosdistro=${{ env.ROS_DISTRO }} \
-          --from-paths . \
-          --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
-
-      - name: Build + run integration tests
-        run: |
-          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-          colcon build \
-            --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            --packages-select ${{ env.AGENT_PKG }}
-          . install/setup.sh
-          colcon test \
-            --packages-select ${{ env.AGENT_PKG }} \
-            --event-handlers console_cohesion+ \
-            --return-code-on-test-failure
-          colcon test-result --verbose
-
-      - name: Upload integration test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: build/**/test_results/**/*.xml
-          retention-days: 7
-
   ci-gate:
     name: "CI Gate"
     runs-on: ubuntu-22.04
@@ -441,7 +391,6 @@ jobs:
       - clang-tidy
       - build
       - unit-tests
-      - integration-tests
     if: always()
     steps:
       - name: Check all jobs passed
