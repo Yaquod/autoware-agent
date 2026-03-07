@@ -46,35 +46,35 @@ jobs:
 
       - name: Run clang-format and auto-fix
         run: |
-            git config --global --add safe.directory "$GITHUB_WORKSPACE"
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Collect all files
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Always check all files — no partial checks that miss pre-existing violations
           FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
-                               -o -name "*.cc"  -o -name "*.h"   \
-                               -o -name "*.cxx" -o -name "*.hxx" \) \
-                | grep -v "build/" | grep -v ".colcon/" | grep -v "/proto/" || true)          
-          
+                                 -o -name "*.cc"  -o -name "*.h"   \
+                                 -o -name "*.cxx" -o -name "*.hxx" \) \
+                  | grep -v "build/" | grep -v ".colcon/" | grep -v "/proto/" || true)
+
           if [ -z "$FILES" ]; then
-              echo "No C/C++ files to check."
-              exit 0
-            fi
-            
-            echo "=== Formatting files ==="
-            for f in $FILES; do
-              clang-format --style=file -i "$f"
-            done
-            
-            if git diff --quiet; then
-              echo "No formatting changes needed."
-            else
-              echo "=== Files reformatted ==="
-              git diff --name-only
-              git add -u
-              git commit -m "style: auto clang-format [skip ci]"
-              git push
-            fi
+            echo "No C/C++ files to check."
+            exit 0
+          fi
+
+          echo "=== Formatting files ==="
+          for f in $FILES; do
+            clang-format --style=file -i "$f"
+          done
+
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+          else
+            echo "=== Files reformatted ==="
+            git diff --name-only
+            git add -u
+            git commit -m "style: auto clang-format [skip ci]"
+            git push
+          fi
 
 
   clang-tidy:
