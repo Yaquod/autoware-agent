@@ -46,39 +46,40 @@ jobs:
 
       - name: Run clang-format and auto-fix
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-                    | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
-          else
-            FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
-                                   -o -name "*.cc"  -o -name "*.h"   \
-                                   -o -name "*.cxx" -o -name "*.hxx" \) \
-                    | grep -v "build/" | grep -v ".colcon/" || true)
-          fi
-          
-          if [ -z "$FILES" ]; then
-            echo "No C/C++ files to check."
-            exit 0
-          fi
-          
-          echo "=== Formatting files ==="
-          for f in $FILES; do
-            clang-format --style=file -i "$f"
-          done
+            git config --global --add safe.directory "$GITHUB_WORKSPACE"
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+                      | grep -E '\.(cpp|cc|cxx|c|h|hpp|hxx)$' || true)
+            else
+              FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
+                                     -o -name "*.cc"  -o -name "*.h"   \
+                                     -o -name "*.cxx" -o -name "*.hxx" \) \
+                      | grep -v "build/" | grep -v ".colcon/" || true)
+            fi
+            
+            if [ -z "$FILES" ]; then
+              echo "No C/C++ files to check."
+              exit 0
+            fi
+            
+            echo "=== Formatting files ==="
+            for f in $FILES; do
+              clang-format --style=file -i "$f"
+            done
+            
+            if git diff --quiet; then
+              echo "No formatting changes needed."
+            else
+              echo "=== Files reformatted ==="
+              git diff --name-only
+              git add -u
+              git commit -m "style: auto clang-format [skip ci]"
+              git push
+            fi
 
-      - name: Commit formatted files
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet; then
-            echo "No formatting changes needed."
-          else
-            echo "=== Files reformatted ==="
-            git diff --name-only
-            git add -u
-            git commit -m "style: auto clang-format [skip ci]"
-            git push
-          fi
 
   clang-tidy:
     name: "clang-tidy"
