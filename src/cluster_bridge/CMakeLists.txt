@@ -38,12 +38,15 @@ target_link_libraries(cluster_bridge
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
+        PUBLIC gRPC::grpc++
+        PUBLIC protobuf::libprotobuf
         PRIVATE Boost::system
 )
 
 target_include_directories(cluster_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../map_routes
+        ${CMAKE_BINARY_DIR}/generated
 )
 
 install(TARGETS cluster_bridge
