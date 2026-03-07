@@ -6,45 +6,36 @@ set(INTEGRATION_TEST_SOURCES
         integration/autoware_agent/autoware_agent_test.cc
         integration/autoware_agent/full_trip_test.cc
 )
-
 find_package(rclcpp REQUIRED)
 find_package(GTest REQUIRED)
-find_package(tier4_external_api_msgs QUIET)
 find_package(fmt QUIET)
+find_package(yaml-cpp REQUIRED)
 
 # Unit Tests
-add_executable(autoware_tests
+ament_add_gtest(autoware_tests
         test_main.cpp
         ${UNIT_TEST_SOURCES}
 )
 
 target_include_directories(autoware_tests PRIVATE
         ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/tests/mocks
         ${CMAKE_SOURCE_DIR}/src/gateway_bridge/include
         ${CMAKE_SOURCE_DIR}/src/map_routes
 )
 
-target_link_libraries(autoware_tests PRIVATE
+target_link_libraries(autoware_tests
         map_routes_lib
         rclcpp::rclcpp
         GTest::gtest
         GTest::gmock
-        GTest::gtest_main
         yaml-cpp
 )
 
-if (fmt_FOUND)
-    target_link_libraries(autoware_tests PRIVATE fmt::fmt)
-endif ()
+if(fmt_FOUND)
+    target_link_libraries(autoware_tests fmt::fmt)
+endif()
 
-if (tier4_external_api_msgs_FOUND)
-    target_link_libraries(autoware_tests PRIVATE
-            ${tier4_external_api_msgs_TARGETS}
-    )
-endif ()
-
-add_test(NAME autoware_tests COMMAND autoware_tests)
+install(TARGETS autoware_tests DESTINATION lib/${PROJECT_NAME})
 
 # Integration Tests  (live test against running Autoware instance)
 if (BUILD_INTEGRATION_TESTS)
