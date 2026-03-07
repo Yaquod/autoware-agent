@@ -73,7 +73,7 @@ jobs:
             git diff --name-only
             git add -u
             git commit -m "style: auto clang-format [skip ci]"
-            git push
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
           fi
 
 
