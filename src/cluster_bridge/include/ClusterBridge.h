@@ -36,6 +36,8 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
+#include <queue>
+
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
 #include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
@@ -60,6 +62,15 @@ class ClusterBridge {
   void shutdown();
 
  private:
+  struct ClientSession {
+    grpc::ServerWriter<vehicle_frame::VehicleFrame>* writer;
+    std::queue<vehicle_frame::VehicleFrame> pending;
+    std::mutex mu;
+    std::condition_variable cv;
+    std::atomic<bool> alive{true};
+  };
+
+  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
@@ -67,7 +78,6 @@ class ClusterBridge {
   // asio timer 60Hz
   boost::asio::steady_timer publisher_timer_;
   std::mutex clients_mutex_;
-  std::vector<grpc::ServerWriter<vehicle_frame::VehicleFrame>*> grpc_clients_;
   FrameState state_;
   uint64_t frame_seq_{0};
 
