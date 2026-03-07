@@ -50,6 +50,7 @@ jobs:
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
           
+          # Collect all files
           FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \
                                -o -name "*.cc"  -o -name "*.h"   \
                                -o -name "*.cxx" -o -name "*.hxx" \) \
