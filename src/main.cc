@@ -17,6 +17,7 @@
 #include "AutowareController.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
+#include "planning_bridge/include/PlanningBridge.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -26,17 +27,17 @@
 
 #include <spdlog/spdlog.h>
 
-static std::atomic<bool> g_shutdown_requested{false};
-
-void signalHandler(int /*signal*/) {
-  g_shutdown_requested.store(true);
-}
+// static std::atomic<bool> g_shutdown_requested{false};
+//
+// void signalHandler(int /*signal*/) {
+//   g_shutdown_requested.store(true);
+// }
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
 
-  std::signal(SIGINT, signalHandler);
-  std::signal(SIGTERM, signalHandler);
+  // std::signal(SIGINT, signalHandler);
+  // std::signal(SIGTERM, signalHandler);
 
   std::string yaml_path = std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
 
@@ -56,23 +57,40 @@ int main(int argc, char** argv) {
 
   // Create cluster bridge
   // auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
+  auto node = std::static_pointer_cast<rclcpp::Node>(controller);
+
   auto cluster_bridge = std::make_shared<ClusterBridge>(
     std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
+
+  cluster_bridge->prepareGrpcServer();
+  auto planning_bridge = std::make_shared<PlanningBridge>(           // ← ADD
+   node, cluster_bridge->getBuilder());
+
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
-  while (!g_shutdown_requested.load()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
+  // while (!g_shutdown_requested.load()) {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // }
+  ros_thread.join();
+  RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down...");
 
-  rclcpp::shutdown();  // signals rclcpp::spin() to exit
-  if (ros_thread.joinable())
-    ros_thread.join();
 
+
+  // rclcpp::shutdown();  // signals rclcpp::spin() to exit
+  // if (ros_thread.joinable())
+  //   ros_thread.join();
+
+  planning_bridge->shutdown();
   cluster_bridge->shutdown();
+
   if (cluster_bridge_thread.joinable()) {
     cluster_bridge_thread.join();
   }
+
+  planning_bridge.reset();
+  cluster_bridge.reset();
+
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");

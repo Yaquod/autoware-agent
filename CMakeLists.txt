@@ -107,6 +107,8 @@ target_include_directories(config_header INTERFACE ${PROTO_GEN_DIR})
 add_subdirectory(src/map_routes)
 add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
+#add planning
+add_subdirectory(src/planning_bridge)
 
 add_executable(autoware_agent
         src/main.cc
@@ -120,6 +122,7 @@ target_link_libraries(autoware_agent PRIVATE
         autoware_controller
         map_routes_lib
         cluster_bridge
+        planning_bridge
         ${GRPC_LIBRARIES}
         ${Protobuf_LIBRARIES}
         Threads::Threads
