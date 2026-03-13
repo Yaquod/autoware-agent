@@ -21,12 +21,6 @@
 #include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
 
-// #include <autoware_adapi_v1_msgs/msg/motion_state.hpp>
-// #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
-// #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
-// #include <autoware_adapi_v1_msgs/msg/vehicle_kinematics.hpp>
-// #include <autoware_perception_msgs/msg/predicted_objects.hpp>
-// #include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_adapi_v1_msgs/msg/velocity_factor_array.hpp>
@@ -38,7 +32,6 @@
 #include <autoware_internal_planning_msgs/msg/scenario.hpp>
 
 
-// #include <nav_msgs/msg/odometry.hpp>
 
 
 #include <rclcpp/rclcpp.hpp>
@@ -50,13 +43,7 @@
 #include <queue>
 #include <grpcpp/grpcpp.h>
 
-// #include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
-// #include <autoware_vehicle_msgs/msg/gear_report.hpp>
-// #include <autoware_vehicle_msgs/msg/hazard_lights_report.hpp>
-// #include <autoware_vehicle_msgs/msg/steering_report.hpp>
-// #include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
-// #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
-//#include <tier4_vehicle_msgs/msg/battery_status.hpp>
+
 
 
 class PlanningBridge {
@@ -66,8 +53,7 @@ grpc::ServerBuilder& builder);
 
   ~PlanningBridge();
 
-  // void runGrpcServer();
-  //
+
    void shutdown();
 
  private:
@@ -102,8 +88,8 @@ grpc::ServerBuilder& builder);
   void broadcastFrame(const vehicle_frame::PlanningFrame& frame);
    class PlanningServiceImpl;
    std::unique_ptr<PlanningServiceImpl> grpc_service_;
-  // std::unique_ptr<grpc::Server> grpc_server_;
-  // std::string grpc_address_;
+
+
 
   // ros
   rclcpp::Node::SharedPtr node_;

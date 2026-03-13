@@ -100,7 +100,7 @@ PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder
     }
   );
   full_route_sub_ = node_->create_subscription<autoware_planning_msgs::msg::LaneletRoute>(
-    "/planning/mission_planning/route" , sensor_qos ,
+    "/planning/mission_planning/route" , transient_local_qos ,
     [this](const autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg) {
       onFullRoute(msg);
     }
@@ -149,7 +149,7 @@ PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder
 
 
   route_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::RouteState>(
-    "/api/routing/state" , sensor_qos,
+    "/api/routing/state" , transient_local_qos,
     [this](const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg) {
       onRouteState(msg);
     }
@@ -157,7 +157,7 @@ PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder
 
 
   scenario_state_sub_ =node_->create_subscription<autoware_internal_planning_msgs::msg::Scenario>(
-    "/planning/scenario_planning/scenario" , sensor_qos,
+    "/planning/scenario_planning/scenario" ,reliable_qos,
     [this](const autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg) {
       onScenarioState(msg);
     }
@@ -214,36 +214,36 @@ vehicle_frame::PlanningFrame PlanningBridge::buildFrame() {
  frame.set_stamp_ns(node_->now().nanoseconds());
  frame.set_seq(frame_seq_++);
 
- frame.clear_trajectory_points();
- for (const auto& tp : state_.trajectory_points) {
-   frame.add_trajectory_points()->CopyFrom(tp);
- }
+  *frame.mutable_trajectory_points() = {
+    state_.trajectory_points.begin(),
+    state_.trajectory_points.end()
+};
 
- frame.clear_lane_trajectory();
- for (const auto& lt : state_.lane_trajectory) {
-   frame.add_lane_trajectory()->CopyFrom(lt);
- }
+  *frame.mutable_lane_trajectory() = {
+    state_.lane_trajectory.begin(),
+    state_.lane_trajectory.end()
+};
 
- frame.mutable_full_route()->CopyFrom(state_.full_route);
+  *frame.mutable_full_route() = state_.full_route;
+
+  *frame.mutable_velocity_factors() = {
+    state_.velocity_factors.begin(),
+    state_.velocity_factors.end()
+};
 
 
-frame.clear_velocity_factors();
- for (const auto& vf : state_.velocity_factors) {
-   frame.add_velocity_factors()->CopyFrom(vf);
- }
-
- frame.clear_steering_factors();
- for (const auto& sf : state_.steering_factors) {
-   frame.add_steering_factors()->CopyFrom(sf);
- }
+  *frame.mutable_steering_factors() = {
+    state_.steering_factors.begin(),
+    state_.steering_factors.end()
+};
 
  frame.set_target_speed_mps(state_.target_speed_mps);
  frame.set_max_speed_mps(state_.max_speed_mps);
 
  frame.mutable_eta()->CopyFrom(state_.eta);
 
- frame.mutable_routing_state()->CopyFrom(state_.routing_state);
- frame.mutable_scenario_state()->CopyFrom(state_.scenario_state);
+  *frame.mutable_routing_state() = state_.routing_state;
+  *frame.mutable_scenario_state() = state_.scenario_state;
 
 
   return frame;
