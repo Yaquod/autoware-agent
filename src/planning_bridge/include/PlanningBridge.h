@@ -21,43 +21,35 @@
 #include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
 
-#include <autoware_planning_msgs/msg/trajectory.hpp>
-#include <autoware_planning_msgs/msg/lanelet_route.hpp>
-#include <autoware_adapi_v1_msgs/msg/velocity_factor_array.hpp>
-#include  <autoware_adapi_v1_msgs/msg/steering_factor_array.hpp>
-#include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
-#include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
-#include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
 #include <autoware_adapi_v1_msgs/msg/route_state.hpp>
-#include <autoware_internal_planning_msgs/msg/scenario.hpp>
-
-
-
-
+#include <autoware_adapi_v1_msgs/msg/steering_factor_array.hpp>
+#include <autoware_adapi_v1_msgs/msg/velocity_factor_array.hpp>
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
+#include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <rclcpp/rclcpp.hpp>
+
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
 #include <queue>
+
+#include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
+#include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
+#include <autoware_internal_planning_msgs/msg/scenario.hpp>
+#include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <grpcpp/grpcpp.h>
-
-
-
 
 class PlanningBridge {
  public:
-  explicit PlanningBridge(rclcpp::Node::SharedPtr node,
-grpc::ServerBuilder& builder);
+  explicit PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder);
 
   ~PlanningBridge();
 
-
-   void shutdown();
+  void shutdown();
 
  private:
-
   PlanningFrameState state_;
   uint64_t frame_seq_{0};
 
@@ -68,7 +60,7 @@ grpc::ServerBuilder& builder);
     std::condition_variable cv;
     std::atomic<bool> alive{true};
   };
-   std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
+  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
   std::mutex clients_mutex_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
@@ -76,7 +68,6 @@ grpc::ServerBuilder& builder);
   std::thread io_thread_;
   // asio timer 60Hz
   boost::asio::steady_timer publisher_timer_;
-
 
   void scheduleNextTick();
   void ontick();
@@ -86,31 +77,25 @@ grpc::ServerBuilder& builder);
 
   // called on strand for grpc clients
   void broadcastFrame(const vehicle_frame::PlanningFrame& frame);
-   class PlanningServiceImpl;
-   std::unique_ptr<PlanningServiceImpl> grpc_service_;
-
-
+  class PlanningServiceImpl;
+  std::unique_ptr<PlanningServiceImpl> grpc_service_;
 
   // ros
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr
-      trajectory_point_sub_;
-  rclcpp::Subscription<autoware_planning_msgs::msg::LaneletRoute>::SharedPtr
-      full_route_sub_;
-  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr
-     trajectory_lane_sub_;
+  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_point_sub_;
+  rclcpp::Subscription<autoware_planning_msgs::msg::LaneletRoute>::SharedPtr full_route_sub_;
+  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_lane_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::VelocityFactorArray>::SharedPtr
-     velocity_factor_sub_;
+    velocity_factor_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::SteeringFactorArray>::SharedPtr
-     steering_factor_sub_;
+    steering_factor_sub_;
   rclcpp::Subscription<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
     target_velocity_sub_;
   rclcpp::Subscription<autoware_internal_planning_msgs::msg::VelocityLimit>::SharedPtr
     velocity_limit_sub_;
   rclcpp::Subscription<autoware_internal_msgs::msg::MissionRemainingDistanceTime>::SharedPtr
     eta_sub_;
-  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr
-    route_state_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr route_state_sub_;
   rclcpp::Subscription<autoware_internal_planning_msgs::msg::Scenario>::SharedPtr
     scenario_state_sub_;
 
@@ -143,11 +128,10 @@ grpc::ServerBuilder& builder);
   void onScenarioStateImpl(const autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);
 
   // TODO: complete functions
-   static vehicle_frame::VelocityFactorStatus toVelocityFactorStatus(uint8_t v);
-   static vehicle_frame::SteeringDirection toSteeringDirection(uint8_t v);
-   static vehicle_frame::SteeringStatus toSteeringStatus(uint8_t v);
+  static vehicle_frame::VelocityFactorStatus toVelocityFactorStatus(uint8_t v);
+  static vehicle_frame::SteeringDirection toSteeringDirection(uint8_t v);
+  static vehicle_frame::SteeringStatus toSteeringStatus(uint8_t v);
   static vehicle_frame::RouteState toRouteState(uint8_t v);
-
 };
 
 #endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H

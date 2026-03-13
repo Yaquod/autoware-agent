@@ -63,8 +63,8 @@ int main(int argc, char** argv) {
     std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
 
   cluster_bridge->prepareGrpcServer();
-  auto planning_bridge = std::make_shared<PlanningBridge>(           // ADDED
-   node, cluster_bridge->getBuilder());
+  auto planning_bridge = std::make_shared<PlanningBridge>(  // ADDED
+    node, cluster_bridge->getBuilder());
 
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
@@ -72,8 +72,6 @@ int main(int argc, char** argv) {
   while (!g_shutdown_requested.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-
-
 
   rclcpp::shutdown();  // signals rclcpp::spin() to exit
   if (ros_thread.joinable())
@@ -85,8 +83,6 @@ int main(int argc, char** argv) {
   if (cluster_bridge_thread.joinable()) {
     cluster_bridge_thread.join();
   }
-
-
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");

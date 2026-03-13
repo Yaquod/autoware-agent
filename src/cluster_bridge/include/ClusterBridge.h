@@ -72,7 +72,6 @@ class ClusterBridge {
 
   std::atomic<bool> shutdown_called_{false};
 
-
   std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
