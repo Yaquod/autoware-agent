@@ -83,6 +83,139 @@ message MrmState {
   string      description = 3;
 }
 
+
+
+
+
+message TrajectoryPoint {
+double x = 1;
+double y = 2;
+double z = 3;
+float longitudinal_velocity_mps = 4;
+
+}
+
+
+message Pose
+{
+double x  = 1;
+double y  = 2;
+double z  = 3;
+
+}
+
+message LaneletPrimitive{
+int64 id = 1;
+string primitive_type = 2;
+}
+
+message LaneletSegment{
+LaneletPrimitive preferred = 1;
+repeated LaneletPrimitive primitives = 2;
+}
+
+message FullRoute{
+Pose start_pose = 1;
+Pose goal_pose = 2;
+repeated LaneletSegment segments = 3;
+}
+
+enum VelocityFactorStatus {
+VELOCITY_UNKNOWN = 0 ;
+VELOCITY_APPROACHING = 1 ;
+VELOCITY_STOPPED = 2 ;
+}
+
+message VelocityFactor {
+string reason = 1;
+Pose pose = 2 ;
+VelocityFactorStatus status = 3 ;
+
+}
+
+enum SteeringDirection {
+STEERING_UNKNOWN = 0 ;
+STEERING_LEFT = 1 ;
+STEERING_RIGHT = 2 ;
+STEERING_STRAIGHT = 3 ;
+}
+
+enum SteeringStatus {
+STEERING_STATUS_UNKNOWN = 0 ;
+STEERING_STATUS_APPROACHING = 1 ;
+STEERING_STATUS_TURNING = 3 ;
+
+}
+
+message SteeringFactor
+{
+SteeringDirection direction = 1;
+SteeringStatus status = 2;
+string reason = 3;
+Pose pose = 4;
+}
+
+
+enum RouteState {
+ROUTE_UNKNOWN = 0 ;
+ROUTE_UNSET = 1 ;
+ROUTE_SET = 2 ;
+ROUTE_ARRIVED = 3 ;
+ROUTE_CHANGING = 4 ;
+}
+
+message RoutingState {
+RouteState state = 1;
+}
+
+
+message ScenarioState {
+string current_scenario = 1;
+repeated string active_Scenarios = 2;
+}
+
+
+message PlanningFrame {
+
+ int64  stamp_ns = 1;
+
+ uint64 seq      = 2;
+
+repeated TrajectoryPoint trajectory_points = 3;
+
+repeated TrajectoryPoint lane_trajectory = 4;
+
+
+FullRoute full_route = 5;
+
+repeated VelocityFactor velocity_factors= 6;
+
+repeated SteeringFactor steering_factors = 7;
+
+float target_speed_mps = 8;
+
+float max_speed_mps = 9;
+
+EtaData eta = 10;
+
+RoutingState routing_state = 11;
+
+ScenarioState scenario_state = 12;
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
 message VehicleFrame {
   int64  stamp_ns = 1;   // ROS time in nanoseconds
   uint64 seq      = 2;   // monotonically increasing frame counter
@@ -119,6 +252,11 @@ message VehicleFrame {
 service ClusterService {
   rpc Subscribe     (SubscribeRequest) returns (stream VehicleFrame);
   rpc GetLatestFrame(SubscribeRequest) returns (VehicleFrame);
+}
+
+service PlanningService {
+rpc Subscribe     (SubscribeRequest) returns (stream PlanningFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (PlanningFrame);
 }
 
 message SubscribeRequest {

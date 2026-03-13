@@ -182,25 +182,42 @@ ClusterBridge::~ClusterBridge() {
   shutdown();
 }
 
+void ClusterBridge::prepareGrpcServer() {
+  builder_.AddListeningPort(grpc_address_, grpc::InsecureServerCredentials());
+  builder_.RegisterService(grpc_service_.get());
+}
+
+grpc::ServerBuilder& ClusterBridge::getBuilder() {
+  return builder_;
+}
+
+
 void ClusterBridge::shutdown() {
-  if (grpc_server_) {
-    grpc_server_->Shutdown();
-  }
-  work_guard_.reset();
+
+
   publisher_timer_.cancel();
+  work_guard_.reset();
+
   if (io_thread_.joinable()) {
     io_thread_.join();
   }
+
+  if (grpc_server_) {
+    grpc_server_->Shutdown();
+  }
+
+
 }
 
+
 void ClusterBridge::runGrpcServer() {
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(grpc_address_, grpc::InsecureServerCredentials());
-  builder.RegisterService(grpc_service_.get());
-  grpc_server_ = builder.BuildAndStart();
+  grpc_server_ = builder_.BuildAndStart();
   RCLCPP_INFO(node_->get_logger(), "[ClusterBridge] gRPC server on %s", grpc_address_.c_str());
   grpc_server_->Wait();
 }
+
+
+
 
 void ClusterBridge::scheduleNextTick() {
   publisher_timer_.expires_after(std::chrono::microseconds(16667));  // 60hz
