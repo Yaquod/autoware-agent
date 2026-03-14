@@ -56,9 +56,9 @@ class ClusterBridge {
                          const std::string& grpc_address = "0.0.0.0:50052");
 
   ~ClusterBridge();
-
+  void prepareGrpcServer();
   void runGrpcServer();
-
+  grpc::ServerBuilder& getBuilder();
   void shutdown();
 
  private:
@@ -69,6 +69,8 @@ class ClusterBridge {
     std::condition_variable cv;
     std::atomic<bool> alive{true};
   };
+
+  std::atomic<bool> shutdown_called_{false};
 
   std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
   boost::asio::io_context io_context_;
@@ -93,6 +95,7 @@ class ClusterBridge {
   std::unique_ptr<ClusterServiceImpl> grpc_service_;
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string grpc_address_;
+  grpc::ServerBuilder builder_;
 
   // ros
   rclcpp::Node::SharedPtr node_;
