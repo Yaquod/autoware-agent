@@ -21,40 +21,31 @@
 #include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
 
-
-#include <autoware_perception_msgs/msg/predicted_objects.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <nav_msgs/msg/occupancy_grid.hpp>
-#include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
 #include <autoware_adapi_v1_msgs/msg/dynamic_object_array.hpp>
-
-
-
-
+#include <autoware_perception_msgs/msg/predicted_objects.hpp>
+#include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
 #include <queue>
+
 #include <grpcpp/grpcpp.h>
-
-
-
 
 class PerceptionBridge {
  public:
-  explicit PerceptionBridge(rclcpp::Node::SharedPtr node,
-grpc::ServerBuilder& builder);
+  explicit PerceptionBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder);
 
   ~PerceptionBridge();
 
-
-   void shutdown();
+  void shutdown();
 
  private:
-
   PerceptionFrameState state_;
   uint64_t frame_seq_{0};
 
@@ -65,7 +56,7 @@ grpc::ServerBuilder& builder);
     std::condition_variable cv;
     std::atomic<bool> alive{true};
   };
-   std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
+  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
   std::mutex clients_mutex_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
@@ -73,7 +64,6 @@ grpc::ServerBuilder& builder);
   std::thread io_thread_;
   // asio timer 60Hz
   boost::asio::steady_timer publisher_timer_;
-
 
   void scheduleNextTick();
   void ontick();
@@ -83,21 +73,17 @@ grpc::ServerBuilder& builder);
 
   // called on strand for grpc clients
   void broadcastFrame(const vehicle_frame::PerceptionFrame& frame);
-   class PerceptionServiceImpl;
-   std::unique_ptr<PerceptionServiceImpl> grpc_service_;
-
-
+  class PerceptionServiceImpl;
+  std::unique_ptr<PerceptionServiceImpl> grpc_service_;
 
   // ros
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr surrounding_object_sub_;
+  rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr
+    surrounding_object_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr point_cloud_sub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr occupancy_grid_sub_;
-  rclcpp::Subscription<autoware_perception_msgs::msg::TrafficLightGroupArray>::SharedPtr traffic_signal_sub_;
-
-
-
-
+  rclcpp::Subscription<autoware_perception_msgs::msg::TrafficLightGroupArray>::SharedPtr
+    traffic_signal_sub_;
 
   // ROS callbacks that would be posted on strand
   void onSurroundingObject(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
@@ -109,17 +95,16 @@ grpc::ServerBuilder& builder);
 
   // strand implementation
 
- void onSurroundingObjectImpl(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
- void onPointCloudImpl(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
- void onOccupancyGridImpl(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
- void onTrafficSignalImpl(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
-
+  void onSurroundingObjectImpl(
+    const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
+  void onPointCloudImpl(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+  void onOccupancyGridImpl(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+  void onTrafficSignalImpl(
+    const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
 
   // TODO: complete functions
-   static vehicle_frame::ObjectClass toObjectClass(uint8_t v);
-   static vehicle_frame::TrafficLightColor toTrafficLightColor(uint8_t v);
-
-
+  static vehicle_frame::ObjectClass toObjectClass(uint8_t v);
+  static vehicle_frame::TrafficLightColor toTrafficLightColor(uint8_t v);
 };
 
 #endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H
