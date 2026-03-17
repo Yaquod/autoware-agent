@@ -7,6 +7,8 @@ package vehicle_frame;
 //  Published at 60 Hz by ClusterBridge; the IVI / instrument-cluster
 //  subscribes once via ClusterService::Subscribe and receives every frame.
 
+//********************cluster data*******************************
+
 enum GearState {
   GEAR_UNKNOWN = 0;
   GEAR_PARK    = 1;
@@ -85,6 +87,41 @@ message MrmState {
 
 
 
+message VehicleFrame {
+  int64  stamp_ns = 1;   // ROS time in nanoseconds
+  uint64 seq      = 2;   // monotonically increasing frame counter
+
+  // 60 Hz sources
+  VelocityData velocity = 3;
+  MrmState     mrm      = 4;
+
+  // 30 Hz sources
+  GearState  gear             = 5;
+  float      target_speed_mps = 6;
+  TurnSignal turn_signal      = 7;
+
+  // 15 Hz sources
+  repeated SurroundObject surround_objects = 8;
+
+  // 10 Hz sources
+  float       speed_limit_mps = 9;
+  ControlMode control_mode    = 10;
+  AdasSummary adas            = 11;
+
+  // async 50 Hz
+  KinematicsData kinematics         = 12;
+  MotionState    motion_state       = 13;
+  float          steering_angle_deg = 14;
+
+  // 1 Hz sources
+  float       battery_pct = 15;
+  bool        hazard_on   = 16;
+  MetricsData metrics     = 17;
+  EtaData     eta         = 18;
+}
+
+
+//***************planning data**********************
 
 
 message TrajectoryPoint {
@@ -202,7 +239,85 @@ RoutingState routing_state = 11;
 
 ScenarioState scenario_state = 12;
 
+}
 
+//*************************perception data*************************************
+enum ObjectClass{
+UNKNOWN = 0 ;
+CAR = 1 ;
+TRUCK = 2 ;
+BUS = 3 ;
+TRAILER = 4 ;
+MOTORCYCLE = 5 ;
+BICYCLE = 6 ;
+PEDESTRIAN = 7 ;
+ANIMAL = 8 ;
+
+}
+
+
+enum CellState {
+  CELL_UNKNOWN  = 0;
+  CELL_FREE     = 1;
+  CELL_OCCUPIED = 2;
+}
+
+
+
+
+message BoundingBox {
+float length = 1;
+float height = 2 ;
+float width = 3;
+}
+
+message ObjectVelocity{
+float vx_object = 1;
+float vy_object = 2;
+}
+
+message SurroundingObject{
+uint32 id = 1;
+ObjectClass object_class = 2;
+BoundingBox bounding_box = 3;
+ObjectVelocity object_velocity = 4;
+float heading = 5;
+Pose object_pose = 6;
+
+}
+
+message PointCloud{
+Pose point = 1;
+}
+
+message  OccupancyGrid {
+float resolution = 1;
+uint32 width = 2;
+uint32 height = 3;
+float origin_x = 4;
+float origin_y = 5;
+repeated CellState grid_data = 6;
+}
+
+enum TrafficLightColor{
+  TRAFFIC_LIGHT_UNKNOWN = 0;
+  TRAFFIC_LIGHT_RED     = 1;
+  TRAFFIC_LIGHT_AMBER   = 2;
+  TRAFFIC_LIGHT_GREEN   = 3;
+}
+message TrafficLight{
+int64 traffic_id  = 1;
+float confidence = 2 ;
+TrafficLightColor traffic_light_color = 3;
+}
+
+message PerceptionFrame{
+ int64  stamp_ns = 1;
+ uint64 seq      = 2;
+repeated SurroundingObject surrounding_objects = 3;
+repeated PointCloud points_cloud = 4 ;
+OccupancyGrid occupancy_grid = 5;
+repeated TrafficLight traffic_lights = 6;
 
 }
 
@@ -214,40 +329,7 @@ ScenarioState scenario_state = 12;
 
 
 
-
-
-message VehicleFrame {
-  int64  stamp_ns = 1;   // ROS time in nanoseconds
-  uint64 seq      = 2;   // monotonically increasing frame counter
-
-  // 60 Hz sources
-  VelocityData velocity = 3;
-  MrmState     mrm      = 4;
-
-  // 30 Hz sources
-  GearState  gear             = 5;
-  float      target_speed_mps = 6;
-  TurnSignal turn_signal      = 7;
-
-  // 15 Hz sources
-  repeated SurroundObject surround_objects = 8;
-
-  // 10 Hz sources
-  float       speed_limit_mps = 9;
-  ControlMode control_mode    = 10;
-  AdasSummary adas            = 11;
-
-  // async 50 Hz
-  KinematicsData kinematics         = 12;
-  MotionState    motion_state       = 13;
-  float          steering_angle_deg = 14;
-
-  // 1 Hz sources
-  float       battery_pct = 15;
-  bool        hazard_on   = 16;
-  MetricsData metrics     = 17;
-  EtaData     eta         = 18;
-}
+//***********************************************************************
 
 service ClusterService {
   rpc Subscribe     (SubscribeRequest) returns (stream VehicleFrame);
@@ -257,6 +339,11 @@ service ClusterService {
 service PlanningService {
 rpc Subscribe     (SubscribeRequest) returns (stream PlanningFrame);
 rpc GetLatestFrame(SubscribeRequest) returns (PlanningFrame);
+}
+
+service PerceptionService {
+rpc Subscribe     (SubscribeRequest) returns (stream PerceptionFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (PerceptionFrame);
 }
 
 message SubscribeRequest {
