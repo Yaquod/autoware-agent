@@ -109,6 +109,7 @@ add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
 #add planning
 add_subdirectory(src/planning_bridge)
+add_subdirectory(src/perception_bridge)
 
 add_executable(autoware_agent
         src/main.cc
@@ -123,6 +124,7 @@ target_link_libraries(autoware_agent PRIVATE
         map_routes_lib
         cluster_bridge
         planning_bridge
+        perception_bridge
         ${GRPC_LIBRARIES}
         ${Protobuf_LIBRARIES}
         Threads::Threads
