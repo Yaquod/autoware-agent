@@ -19,6 +19,8 @@
 #include "cluster_bridge/include/ClusterBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
+#include "trip_bridge/include/TripBridge.h"
+
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -70,6 +72,13 @@ int main(int argc, char** argv) {
   auto perception_bridge = std::make_shared<PerceptionBridge>(           // ADDED
    node, cluster_bridge->getBuilder());
 
+  auto trip_bridge = std::make_shared<TripBridge>(                  //ADDED
+    controller, node ,
+    cluster_bridge->getBuilder()
+);
+
+
+
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
@@ -85,6 +94,7 @@ int main(int argc, char** argv) {
 
   planning_bridge->shutdown();
   perception_bridge->shutdown();
+  trip_bridge->shutdown();
   cluster_bridge->shutdown();
 
   if (cluster_bridge_thread.joinable()) {

@@ -50,6 +50,13 @@ class AutowareController : public rclcpp::Node {
 
   void getTripStatus(std::function<void(TripStatus)> callback) const;
 
+
+ //added for trip bridge to be able to use the private function trip_ctrl_
+ TripStatus getTripStatusSync() const ;
+
+
+
+
  private:
   std::unique_ptr<RouteConfig> route_config_;
   std::unique_ptr<TripController> trip_ctrl_;
