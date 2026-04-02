@@ -82,6 +82,9 @@ int main(int argc, char** argv) {
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
+
+
+
   while (!g_shutdown_requested.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
