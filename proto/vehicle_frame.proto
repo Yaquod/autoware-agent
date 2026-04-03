@@ -18,7 +18,7 @@ enum GearState {
 }
 
 enum TurnSignal {
-      TURN_NONE  = 0;
+  TURN_NONE  = 0;
   TURN_LEFT  = 1;
   TURN_RIGHT = 2;
 }
@@ -321,7 +321,71 @@ repeated TrafficLight traffic_lights = 6;
 
 }
 
+//***********************trip data***********************************
 
+enum LocalizationState{
+LOCALIZATION_STATE_UNKNOWN = 0 ;
+LOCALIZATION_STATE_UNINITIALIZED = 1 ;
+LOCALIZATION_STATE_INITIALIZING = 2 ;
+LOCALIZATION_STATE_INITIALIZED = 3 ;
+}
+
+
+enum OperationMode {
+ OPERATION_MODE_UNKNOWN = 0 ;
+ OPERATION_MODE_STOP = 1 ;
+ OPERATION_MODE_AUTONOMOUS = 2 ;
+ OPERATION_MODE_LOCAL = 3 ;
+ OPERATION_MODE_REMOTE = 4 ;
+}
+
+enum DiagLevel {
+DIAG_OK = 0;
+DIAG_WARN =1;
+DIAG_ERROR = 2;
+DIAG_STALE = 3;
+}
+
+message ComponentHealth{
+string name = 1;
+DiagLevel level = 2;
+string message = 3;
+}
+
+enum TripState {
+  TRIP_IDLE                    = 0;
+  TRIP_PUBLISHING_INITIAL_POSE = 1;
+  TRIP_WAITING_LOCALISATION    = 2;
+  TRIP_PUBLISHING_GOAL         = 3;
+  TRIP_WAITING_ROUTE           = 4;
+  TRIP_ENGAGING                = 5;
+  TRIP_RUNNING                 = 6;
+  TRIP_COMPLETED               = 7;
+  TRIP_FAILED                  = 8;
+}
+
+message TripFrame{
+int64  stamp_ns = 1;
+uint64 seq      = 2;
+LocalizationState localization_state = 3;
+OperationMode operation_mode = 4;
+MrmState mrm_state = 5 ;
+bool system_alive = 6;
+repeated ComponentHealth component_health = 7;
+TripState trip_state        = 8;
+  string    start_lanelet_id  = 9;
+  double    start_x           = 10;
+  double    start_y           = 11;
+  double    start_z           = 12;
+  string    goal_lanelet_id   = 13;
+  double    goal_x            = 14;
+  double    goal_y            = 15;
+  double    goal_z            = 16;
+  double    goal_lat          = 17;
+  double    goal_lon          = 18;
+  double    goal_distance_m   = 19;
+
+}
 
 
 
@@ -344,6 +408,11 @@ rpc GetLatestFrame(SubscribeRequest) returns (PlanningFrame);
 service PerceptionService {
 rpc Subscribe     (SubscribeRequest) returns (stream PerceptionFrame);
 rpc GetLatestFrame(SubscribeRequest) returns (PerceptionFrame);
+}
+
+service TripService {
+rpc Subscribe     (SubscribeRequest) returns (stream TripFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (TripFrame);
 }
 
 message SubscribeRequest {
