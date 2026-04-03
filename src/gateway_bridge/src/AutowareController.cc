@@ -174,4 +174,11 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
   }
 }
 
+
+
+ //ADDED
+  TripStatus AutowareController::getTripStatusSync() const {
+  return trip_ctrl_->status();
+}
+
 }  // namespace AutowareAgent
