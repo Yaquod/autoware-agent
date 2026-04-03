@@ -17,8 +17,8 @@
 #include "AutowareController.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
-#include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
+#include "perception_bridge/include/PerceptionBridge.h"
 #include "trip_bridge/include/TripBridge.h"
 
 

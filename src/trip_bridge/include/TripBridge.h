@@ -22,15 +22,7 @@
 #include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
 
-// #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
-// #include <autoware_adapi_v1_msgs/msg/velocity_factor_array.hpp>
-// #include  <autoware_adapi_v1_msgs/msg/steering_factor_array.hpp>
-// #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
-// #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
-// #include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
-// #include <autoware_adapi_v1_msgs/msg/route_state.hpp>
-// #include <autoware_internal_planning_msgs/msg/scenario.hpp>
 #include <tier4_external_api_msgs/srv/engage.hpp>
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
