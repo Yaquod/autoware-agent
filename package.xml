@@ -24,6 +24,9 @@
     <depend>autoware_perception_msgs</depend>
     <depend>tier4_vehicle_msgs</depend>
     <depend>tier4_external_api_msgs</depend>
+    <depend> tier4_system_msgs</depend>
+    <depend>libpcl-all-dev</depend>
+    <depend>pcl_conversions</depend>
 
     <depend>yaml-cpp</depend>
     <depend>libboost-system-dev</depend>

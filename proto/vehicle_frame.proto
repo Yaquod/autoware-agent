@@ -7,6 +7,8 @@ package vehicle_frame;
 //  Published at 60 Hz by ClusterBridge; the IVI / instrument-cluster
 //  subscribes once via ClusterService::Subscribe and receives every frame.
 
+//********************cluster data*******************************
+
 enum GearState {
   GEAR_UNKNOWN = 0;
   GEAR_PARK    = 1;
@@ -16,7 +18,7 @@ enum GearState {
 }
 
 enum TurnSignal {
-      TURN_NONE  = 0;
+  TURN_NONE  = 0;
   TURN_LEFT  = 1;
   TURN_RIGHT = 2;
 }
@@ -83,6 +85,8 @@ message MrmState {
   string      description = 3;
 }
 
+
+
 message VehicleFrame {
   int64  stamp_ns = 1;   // ROS time in nanoseconds
   uint64 seq      = 2;   // monotonically increasing frame counter
@@ -116,9 +120,299 @@ message VehicleFrame {
   EtaData     eta         = 18;
 }
 
+
+//***************planning data**********************
+
+
+message TrajectoryPoint {
+double x = 1;
+double y = 2;
+double z = 3;
+float longitudinal_velocity_mps = 4;
+
+}
+
+
+message Pose
+{
+double x  = 1;
+double y  = 2;
+double z  = 3;
+
+}
+
+message LaneletPrimitive{
+int64 id = 1;
+string primitive_type = 2;
+}
+
+message LaneletSegment{
+LaneletPrimitive preferred = 1;
+repeated LaneletPrimitive primitives = 2;
+}
+
+message FullRoute{
+Pose start_pose = 1;
+Pose goal_pose = 2;
+repeated LaneletSegment segments = 3;
+}
+
+enum VelocityFactorStatus {
+VELOCITY_UNKNOWN = 0 ;
+VELOCITY_APPROACHING = 1 ;
+VELOCITY_STOPPED = 2 ;
+}
+
+message VelocityFactor {
+string reason = 1;
+Pose pose = 2 ;
+VelocityFactorStatus status = 3 ;
+
+}
+
+enum SteeringDirection {
+STEERING_UNKNOWN = 0 ;
+STEERING_LEFT = 1 ;
+STEERING_RIGHT = 2 ;
+STEERING_STRAIGHT = 3 ;
+}
+
+enum SteeringStatus {
+STEERING_STATUS_UNKNOWN = 0 ;
+STEERING_STATUS_APPROACHING = 1 ;
+STEERING_STATUS_TURNING = 3 ;
+
+}
+
+message SteeringFactor
+{
+SteeringDirection direction = 1;
+SteeringStatus status = 2;
+string reason = 3;
+Pose pose = 4;
+}
+
+
+enum RouteState {
+ROUTE_UNKNOWN = 0 ;
+ROUTE_UNSET = 1 ;
+ROUTE_SET = 2 ;
+ROUTE_ARRIVED = 3 ;
+ROUTE_CHANGING = 4 ;
+}
+
+message RoutingState {
+RouteState state = 1;
+}
+
+
+message ScenarioState {
+string current_scenario = 1;
+repeated string active_Scenarios = 2;
+}
+
+
+message PlanningFrame {
+
+ int64  stamp_ns = 1;
+
+ uint64 seq      = 2;
+
+repeated TrajectoryPoint trajectory_points = 3;
+
+repeated TrajectoryPoint lane_trajectory = 4;
+
+
+FullRoute full_route = 5;
+
+repeated VelocityFactor velocity_factors= 6;
+
+repeated SteeringFactor steering_factors = 7;
+
+float target_speed_mps = 8;
+
+float max_speed_mps = 9;
+
+EtaData eta = 10;
+
+RoutingState routing_state = 11;
+
+ScenarioState scenario_state = 12;
+
+}
+
+//*************************perception data*************************************
+enum ObjectClass{
+UNKNOWN = 0 ;
+CAR = 1 ;
+TRUCK = 2 ;
+BUS = 3 ;
+TRAILER = 4 ;
+MOTORCYCLE = 5 ;
+BICYCLE = 6 ;
+PEDESTRIAN = 7 ;
+ANIMAL = 8 ;
+
+}
+
+
+enum CellState {
+  CELL_UNKNOWN  = 0;
+  CELL_FREE     = 1;
+  CELL_OCCUPIED = 2;
+}
+
+
+
+
+message BoundingBox {
+float length = 1;
+float height = 2 ;
+float width = 3;
+}
+
+message ObjectVelocity{
+float vx_object = 1;
+float vy_object = 2;
+}
+
+message SurroundingObject{
+uint32 id = 1;
+ObjectClass object_class = 2;
+BoundingBox bounding_box = 3;
+ObjectVelocity object_velocity = 4;
+float heading = 5;
+Pose object_pose = 6;
+
+}
+
+message PointCloud{
+Pose point = 1;
+}
+
+message  OccupancyGrid {
+float resolution = 1;
+uint32 width = 2;
+uint32 height = 3;
+float origin_x = 4;
+float origin_y = 5;
+repeated CellState grid_data = 6;
+}
+
+enum TrafficLightColor{
+  TRAFFIC_LIGHT_UNKNOWN = 0;
+  TRAFFIC_LIGHT_RED     = 1;
+  TRAFFIC_LIGHT_AMBER   = 2;
+  TRAFFIC_LIGHT_GREEN   = 3;
+}
+message TrafficLight{
+int64 traffic_id  = 1;
+float confidence = 2 ;
+TrafficLightColor traffic_light_color = 3;
+}
+
+message PerceptionFrame{
+ int64  stamp_ns = 1;
+ uint64 seq      = 2;
+repeated SurroundingObject surrounding_objects = 3;
+repeated PointCloud points_cloud = 4 ;
+OccupancyGrid occupancy_grid = 5;
+repeated TrafficLight traffic_lights = 6;
+
+}
+
+//***********************trip data***********************************
+
+enum LocalizationState{
+LOCALIZATION_STATE_UNKNOWN = 0 ;
+LOCALIZATION_STATE_UNINITIALIZED = 1 ;
+LOCALIZATION_STATE_INITIALIZING = 2 ;
+LOCALIZATION_STATE_INITIALIZED = 3 ;
+}
+
+
+enum OperationMode {
+ OPERATION_MODE_UNKNOWN = 0 ;
+ OPERATION_MODE_STOP = 1 ;
+ OPERATION_MODE_AUTONOMOUS = 2 ;
+ OPERATION_MODE_LOCAL = 3 ;
+ OPERATION_MODE_REMOTE = 4 ;
+}
+
+enum DiagLevel {
+DIAG_OK = 0;
+DIAG_WARN =1;
+DIAG_ERROR = 2;
+DIAG_STALE = 3;
+}
+
+message ComponentHealth{
+string name = 1;
+DiagLevel level = 2;
+string message = 3;
+}
+
+enum TripState {
+  TRIP_IDLE                    = 0;
+  TRIP_PUBLISHING_INITIAL_POSE = 1;
+  TRIP_WAITING_LOCALISATION    = 2;
+  TRIP_PUBLISHING_GOAL         = 3;
+  TRIP_WAITING_ROUTE           = 4;
+  TRIP_ENGAGING                = 5;
+  TRIP_RUNNING                 = 6;
+  TRIP_COMPLETED               = 7;
+  TRIP_FAILED                  = 8;
+}
+
+message TripFrame{
+int64  stamp_ns = 1;
+uint64 seq      = 2;
+LocalizationState localization_state = 3;
+OperationMode operation_mode = 4;
+MrmState mrm_state = 5 ;
+bool system_alive = 6;
+repeated ComponentHealth component_health = 7;
+TripState trip_state        = 8;
+  string    start_lanelet_id  = 9;
+  double    start_x           = 10;
+  double    start_y           = 11;
+  double    start_z           = 12;
+  string    goal_lanelet_id   = 13;
+  double    goal_x            = 14;
+  double    goal_y            = 15;
+  double    goal_z            = 16;
+  double    goal_lat          = 17;
+  double    goal_lon          = 18;
+  double    goal_distance_m   = 19;
+
+}
+
+
+
+
+
+
+
+//***********************************************************************
+
 service ClusterService {
   rpc Subscribe     (SubscribeRequest) returns (stream VehicleFrame);
   rpc GetLatestFrame(SubscribeRequest) returns (VehicleFrame);
+}
+
+service PlanningService {
+rpc Subscribe     (SubscribeRequest) returns (stream PlanningFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (PlanningFrame);
+}
+
+service PerceptionService {
+rpc Subscribe     (SubscribeRequest) returns (stream PerceptionFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (PerceptionFrame);
+}
+
+service TripService {
+rpc Subscribe     (SubscribeRequest) returns (stream TripFrame);
+rpc GetLatestFrame(SubscribeRequest) returns (TripFrame);
 }
 
 message SubscribeRequest {
