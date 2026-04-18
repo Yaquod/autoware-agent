@@ -38,3 +38,5 @@ jobs:
           file: docker/Dockerfile.ci
           push: true
           tags: ghcr.io/yaquod/autoware-agent-ci:latest
+          cache-from: type=registry,ref=ghcr.io/yaquod/autoware-agent-ci:latest
+          cache-to: type=inline
