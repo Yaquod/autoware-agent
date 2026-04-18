@@ -205,7 +205,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx autoware_internal_msgs"
 
       - name: Build
         run: |
@@ -299,13 +299,13 @@ jobs:
             mkdir -p src
             vcs import src < autoware_agent.repos
           fi
-          rrosdep init 2>/dev/null || true
+          rosdep init 2>/dev/null || true
           rosdep update --rosdistro=${{ env.ROS_DISTRO }}
           rosdep install -y \
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs autoware_internal_msgs zenohcxx"
 
       - name: Build with coverage flags
         run: |
