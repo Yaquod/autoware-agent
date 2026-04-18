@@ -38,16 +38,17 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install zenoh and zenoh-cxx from source
-RUN apt-get update -qq && apt-get install -y --no-install-recommends git cmake build-essential \
-    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh.git /tmp/zenoh \
-    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-cxx.git /tmp/zenoh-cxx \
-    && cd /tmp/zenoh \
-    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
-    && cmake --build build --target install -j$(nproc) \
-    && cd /tmp/zenoh-cxx \
-    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
-    && cmake --build build --target install -j$(nproc) \
-    && rm -rf /tmp/zenoh /tmp/zenoh-cxx
+RUN apt-get update -qq && apt-get install -y --no-install-recommends git cmake build-essential cargo \
+        && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-c.git /tmp/zenoh-c \
+        && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-cpp.git /tmp/zenoh-cpp \
+        && cd /tmp/zenoh-c \
+        && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        && cmake --build build --target install -j$(nproc) \
+        && cd /tmp/zenoh-cpp \
+        && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        && cmake --build build --target install -j$(nproc) \
+        && rm -rf /tmp/zenoh-c /tmp/zenoh-cpp
+
 # Protobuf
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     git cmake build-essential autoconf libtool curl
