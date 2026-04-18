@@ -28,7 +28,8 @@ target_link_libraries(perception_bridge
         PUBLIC ${PCL_LIBRARIES}
         PUBLIC ${pcl_conversions_LIBRARIES}
 
-
+        PUBLIC zenohc::lib
+        PUBLIC zenohcxx::zenohc
         PUBLIC map_routes_lib
         PUBLIC config_header
         PUBLIC fmt::fmt
@@ -45,6 +46,7 @@ target_include_directories(perception_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../map_routes
         ${CMAKE_BINARY_DIR}/generated
 
+        ${zenohcxx_INCLUDE_DIRS}
         ${PCL_INCLUDE_DIRS}
         ${pcl_conversions_INCLUDE_DIRS}
 )

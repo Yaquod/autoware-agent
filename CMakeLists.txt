@@ -3,6 +3,13 @@ cmake_minimum_required(VERSION 3.20)
 if (POLICY CMP0167)
     cmake_policy(SET CMP0167 OLD)
 endif ()
+if (POLICY CMP0167)
+    cmake_policy(SET CMP0167 OLD)
+endif ()
+
+if (POLICY CMP0144)
+    cmake_policy(SET CMP0144 OLD)
+endif ()
 
 project(vehicle_autoware_agent VERSION 1.0.0 LANGUAGES CXX C)
 
@@ -37,6 +44,8 @@ find_package(rclcpp REQUIRED)
 find_package(fastcdr REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(zenohc REQUIRED)
+find_package(zenohcxx REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 
@@ -107,7 +116,6 @@ target_include_directories(config_header INTERFACE ${PROTO_GEN_DIR})
 add_subdirectory(src/map_routes)
 add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
-#add planning
 add_subdirectory(src/planning_bridge)
 add_subdirectory(src/perception_bridge)
 add_subdirectory(src/trip_bridge)
@@ -116,6 +124,7 @@ add_executable(autoware_agent
         src/main.cc
         ${PROTO_SRCS}
         ${GRPC_SRCS}
+        src/zenoh_publisher.h
 )
 
 add_dependencies(autoware_agent generate_proto_code)
@@ -127,6 +136,8 @@ target_link_libraries(autoware_agent PRIVATE
         planning_bridge
         perception_bridge
         trip_bridge
+        zenohc::lib
+        zenohcxx::zenohc
         ${GRPC_LIBRARIES}
         ${Protobuf_LIBRARIES}
         Threads::Threads
@@ -170,7 +181,11 @@ message(STATUS "C++ Standard:      ${CMAKE_CXX_STANDARD}")
 message(STATUS "")
 message(STATUS "Libraries:")
 message(STATUS "  map_routes_lib      (RouteConfig)")
-message(STATUS "  autoware_controller (AutowareController + TripController)")
+message(STATUS "  autoware_controller (AutowareController - TripController)")
+message(STATUS "  autoware_controller (Cluster Bridge)")
+message(STATUS "  autoware_controller (Trip Bridge)")
+message(STATUS "  autoware_controller (Planning Bridge)")
+message(STATUS "  autoware_controller (Perception Bridge)")
 message(STATUS "")
 if (BUILD_TESTS)
     message(STATUS "  Tests: GoogleTest")

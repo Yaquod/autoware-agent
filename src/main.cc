@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
+#include <rclcpp/rclcpp.hpp>
+#include <zenoh.hxx>
+#include <csignal>
+#include <memory>
+#include <string>
+#include <spdlog/spdlog.h>
+
 #include "AutowareController.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
-
-#include <rclcpp/rclcpp.hpp>
-
-#include <csignal>
-#include <memory>
-#include <string>
-
-#include <spdlog/spdlog.h>
+#include "zenoh_publisher.h"
 
 static std::atomic<bool> g_shutdown_requested{false};
 
@@ -40,6 +40,11 @@ int main(int argc, char** argv) {
 
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
+
+  auto zconfig = zenoh::Config::create_default();
+  zconfig.insert_json5("transport/unicast/lowlatency", "true");
+  zconfig.insert_json5("listen/endpoints", R"(["udp/0.0.0.0:7447"])");
+  auto zsession = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(zconfig)));
 
   std::string yaml_path = std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
 
@@ -65,13 +70,13 @@ int main(int argc, char** argv) {
     std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
 
   cluster_bridge->prepareGrpcServer();
-  auto planning_bridge = std::make_shared<PlanningBridge>(  // ADDED
+  auto planning_bridge = std::make_shared<PlanningBridge>(
     node, cluster_bridge->getBuilder());
 
-  auto perception_bridge = std::make_shared<PerceptionBridge>(  // ADDED
-    node, cluster_bridge->getBuilder());
+  auto perception_bridge = std::make_shared<PerceptionBridge>(
+    node,zsession);
 
-  auto trip_bridge = std::make_shared<TripBridge>(  // ADDED
+  auto trip_bridge = std::make_shared<TripBridge>(
     controller, node, cluster_bridge->getBuilder());
 
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
