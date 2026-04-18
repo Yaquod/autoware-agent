@@ -30,7 +30,9 @@ class PerceptionBridgeZenohTest : public ::testing::Test {
     if (!rclcpp::ok())
       rclcpp::init(0, nullptr);
     node_ = std::make_shared<rclcpp::Node>("test_perception_bridge");
-    zsession_ = zenoh::open();  // You may want to mock or use a test zenoh session
+    zenoh::Config config = zenoh::Config::create_default();
+
+    zsession_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(config)));
     bridge_ = std::make_unique<PerceptionBridge>(node_, zsession_);
   }
   void TearDown() override {
@@ -46,7 +48,6 @@ class PerceptionBridgeZenohTest : public ::testing::Test {
 
 TEST_F(PerceptionBridgeZenohTest, StartupAndShutdown) {
   ASSERT_TRUE(bridge_);
-  // Optionally, publish a dummy message and check zenoh for output
 }
 
 // Add more tests for streaming, publishing, and message conversion as needed

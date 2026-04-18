@@ -94,8 +94,6 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
             libyaml-cpp-dev libboost-system-dev \
             libgmock-dev libgtest-dev
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
@@ -125,6 +123,7 @@ jobs:
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_PREFIX_PATH=/usr/local \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
               -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
@@ -187,9 +186,6 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             python3-pip ccache ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc \
-            libprotobuf-dev \
             libyaml-cpp-dev \
             libgmock-dev libgtest-dev \
             libboost-system-dev \
@@ -218,7 +214,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx"
 
       - name: Build
         run: |
@@ -230,6 +226,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_INSTALL_PREFIX=/usr/local \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+ \
             --symlink-install
@@ -265,8 +262,6 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             python3-pip ninja-build wget gnupg perl pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
             libyaml-cpp-dev libboost-system-dev \
             libgmock-dev libgtest-dev
           pip3 install --quiet colcon-common-extensions vcstool
@@ -326,6 +321,7 @@ jobs:
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_PREFIX_PATH=/usr/local \
               "-DCMAKE_CXX_FLAGS=--coverage" \
               "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
             --packages-select ${{ env.AGENT_PKG }} \

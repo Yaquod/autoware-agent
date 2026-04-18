@@ -29,7 +29,7 @@
 
 PerceptionBridge::PerceptionBridge(rclcpp::Node::SharedPtr node,
                                    const std::shared_ptr<zenoh::Session>& zsession)
-  : ZenohPublisher(zsession, "autoware/perception/")
+  : ZenohPublisher(zsession, "autoware/perception")
   , strand_(io_context_)
   , work_guard_(boost::asio::make_work_guard(io_context_))
   , publisher_timer_(io_context_)

@@ -49,8 +49,8 @@ find_package(zenohcxx REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(GRPC REQUIRED grpc++ gpr)
-pkg_check_modules(Protobuf REQUIRED protobuf)
+find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
 
 if (NOT TARGET gRPC::grpc++)
     add_library(gRPC::grpc++ INTERFACE IMPORTED)
@@ -119,6 +119,7 @@ add_subdirectory(src/cluster_bridge)
 add_subdirectory(src/planning_bridge)
 add_subdirectory(src/perception_bridge)
 add_subdirectory(src/trip_bridge)
+add_subdirectory(proto)
 
 add_executable(autoware_agent
         src/main.cc
@@ -171,6 +172,9 @@ endif ()
 
 install(TARGETS autoware_agent
         RUNTIME DESTINATION bin)
+install(TARGETS autoware_agent
+        DESTINATION lib/${PROJECT_NAME}
+)
 
 message(STATUS "==========================================")
 message(STATUS "Vehicle Autoware Agent")

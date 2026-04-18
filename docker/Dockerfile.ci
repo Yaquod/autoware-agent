@@ -4,7 +4,7 @@ FROM ${AUTOWARE_IMAGE}
 ARG CLANG_VERSION=17
 ARG DEBIAN_FRONTEND=noninteractive
 
-LABEL maintainer="yaqoud-team"
+LABEL maintainer="Ahmed Wafdy"
 LABEL description="AutowareAgent CI image with clang, tidy, format, coverage tools"
 
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
@@ -38,6 +38,29 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends git cmake b
     && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
     && cmake --build build --target install -j$(nproc) \
     && rm -rf /tmp/zenoh /tmp/zenoh-cxx
+# Protobuf
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    git cmake build-essential autoconf libtool curl
+
+RUN git clone --branch v3.21.12 --depth 1 https://github.com/protocolbuffers/protobuf.git /tmp/protobuf \
+    && cd /tmp/protobuf \
+    && git submodule update --init --recursive \
+    && mkdir build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && cd ../.. && rm -rf /tmp/protobuf
+
+# gRPC
+RUN git clone --recurse-submodules -b v1.60.0 --depth 1 https://github.com/grpc/grpc /tmp/grpc \
+    && cd /tmp/grpc \
+    && mkdir -p cmake/build && cd cmake/build \
+    && cmake ../.. -DCMAKE_BUILD_TYPE=Release -DgRPC_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DgRPC_BUILD_TESTS=OFF \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && cd ../../../ && rm -rf /tmp/grpc
 
 RUN for tool in clang clang++ clang-format clang-tidy; do \
       ln -sf "/usr/bin/${tool}-${CLANG_VERSION}" "/usr/local/bin/${tool}"; \

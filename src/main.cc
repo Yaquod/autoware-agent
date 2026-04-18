@@ -33,7 +33,7 @@
 
 static std::atomic<bool> g_shutdown_requested{false};
 
-void signalHandler(int /*signal*/) {
+static void signalHandler(int /*signal*/) {
   g_shutdown_requested.store(true);
 }
 
@@ -42,20 +42,26 @@ int main(int argc, char** argv) {
 
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
+  zenoh::init_log_from_env_or("debug");
 
   auto zconfig = zenoh::Config::create_default();
-  zconfig.insert_json5("transport/unicast/lowlatency", "true");
+  zconfig.insert_json5("scouting/multicast/enabled", "false");
+
+  zconfig.insert_json5("transport/shared_memory/enabled", "false");
+
   zconfig.insert_json5("listen/endpoints", R"(["udp/0.0.0.0:7447"])");
+
   auto zsession = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(zconfig)));
 
-  std::string yaml_path = std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  std::string const YAML_PATH =
+    std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
-              yaml_path.c_str());
-  spdlog::info("[AutowareAgent] Yaml configs loaded : {}", yaml_path);
+              YAML_PATH.c_str());
+  spdlog::info("[AutowareAgent] Yaml configs loaded : {}", YAML_PATH);
 
   // Create controller
-  auto controller = std::make_shared<AutowareAgent::AutowareController>(yaml_path, 10.0);
+  auto controller = std::make_shared<AutowareAgent::AutowareController>(YAML_PATH, 10.0);
 
   controller->initialize();
 
@@ -64,8 +70,6 @@ int main(int argc, char** argv) {
   RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Controller ready");
   spdlog::info("[AutowareAgent] Controller ready");
 
-  // Create cluster bridge
-  // auto cluster_bridge = std::make_shared<ClusterBridge>(controller, "0.0.0.0:50052");
   auto node = std::static_pointer_cast<rclcpp::Node>(controller);
 
   auto cluster_bridge = std::make_shared<ClusterBridge>(
@@ -86,8 +90,9 @@ int main(int argc, char** argv) {
   }
 
   rclcpp::shutdown();  // signals rclcpp::spin() to exit
-  if (ros_thread.joinable())
+  if (ros_thread.joinable()) {
     ros_thread.join();
+  }
 
   planning_bridge->shutdown();
   perception_bridge->shutdown();

@@ -20,7 +20,7 @@
 
 class PlanningBridge::PlanningServiceImpl final : public vehicle_frame::PlanningService::Service {
  public:
-  explicit PlanningServiceImpl(PlanningBridge& parent) : parent_(parent) {};
+  explicit PlanningServiceImpl(PlanningBridge& parent) : parent_(parent){};
 
   grpc::Status Subscribe(grpc::ServerContext* context,
                          const vehicle_frame::SubscribeRequest* request,

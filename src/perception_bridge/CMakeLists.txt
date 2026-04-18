@@ -28,14 +28,13 @@ target_link_libraries(perception_bridge
         PUBLIC ${PCL_LIBRARIES}
         PUBLIC ${pcl_conversions_LIBRARIES}
 
+        PUBLIC proto_lib
         PUBLIC zenohc::lib
         PUBLIC zenohcxx::zenohc
         PUBLIC map_routes_lib
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
-        PUBLIC gRPC::grpc++
-        PUBLIC protobuf::libprotobuf
         PRIVATE Boost::system
 )
 
