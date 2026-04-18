@@ -18,16 +18,18 @@
 #define VEHICLE_AUTOWARE_AGENT_ZENOH_PUBLISHER_H
 
 #pragma once
-#include <zenoh.hxx>
 #include <memory>
 #include <string>
+
+#include <zenoh.hxx>
 
 namespace AutowareAgent {
 
 class ZenohPublisher {
-public:
-  explicit ZenohPublisher(const std::shared_ptr<zenoh::Session>& session, const std::string& key) :
-  session_(session), publisher_(session->declare_publisher(key)){}
+ public:
+  explicit ZenohPublisher(const std::shared_ptr<zenoh::Session>& session, const std::string& key)
+    : session_(session)
+    , publisher_(session->declare_publisher(key)) {}
 
   void publish(const std::string& serialized_proto) {
     publisher_.put(serialized_proto);
@@ -35,10 +37,11 @@ public:
   static void shutDown() {
     /* Do Nothing */
   }
-private:
+
+ private:
   std::shared_ptr<zenoh::Session> session_;
   zenoh::Publisher publisher_;
 };
-}
+}  // namespace AutowareAgent
 
 #endif  // VEHICLE_AUTOWARE_AGENT_ZENOH_PUBLISHER_H

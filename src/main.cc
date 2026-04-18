@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-#include <rclcpp/rclcpp.hpp>
-#include <zenoh.hxx>
-#include <csignal>
-#include <memory>
-#include <string>
-#include <spdlog/spdlog.h>
-
 #include "AutowareController.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
@@ -28,6 +21,15 @@
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
 #include "zenoh_publisher.h"
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <csignal>
+#include <memory>
+#include <string>
+
+#include <spdlog/spdlog.h>
+#include <zenoh.hxx>
 
 static std::atomic<bool> g_shutdown_requested{false};
 
@@ -70,14 +72,11 @@ int main(int argc, char** argv) {
     std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
 
   cluster_bridge->prepareGrpcServer();
-  auto planning_bridge = std::make_shared<PlanningBridge>(
-    node, cluster_bridge->getBuilder());
+  auto planning_bridge = std::make_shared<PlanningBridge>(node, cluster_bridge->getBuilder());
 
-  auto perception_bridge = std::make_shared<PerceptionBridge>(
-    node,zsession);
+  auto perception_bridge = std::make_shared<PerceptionBridge>(node, zsession);
 
-  auto trip_bridge = std::make_shared<TripBridge>(
-    controller, node, cluster_bridge->getBuilder());
+  auto trip_bridge = std::make_shared<TripBridge>(controller, node, cluster_bridge->getBuilder());
 
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });

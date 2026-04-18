@@ -36,7 +36,8 @@
 
 class PerceptionBridge : public AutowareAgent::ZenohPublisher {
  public:
-  explicit PerceptionBridge(rclcpp::Node::SharedPtr node, const std::shared_ptr<zenoh::Session>& zsession);
+  explicit PerceptionBridge(rclcpp::Node::SharedPtr node,
+                            const std::shared_ptr<zenoh::Session>& zsession);
 
   ~PerceptionBridge();
 
@@ -73,16 +74,17 @@ class PerceptionBridge : public AutowareAgent::ZenohPublisher {
   // ROS callbacks that would be posted on strand
   void onSurroundingObject(autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
   void onPointCloud(sensor_msgs::msg::PointCloud2::SharedPtr msg);
-  void onOccupancyGrid( nav_msgs::msg::OccupancyGrid::SharedPtr msg);
-  void onTrafficSignal( autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
+  void onOccupancyGrid(nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+  void onTrafficSignal(autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
 
   // strand implementation
 
   void onSurroundingObjectImpl(
-     const autoware_perception_msgs::msg::PredictedObjects::SharedPtr& msg);
-  void onPointCloudImpl( const sensor_msgs::msg::PointCloud2::SharedPtr& msg);
-  void onOccupancyGridImpl( const nav_msgs::msg::OccupancyGrid::SharedPtr& msg);
-  void onTrafficSignalImpl(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr& msg);
+    const autoware_perception_msgs::msg::PredictedObjects::SharedPtr& msg);
+  void onPointCloudImpl(const sensor_msgs::msg::PointCloud2::SharedPtr& msg);
+  void onOccupancyGridImpl(const nav_msgs::msg::OccupancyGrid::SharedPtr& msg);
+  void onTrafficSignalImpl(
+    const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr& msg);
 
   static vehicle_frame::ObjectClass toObjectClass(uint8_t v);
   static vehicle_frame::TrafficLightColor toTrafficLightColor(uint8_t v);

@@ -20,7 +20,7 @@
 
 class TripBridge::TripServiceImpl final : public vehicle_frame::TripService::Service {
  public:
-  explicit TripServiceImpl(TripBridge& parent) : parent_(parent){};
+  explicit TripServiceImpl(TripBridge& parent) : parent_(parent) {};
 
   grpc::Status Subscribe(grpc::ServerContext* context,
                          const vehicle_frame::SubscribeRequest* request,
