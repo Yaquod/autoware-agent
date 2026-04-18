@@ -13,9 +13,16 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     clang-format-${CLANG_VERSION} \
     clang-tidy-${CLANG_VERSION} \
     lld-${CLANG_VERSION} \
-    # Build
+    # Build tools
     ninja-build \
     ccache \
+    pkg-config \
+    # Autoware Agent C++ Dependencies
+    libyaml-cpp-dev \
+    libgmock-dev \
+    libgtest-dev \
+    libboost-system-dev \
+    ros-humble-fastcdr \
     # Coverage
     lcov \
     gcovr \

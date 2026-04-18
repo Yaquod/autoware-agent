@@ -14,7 +14,7 @@ concurrency:
 
 env:
   ROS_DISTRO: humble
-  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
+  AUTOWARE_IMAGE: ghcr.io/yaquod/autoware-agent-ci:latest
   AGENT_PKG: vehicle_autoware_agent
   CLANG_VERSION: 17
 
@@ -182,17 +182,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ccache ninja-build pkg-config \
-            libyaml-cpp-dev \
-            libgmock-dev libgtest-dev \
-            libboost-system-dev \
-            ros-${{ env.ROS_DISTRO }}-fastcdr || true
-          pip3 install --quiet colcon-common-extensions vcstool
 
       - name: Cache ccache
         uses: actions/cache@v4
