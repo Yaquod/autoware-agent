@@ -76,8 +76,7 @@ if (BUILD_INTEGRATION_TESTS)
             map_routes_lib
             cluster_bridge
             rclcpp::rclcpp
-            gRPC::grpc++
-            protobuf::libprotobuf
+            PUBLIC proto_lib
             ${GRPC_LIBRARIES}
             ${Protobuf_LIBRARIES}
             ${geometry_msgs_TARGETS}
@@ -99,8 +98,6 @@ if (BUILD_INTEGRATION_TESTS)
             GTest::gmock
             GTest::gtest_main
     )
-
-    add_dependencies(autoware_integration_tests generate_proto_code)
 
     set_target_properties(autoware_integration_tests PROPERTIES
             BUILD_RPATH "/opt/ros/humble/lib;$ENV{HOME}/autoware/install/lib"

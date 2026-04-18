@@ -3,8 +3,6 @@ find_package(autoware_adapi_v1_msgs REQUIRED)
 find_package(tier4_system_msgs REQUIRED)
 find_package(autoware_planning_msgs REQUIRED)
 find_package(tier4_external_api_msgs REQUIRED)
-#find_package(autoware_internal_planning_msgs REQUIRED)
-#find_package(autoware_internal_msgs REQUIRED)
 find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
@@ -22,18 +20,13 @@ target_link_libraries(trip_bridge
 
         PUBLIC ${autoware_planning_msgs_TARGETS}
         PUBLIC ${tier4_external_api_msgs_TARGETS}
-#        PUBLIC ${autoware_internal_planning_msgs_TARGETS}
-#        PUBLIC ${autoware_internal_msgs_TARGETS}
         PUBLIC map_routes_lib
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
-        PUBLIC gRPC::grpc++
-        PUBLIC protobuf::libprotobuf
+        PUBLIC proto_lib
         PRIVATE Boost::system
 )
-
-add_dependencies(trip_bridge generate_proto_code)
 
 target_include_directories(trip_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include

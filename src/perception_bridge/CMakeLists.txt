@@ -38,7 +38,6 @@ target_link_libraries(perception_bridge
         PRIVATE Boost::system
 )
 
-add_dependencies(perception_bridge generate_proto_code)
 
 target_include_directories(perception_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
