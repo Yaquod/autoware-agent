@@ -49,6 +49,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends git cmake b
         && cd /tmp/zenoh-cpp \
         && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
         && cmake --build build --target install -j$(nproc) \
+        && cd / \
         && rm -rf /tmp/zenoh-c /tmp/zenoh-cpp \
         && rustup self uninstall -y
 
