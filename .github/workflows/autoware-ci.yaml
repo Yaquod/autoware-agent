@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -173,7 +173,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     strategy:
       fail-fast: false
       matrix:
@@ -205,7 +205,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx autoware_internal_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx ament_cmake_clang_format autoware_internal_msgs"
 
       - name: Build
         run: |
@@ -245,7 +245,7 @@ jobs:
       contents: read
     needs: build
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -292,7 +292,7 @@ jobs:
         with:
           name: build-RelWithDebInfo
 
-      - name: Import workspace + rosdep
+      - name: Import workspace rosdep
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
           if [ -f autoware_agent.repos ]; then
@@ -305,7 +305,7 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs autoware_internal_msgs zenohcxx"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs autoware_internal_msgs ament_cmake_clang_format zenohcxx"
 
       - name: Build with coverage flags
         run: |
