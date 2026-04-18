@@ -5,9 +5,6 @@ on:
     paths:
       - 'docker/Dockerfile.ci' # Only rebuild when the Dockerfile changes!
     branches: [ main, develop ]
-  pull_request:
-    paths:
-      - 'docker/Dockerfile.ci'
   workflow_dispatch:
 
 jobs:
@@ -38,5 +35,5 @@ jobs:
           file: docker/Dockerfile.ci
           push: true
           tags: ghcr.io/yaquod/autoware-agent-ci:latest
-          cache-from: type=registry,ref=ghcr.io/yaquod/autoware-agent-ci:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

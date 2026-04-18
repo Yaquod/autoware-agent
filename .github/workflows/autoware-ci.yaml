@@ -33,19 +33,6 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install clang-format-${{ env.CLANG_VERSION }}
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends wget gnupg lsb-release
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-format-${{ env.CLANG_VERSION }}
-          ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
-
       - name: Run clang-format and auto-fix
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -89,23 +76,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
-            libyaml-cpp-dev libboost-system-dev \
-            libgmock-dev libgtest-dev
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-${{ env.CLANG_VERSION }} \
-            clang-tidy-${{ env.CLANG_VERSION }}
-          ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
-          pip3 install --quiet colcon-common-extensions vcstool
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.ROS_DISTRO }}-tidy-or-test-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ env.ROS_DISTRO }}-
 
       - name: Source ROS2 + import Autoware deps
         run: |
@@ -127,8 +104,9 @@ jobs:
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
-              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
         shell: bash
@@ -243,54 +221,20 @@ jobs:
     permissions:
       checks: write
       contents: read
-    needs: build
+    needs: clang-format
     container:
       image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ninja-build wget gnupg perl pkg-config \
-            libyaml-cpp-dev libboost-system-dev \
-            libgmock-dev libgtest-dev
-          pip3 install --quiet colcon-common-extensions vcstool
-          apt-get install -y --no-install-recommends \
-            cpanminus libperlio-gzip-perl libjson-perl
-          cpanm --notest --quiet \
-            Capture::Tiny \
-            DateTime \
-            Date::Parse \
-            Digest::MD5 \
-            File::Spec \
-            Memory::Process \
-            Storable \
-            JSON::XS
-          wget -qO /tmp/lcov.tar.gz \
-            https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
-          tar -xzf /tmp/lcov.tar.gz -C /tmp
-          make -C /tmp/lcov-2.1 install PREFIX=/usr/local -j$(nproc)
-          # clang + llvm-cov so lcov reads clang .gcda files correctly
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-${{ env.CLANG_VERSION }} \
-            llvm-${{ env.CLANG_VERSION }}
-          # Shim: lcov --gcov-tool calls this instead of system gcov
-          printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' \
-            "${{ env.CLANG_VERSION }}" > /usr/local/bin/llvm-gcov
-          chmod +x /usr/local/bin/llvm-gcov
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Cache ccache
+        uses: actions/cache@v4
         with:
-          name: build-RelWithDebInfo
+            path: ~/.ccache
+            key: ccache-${{ env.ROS_DISTRO }}-tidy-or-test-${{ hashFiles('**/CMakeLists.txt') }}
+            restore-keys: |
+              ccache-${{ env.ROS_DISTRO }}-
 
       - name: Import workspace rosdep
         run: |
@@ -315,10 +259,11 @@ jobs:
     
           if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           colcon build \
-            --cmake-args \
-              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              "-DCMAKE_CXX_FLAGS=--coverage" \
-              "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
+              --cmake-args \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+                "-DCMAKE_CXX_FLAGS=--coverage" \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 

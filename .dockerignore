@@ -1,6 +1,6 @@
-build/
-install/
-log/
-.git/
-*.bag
-*.pcd
+# Ignore everything by default
+**
+
+# Allow only the files actually used in the Dockerfile
+!docker/Dockerfile.ci
+!docker/entrypoint.sh

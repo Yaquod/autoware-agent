@@ -81,6 +81,23 @@ RUN for tool in clang clang++ clang-format clang-tidy; do \
       ln -sf "/usr/bin/${tool}-${CLANG_VERSION}" "/usr/local/bin/${tool}"; \
     done
 
+RUN cpanm --notest --quiet \
+    Capture::Tiny \
+    DateTime \
+    Date::Parse \
+    Digest::MD5 \
+    File::Spec \
+    Memory::Process \
+    Storable \
+    JSON::XS
+
+RUN wget -qO /tmp/lcov.tar.gz https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz \
+    && tar -xzf /tmp/lcov.tar.gz -C /tmp \
+    && make -C /tmp/lcov-2.1 install PREFIX=/usr/local -j$(nproc) \
+    && rm -rf /tmp/lcov*
+
+RUN printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' "${CLANG_VERSION}" > /usr/local/bin/llvm-gcov \
+    && chmod +x /usr/local/bin/llvm-gcov
 RUN pip3 install --no-cache-dir \
     colcon-common-extensions \
     colcon-mixin \
