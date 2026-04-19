@@ -19,8 +19,9 @@
 
 #include "AutowareController.h"
 #include "FrameStates.h"
-#include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
+#include "zenoh.hxx"
+#include "zenoh_publisher.h"
 
 #include <autoware_adapi_v1_msgs/msg/heartbeat.hpp>
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
@@ -37,13 +38,13 @@
 #include <queue>
 
 #include <grpcpp/grpcpp.h>
-#include <tier4_external_api_msgs/srv/engage.hpp>
 #include <tier4_system_msgs/msg/diag_graph_status.hpp>
 
-class TripBridge {
+class TripBridge : public AutowareAgent::ZenohPublisher {
  public:
   explicit TripBridge(std::shared_ptr<AutowareAgent::AutowareController> controller,
-                      rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder);
+                      rclcpp::Node::SharedPtr node,
+                      const std::shared_ptr<zenoh::Session>& zsession);
 
   ~TripBridge();
 
@@ -53,15 +54,6 @@ class TripBridge {
   TripFrameState state_;
   uint64_t frame_seq_{0};
 
-  struct ClientSession {
-    grpc::ServerWriter<vehicle_frame::TripFrame>* writer;
-    std::queue<vehicle_frame::TripFrame> pending;
-    std::mutex mu;
-    std::condition_variable cv;
-    std::atomic<bool> alive{true};
-  };
-  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
-  std::mutex clients_mutex_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
@@ -70,15 +62,13 @@ class TripBridge {
   boost::asio::steady_timer publisher_timer_;
 
   void scheduleNextTick();
-  void ontick();
+  void onTick();
 
   // called on strand for grpc clients
   vehicle_frame::TripFrame buildFrame();
 
   // called on strand for grpc clients
   void broadcastFrame(const vehicle_frame::TripFrame& frame);
-  class TripServiceImpl;
-  std::unique_ptr<TripServiceImpl> grpc_service_;
 
   // added to see if system alive
   rclcpp::Time last_heartbeat_time_;

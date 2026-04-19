@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
 
   auto perception_bridge = std::make_shared<PerceptionBridge>(node, zsession);
 
-  auto trip_bridge = std::make_shared<TripBridge>(controller, node, cluster_bridge->getBuilder());
+  auto trip_bridge = std::make_shared<TripBridge>(controller, node, zsession);
 
   std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });

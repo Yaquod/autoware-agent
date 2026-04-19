@@ -24,6 +24,8 @@ target_link_libraries(trip_bridge
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
+        PUBLIC zenohc::lib
+        PUBLIC zenohcxx::zenohc
         PUBLIC proto_lib
         PRIVATE Boost::system
 )

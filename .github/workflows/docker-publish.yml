@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'docker/Dockerfile.ci' # Only rebuild when the Dockerfile changes!
-    branches: [ main, develop ]
+    branches: main
   workflow_dispatch:
 
 jobs:
