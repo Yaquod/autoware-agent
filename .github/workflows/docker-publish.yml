@@ -3,7 +3,7 @@ name: Build and Push CI Image
 on:
   push:
     paths:
-      - 'docker/Dockerfile.ci' # Only rebuild when the Dockerfile changes!
+      - 'docker/Dockerfile.ci'
     branches: [ main, develop ]
   workflow_dispatch:
 
@@ -34,8 +34,8 @@ jobs:
         with:
           images: ghcr.io/yaquod/autoware-agent-ci
           tags: |
-              type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
-              type=ref,event=pr
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+            type=ref,event=pr
 
       - name: Build and push
         uses: docker/build-push-action@v5
