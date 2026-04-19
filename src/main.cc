@@ -20,7 +20,6 @@
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
-#include "zenoh_publisher.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -72,17 +71,15 @@ int main(int argc, char** argv) {
 
   auto node = std::static_pointer_cast<rclcpp::Node>(controller);
 
-  auto cluster_bridge = std::make_shared<ClusterBridge>(
-    std::static_pointer_cast<rclcpp::Node>(controller), "0.0.0.0:50052");
+  auto cluster_bridge =
+    std::make_shared<ClusterBridge>(std::static_pointer_cast<rclcpp::Node>(controller), zsession);
 
-  cluster_bridge->prepareGrpcServer();
-  auto planning_bridge = std::make_shared<PlanningBridge>(node, cluster_bridge->getBuilder());
+  auto planning_bridge = std::make_shared<PlanningBridge>(node, zsession);
 
   auto perception_bridge = std::make_shared<PerceptionBridge>(node, zsession);
 
   auto trip_bridge = std::make_shared<TripBridge>(controller, node, zsession);
 
-  std::thread cluster_bridge_thread([&cluster_bridge]() { cluster_bridge->runGrpcServer(); });
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
   while (!g_shutdown_requested.load()) {
@@ -98,10 +95,6 @@ int main(int argc, char** argv) {
   perception_bridge->shutdown();
   trip_bridge->shutdown();
   cluster_bridge->shutdown();
-
-  if (cluster_bridge_thread.joinable()) {
-    cluster_bridge_thread.join();
-  }
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");
