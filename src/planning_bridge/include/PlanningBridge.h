@@ -18,8 +18,8 @@
 #define VEHICLEAUTOWAREAGENT_PLANNINGBRIDGE_H
 
 #include "FrameStates.h"
-#include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
+#include "zenoh_publisher.h"
 
 #include <autoware_adapi_v1_msgs/msg/route_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/steering_factor_array.hpp>
@@ -39,11 +39,11 @@
 #include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
 #include <autoware_internal_planning_msgs/msg/scenario.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
-#include <grpcpp/grpcpp.h>
 
-class PlanningBridge {
+class PlanningBridge : public AutowareAgent::ZenohPublisher {
  public:
-  explicit PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder);
+  explicit PlanningBridge(rclcpp::Node::SharedPtr node,
+                          const std::shared_ptr<zenoh::Session>& zsession);
 
   ~PlanningBridge();
 
@@ -53,15 +53,6 @@ class PlanningBridge {
   PlanningFrameState state_;
   uint64_t frame_seq_{0};
 
-  struct ClientSession {
-    grpc::ServerWriter<vehicle_frame::PlanningFrame>* writer;
-    std::queue<vehicle_frame::PlanningFrame> pending;
-    std::mutex mu;
-    std::condition_variable cv;
-    std::atomic<bool> alive{true};
-  };
-  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
-  std::mutex clients_mutex_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
@@ -70,15 +61,13 @@ class PlanningBridge {
   boost::asio::steady_timer publisher_timer_;
 
   void scheduleNextTick();
-  void ontick();
+  void onTick();
 
   // called on strand for grpc clients
   vehicle_frame::PlanningFrame buildFrame();
 
   // called on strand for grpc clients
   void broadcastFrame(const vehicle_frame::PlanningFrame& frame);
-  class PlanningServiceImpl;
-  std::unique_ptr<PlanningServiceImpl> grpc_service_;
 
   // ros
   rclcpp::Node::SharedPtr node_;

@@ -37,7 +37,6 @@
 
 #include <queue>
 
-#include <grpcpp/grpcpp.h>
 #include <tier4_system_msgs/msg/diag_graph_status.hpp>
 
 class TripBridge : public AutowareAgent::ZenohPublisher {
