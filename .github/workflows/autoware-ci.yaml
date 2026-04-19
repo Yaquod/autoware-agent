@@ -253,49 +253,49 @@ jobs:
 
       - name: Build with coverage flags
         run: |
-          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-          export CMAKE_PREFIX_PATH="$HOME/.local:/usr/local:$CMAKE_PREFIX_PATH"
-          export LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:$LD_LIBRARY_PATH"
-    
-          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-          colcon build \
-              --cmake-args \
-                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-                -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-                "-DCMAKE_CXX_FLAGS=--coverage" \
+            . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+            export CMAKE_PREFIX_PATH="$HOME/.local:/usr/local:$CMAKE_PREFIX_PATH"
+            export LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+            
+            if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+            colcon build \
+             --cmake-args \
+               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
+               -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+               "-DCMAKE_CXX_FLAGS=--coverage" \
+               "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
-      - name: Run tests
-        run: |
-          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-          export LLVM_PROFILE_FILE="build/%p.profraw"
-          . install/setup.sh
-          colcon test \
-            --packages-select ${{ env.AGENT_PKG }} \
-            --event-handlers console_cohesion+ \
-            --return-code-on-test-failure
-          colcon test-result --verbose
+            - name: Run tests
+              run: |
+                . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+                if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+                export LLVM_PROFILE_FILE="build/%p.profraw"
+                . install/setup.sh
+                
+                # Added --ctest-args -j$(nproc) to run C++ tests in parallel across all cores
+                colcon test \
+                  --packages-select ${{ env.AGENT_PKG }} \
+                  --event-handlers console_cohesion+ \
+                  --return-code-on-test-failure \
+                  --ctest-args -j$(nproc)
+                colcon test-result --verbose
 
       - name: Generate coverage report
         run: |
-          lcov --capture \
-            --directory build/ \
-            --output-file coverage.info \
-            --ignore-errors inconsistent,inconsistent \
-            --ignore-errors usage,usage \
-            --rc geninfo_unexecuted_blocks=1
-          lcov --remove coverage.info \
-            '/usr/*' '*/test/*' '*/mock/*' \
-            --output-file coverage_filtered.info \
-            --ignore-errors inconsistent,inconsistent \
-            --ignore-errors unused,unused
-          lcov --summary coverage_filtered.info
-          genhtml coverage_filtered.info \
-                  --output-directory coverage_html \
-                  --title "AutowareAgent Coverage"
+            mkdir -p coverage_html
+            # Use gcovr instead of lcov
+            gcovr --gcov-executable "llvm-cov-17 gcov" \
+                  --root . \
+                  --filter "src/" \
+                  --exclude ".*test.*" \
+                  --exclude ".*mock.*" \
+                  --html-details coverage_html/index.html \
+                  --print-summary
 
       - name: Upload coverage HTML
         uses: actions/upload-artifact@v4

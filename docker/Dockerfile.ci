@@ -17,6 +17,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     clang-format-${CLANG_VERSION} \
     clang-tidy-${CLANG_VERSION} \
     lld-${CLANG_VERSION} \
+    llvm-${CLANG_VERSION} \
     # Build tools
     ninja-build \
     ccache \
@@ -28,7 +29,6 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     libboost-system-dev \
     ros-humble-fastcdr \
     # Coverage
-    lcov \
     gcovr \
     # Utilities
     git \
@@ -81,7 +81,11 @@ RUN for tool in clang clang++ clang-format clang-tidy; do \
       ln -sf "/usr/bin/${tool}-${CLANG_VERSION}" "/usr/local/bin/${tool}"; \
     done
 
-RUN cpanm --notest --quiet \
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    cpanminus \
+    libperlio-gzip-perl \
+    libjson-perl \
+    && cpanm --notest --quiet \
     Capture::Tiny \
     DateTime \
     Date::Parse \
@@ -89,7 +93,8 @@ RUN cpanm --notest --quiet \
     File::Spec \
     Memory::Process \
     Storable \
-    JSON::XS
+    JSON::XS \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN wget -qO /tmp/lcov.tar.gz https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz \
     && tar -xzf /tmp/lcov.tar.gz -C /tmp \
