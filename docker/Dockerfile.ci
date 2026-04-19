@@ -14,6 +14,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && apt-get update -qq && apt-get install -y --no-install-recommends \
     # Clang toolchain
     clang-${CLANG_VERSION} \
+    libclang-common-${CLANG_VERSION}-dev \
     clang-format-${CLANG_VERSION} \
     clang-tidy-${CLANG_VERSION} \
     lld-${CLANG_VERSION} \
