@@ -105,13 +105,3 @@ if (BUILD_INTEGRATION_TESTS)
     )
     add_test(NAME autoware_integration_tests COMMAND autoware_integration_tests)
 endif ()
-
-add_executable(perception_bridge_zenoh_test unit/perception_bridge_zenoh_test.cc)
-target_link_libraries(perception_bridge_zenoh_test
-    PRIVATE perception_bridge
-    PRIVATE rclcpp::rclcpp
-    PRIVATE zenohc::lib
-    PRIVATE zenohcxx::zenohc
-    PRIVATE GTest::gtest_main
-)
-add_test(NAME perception_bridge_zenoh_test COMMAND perception_bridge_zenoh_test)

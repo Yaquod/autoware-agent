@@ -8,55 +8,10 @@ LABEL maintainer="Ahmed Wafdy"
 LABEL description="AutowareAgent CI image with clang, tidy, format, coverage tools"
 
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
-    wget gnupg lsb-release ca-certificates \
-    && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
-    && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${CLANG_VERSION} main" > /etc/apt/sources.list.d/llvm.list \
-    && apt-get update -qq && apt-get install -y --no-install-recommends \
-    # Clang toolchain
-    clang-${CLANG_VERSION} \
-    clang-format-${CLANG_VERSION} \
-    clang-tidy-${CLANG_VERSION} \
-    lld-${CLANG_VERSION} \
-    # Build tools
-    ninja-build \
-    ccache \
-    pkg-config \
-    # Autoware Agent C++ Dependencies
-    libyaml-cpp-dev \
-    libgmock-dev \
-    libgtest-dev \
-    libboost-system-dev \
-    ros-humble-fastcdr \
-    # Coverage
-    lcov \
-    gcovr \
-    # Utilities
-    git \
-    curl \
-    jq \
-    python3-pip \
+    git cmake build-essential autoconf libtool curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install zenoh and zenoh-cxx from source
-RUN apt-get update -qq && apt-get install -y --no-install-recommends git cmake build-essential curl ca-certificates \
-        && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-        && export PATH="/root/.cargo/bin:${PATH}" \
-        && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-c.git /tmp/zenoh-c \
-        && cd /tmp/zenoh-c \
-        && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
-        && cmake --build build --target install -j$(nproc) \
-        && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-cpp.git /tmp/zenoh-cpp \
-        && cd /tmp/zenoh-cpp \
-        && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
-        && cmake --build build --target install -j$(nproc) \
-        && cd / \
-        && rm -rf /tmp/zenoh-c /tmp/zenoh-cpp \
-        && rustup self uninstall -y
-
 # Protobuf
-RUN apt-get update -qq && apt-get install -y --no-install-recommends \
-    git cmake build-essential autoconf libtool curl
-
 RUN git clone --branch v3.21.12 --depth 1 https://github.com/protocolbuffers/protobuf.git /tmp/protobuf \
     && cd /tmp/protobuf \
     && git submodule update --init --recursive \
@@ -77,19 +32,60 @@ RUN git clone --recurse-submodules -b v1.60.0 --depth 1 https://github.com/grpc/
     && ldconfig \
     && cd ../../../ && rm -rf /tmp/grpc
 
+# Zenoh and Zenoh-cxx
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && export PATH="/root/.cargo/bin:${PATH}" \
+    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-c.git /tmp/zenoh-c \
+    && cd /tmp/zenoh-c \
+    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build build --target install -j$(nproc) \
+    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-cpp.git /tmp/zenoh-cpp \
+    && cd /tmp/zenoh-cpp \
+    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build build --target install -j$(nproc) \
+    && cd / \
+    && rm -rf /tmp/zenoh-c /tmp/zenoh-cpp \
+    && rustup self uninstall -y
+
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    wget gnupg lsb-release \
+    && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+    && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${CLANG_VERSION} main" > /etc/apt/sources.list.d/llvm.list \
+    && apt-get update -qq && apt-get install -y --no-install-recommends \
+    # Clang toolchain
+    clang-${CLANG_VERSION} \
+    clang-format-${CLANG_VERSION} \
+    clang-tidy-${CLANG_VERSION} \
+    lld-${CLANG_VERSION} \
+    llvm-${CLANG_VERSION} \
+    libclang-rt-${CLANG_VERSION}-dev \
+    # Build tools
+    ninja-build \
+    ccache \
+    pkg-config \
+    # Autoware Agent C++ Dependencies
+    libyaml-cpp-dev \
+    libgmock-dev \
+    libgtest-dev \
+    libboost-system-dev \
+    ros-humble-fastcdr \
+    # Coverage & Utilities
+    gcovr \
+    jq \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN for tool in clang clang++ clang-format clang-tidy; do \
       ln -sf "/usr/bin/${tool}-${CLANG_VERSION}" "/usr/local/bin/${tool}"; \
     done
 
-RUN cpanm --notest --quiet \
-    Capture::Tiny \
-    DateTime \
-    Date::Parse \
-    Digest::MD5 \
-    File::Spec \
-    Memory::Process \
-    Storable \
-    JSON::XS
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    cpanminus \
+    libperlio-gzip-perl \
+    libjson-perl \
+    && cpanm --notest --quiet \
+    Capture::Tiny DateTime Date::Parse Digest::MD5 File::Spec Memory::Process Storable JSON::XS \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN wget -qO /tmp/lcov.tar.gz https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz \
     && tar -xzf /tmp/lcov.tar.gz -C /tmp \
@@ -98,6 +94,7 @@ RUN wget -qO /tmp/lcov.tar.gz https://github.com/linux-test-project/lcov/release
 
 RUN printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' "${CLANG_VERSION}" > /usr/local/bin/llvm-gcov \
     && chmod +x /usr/local/bin/llvm-gcov
+
 RUN pip3 install --no-cache-dir \
     colcon-common-extensions \
     colcon-mixin \
