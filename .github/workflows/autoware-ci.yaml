@@ -270,20 +270,19 @@ jobs:
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
-            - name: Run tests
-              run: |
-                . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-                if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-                export LLVM_PROFILE_FILE="build/%p.profraw"
-                . install/setup.sh
-                
-                # Added --ctest-args -j$(nproc) to run C++ tests in parallel across all cores
-                colcon test \
-                  --packages-select ${{ env.AGENT_PKG }} \
-                  --event-handlers console_cohesion+ \
-                  --return-code-on-test-failure \
-                  --ctest-args -j$(nproc)
-                colcon test-result --verbose
+      - name: Run tests
+        run: |
+          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+          export LLVM_PROFILE_FILE="build/%p.profraw"
+          . install/setup.sh
+          # Added --ctest-args -j$(nproc) to run C++ tests in parallel across all cores
+          colcon test \
+            --packages-select ${{ env.AGENT_PKG }} \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure \
+            --ctest-args -j$(nproc)
+          colcon test-result --verbose
 
       - name: Generate coverage report
         run: |
