@@ -3,7 +3,7 @@ name: Build and Push CI Image
 on:
   push:
     paths:
-      - 'docker/Dockerfile.ci'
+      - 'docker/Dockerfile.ci' # Only rebuild when the Dockerfile changes!
     branches: [ main, develop ]
   workflow_dispatch:
 
@@ -28,21 +28,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/yaquod/autoware-agent-ci
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
-            type=ref,event=pr
-
-      - name: Build and push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/Dockerfile.ci
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/yaquod/autoware-agent-ci:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
