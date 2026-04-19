@@ -76,8 +76,7 @@ if (BUILD_INTEGRATION_TESTS)
             map_routes_lib
             cluster_bridge
             rclcpp::rclcpp
-            gRPC::grpc++
-            protobuf::libprotobuf
+            PUBLIC proto_lib
             ${GRPC_LIBRARIES}
             ${Protobuf_LIBRARIES}
             ${geometry_msgs_TARGETS}
@@ -100,11 +99,19 @@ if (BUILD_INTEGRATION_TESTS)
             GTest::gtest_main
     )
 
-    add_dependencies(autoware_integration_tests generate_proto_code)
-
     set_target_properties(autoware_integration_tests PROPERTIES
             BUILD_RPATH "/opt/ros/humble/lib;$ENV{HOME}/autoware/install/lib"
             INSTALL_RPATH "/opt/ros/humble/lib;$ENV{HOME}/autoware/install/lib"
     )
     add_test(NAME autoware_integration_tests COMMAND autoware_integration_tests)
 endif ()
+
+add_executable(perception_bridge_zenoh_test unit/perception_bridge_zenoh_test.cc)
+target_link_libraries(perception_bridge_zenoh_test
+    PRIVATE perception_bridge
+    PRIVATE rclcpp::rclcpp
+    PRIVATE zenohc::lib
+    PRIVATE zenohcxx::zenohc
+    PRIVATE GTest::gtest_main
+)
+add_test(NAME perception_bridge_zenoh_test COMMAND perception_bridge_zenoh_test)
