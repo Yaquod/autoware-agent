@@ -33,14 +33,12 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
-#include <queue>
-
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
 #include <autoware_internal_msgs/msg/mission_remaining_distance_time.hpp>
 #include <autoware_internal_planning_msgs/msg/scenario.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 
-class PlanningBridge : public AutowareAgent::ZenohPublisher {
+class PlanningBridge : public autoware_agent::ZenohPublisher {
  public:
   explicit PlanningBridge(rclcpp::Node::SharedPtr node,
                           const std::shared_ptr<zenoh::Session>& zsession);
@@ -89,32 +87,32 @@ class PlanningBridge : public AutowareAgent::ZenohPublisher {
     scenario_state_sub_;
 
   // ROS callbacks that would be posted on strand
-  void onTrajectoryPoint(const autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
-  void onFullRoute(const autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg);
-  void onTrajectoryLane(const autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
-  void onVelocityFactor(const autoware_adapi_v1_msgs::msg::VelocityFactorArray::SharedPtr msg);
-  void onSteeringFactor(const autoware_adapi_v1_msgs::msg::SteeringFactorArray::SharedPtr msg);
-  void onTargetVelocity(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
-  void onVelocityLimit(const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
-  void onEta(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
-  void onRouteState(const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
-  void onScenarioState(const autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);
+  void onTrajectoryPoint(autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
+  void onFullRoute(autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg);
+  void onTrajectoryLane(autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
+  void onVelocityFactor(autoware_adapi_v1_msgs::msg::VelocityFactorArray::SharedPtr msg);
+  void onSteeringFactor(autoware_adapi_v1_msgs::msg::SteeringFactorArray::SharedPtr msg);
+  void onTargetVelocity(autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
+  void onVelocityLimit(autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
+  void onEta(autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
+  void onRouteState(autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
+  void onScenarioState(autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);
 
   // TODO: complete functions
 
   // strand implementation
-  void onTrajectoryPointImpl(const autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
-  void onFullRouteImpl(const autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg);
-  void onTrajectoryLaneImpl(const autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
-  void onVelocityFactorImpl(const autoware_adapi_v1_msgs::msg::VelocityFactorArray::SharedPtr msg);
-  void onSteeringFactorImpl(const autoware_adapi_v1_msgs::msg::SteeringFactorArray::SharedPtr msg);
+  void onTrajectoryPointImpl(autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
+  void onFullRouteImpl(autoware_planning_msgs::msg::LaneletRoute::SharedPtr msg);
+  void onTrajectoryLaneImpl(autoware_planning_msgs::msg::Trajectory::SharedPtr msg);
+  void onVelocityFactorImpl(autoware_adapi_v1_msgs::msg::VelocityFactorArray::SharedPtr msg);
+  void onSteeringFactorImpl(autoware_adapi_v1_msgs::msg::SteeringFactorArray::SharedPtr msg);
 
-  void onTargetVelocityImpl(const autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
+  void onTargetVelocityImpl(autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
   void onVelocityLimitImpl(
-    const autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
-  void onEtaImpl(const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
-  void onRouteStateImpl(const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
-  void onScenarioStateImpl(const autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);
+    autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
+  void onEtaImpl(autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
+  void onRouteStateImpl(autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
+  void onScenarioStateImpl(autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);
 
   // TODO: complete functions
   static vehicle_frame::VelocityFactorStatus toVelocityFactorStatus(uint8_t v);
@@ -123,4 +121,4 @@ class PlanningBridge : public AutowareAgent::ZenohPublisher {
   static vehicle_frame::RouteState toRouteState(uint8_t v);
 };
 
-#endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H
+#endif  // VEHICLEAUTOWAREAGENT_PLANNINGBRIDGE_H

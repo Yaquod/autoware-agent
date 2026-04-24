@@ -21,7 +21,8 @@ struct TripTimings {
   int initial_pose_delay_ms = 15000;
   int goal_delay_ms = 9000;
   int route_poll_interval_ms = 500;
-  int route_timeout_ms = 30000;
-  int engage_delay_ms = 5000;
+  long route_timeout_ms   = 30'000;
+  long loc_timeout_ms     = 30'000;
+  long eta_settle_ms      = 2'000;
 };
 #endif  // VEHICLEAUTOWAREAGENT_TRIPTIMINGS_H

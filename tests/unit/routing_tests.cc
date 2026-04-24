@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace AutowareAgent;
+using namespace autoware_agent;
 
 class RouteConfigTest : public ::testing::Test {
  protected:

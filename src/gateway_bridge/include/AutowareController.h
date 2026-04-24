@@ -26,7 +26,10 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 
-namespace AutowareAgent {
+namespace autoware_agent {
+
+using RouteQueryCallback = TripController::EtaQueryCallback;
+using RouteQueryResult   = EtaQueryResult;
 
 /**
  * @brief Responsibilities:
@@ -38,7 +41,7 @@ namespace AutowareAgent {
  */
 class AutowareController : public rclcpp::Node {
  public:
-  AutowareController(const std::string& map_path, double tick_hz = 10.0);
+  explicit AutowareController(const std::string& map_path, double tick_hz = 10.0);
 
   ~AutowareController() override;
 
@@ -53,6 +56,9 @@ class AutowareController : public rclcpp::Node {
   // added for trip bridge to be able to use the private function trip_ctrl_
   TripStatus getTripStatusSync() const;
 
+  void setTripStateCallback(std::function<void(TripState, TripState)> cb);
+
+  void queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps, RouteQueryCallback callback);
  private:
   std::unique_ptr<RouteConfig> route_config_;
   std::unique_ptr<TripController> trip_ctrl_;
@@ -60,7 +66,7 @@ class AutowareController : public rclcpp::Node {
   double tick_hz_;
   std::shared_ptr<boost::asio::io_context> io_context_;
   std::shared_ptr<boost::asio::io_context::strand> strand_;
-  std::unique_ptr<boost::asio::io_context::work> work_guard_;
+  std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> work_guard_;
   std::thread io_thread_;
 
   void onTickTimer();
@@ -72,6 +78,8 @@ class AutowareController : public rclcpp::Node {
   void cancelTripImpl();
 
   void getTripStatusImpl(std::function<void(TripStatus)> callback) const;
+
+  std::function<void(TripState, TripState)> trip_state_callback_;
 };
 }  // namespace AutowareAgent
 #endif  // VEHICLEAUTOWAREAGENT_AUTOWARECONTROLLER_H

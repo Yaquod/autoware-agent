@@ -15,11 +15,15 @@
  */
 
 #include "AutowareController.h"
+#include "AutowareControllerProvider.h"
+#include "ClusterBridgeProvider.h"
 #include "Config.h"
+#include "VehicleGatewayService.h"
 #include "cluster_bridge/include/ClusterBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
+#include "AutowareApp.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -41,60 +45,14 @@ int main(int argc, char** argv) {
 
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
-  zenoh::init_log_from_env_or("debug");
 
-  auto zconfig = zenoh::Config::create_default();
-  zconfig.insert_json5("scouting/multicast/enabled", "false");
+  std::string const YAML_PATH = std::string(autoware_agent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  autoware_agent::AppHandles app = autoware_agent::startAutowareApp(YAML_PATH);
 
-  zconfig.insert_json5("transport/shared_memory/enabled", "false");
-
-  zconfig.insert_json5("listen/endpoints", R"(["udp/0.0.0.0:7447"])");
-
-  auto zsession = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(zconfig)));
-
-  std::string const YAML_PATH =
-    std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
-
-  RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
-              YAML_PATH.c_str());
-  spdlog::info("[AutowareAgent] Yaml configs loaded : {}", YAML_PATH);
-
-  // Create controller
-  auto controller = std::make_shared<AutowareAgent::AutowareController>(YAML_PATH, 10.0);
-
-  controller->initialize();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-  RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Controller ready");
-  spdlog::info("[AutowareAgent] Controller ready");
-
-  auto node = std::static_pointer_cast<rclcpp::Node>(controller);
-
-  auto cluster_bridge =
-    std::make_shared<ClusterBridge>(std::static_pointer_cast<rclcpp::Node>(controller), zsession);
-
-  auto planning_bridge = std::make_shared<PlanningBridge>(node, zsession);
-
-  auto perception_bridge = std::make_shared<PerceptionBridge>(node, zsession);
-
-  auto trip_bridge = std::make_shared<TripBridge>(controller, node, zsession);
-
-  std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
-
-  while (!g_shutdown_requested.load()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
+  while (!g_shutdown_requested.load()) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
 
   rclcpp::shutdown();  // signals rclcpp::spin() to exit
-  if (ros_thread.joinable()) {
-    ros_thread.join();
-  }
-
-  planning_bridge->shutdown();
-  perception_bridge->shutdown();
-  trip_bridge->shutdown();
-  cluster_bridge->shutdown();
+  autoware_agent::stopAutowareApp(app);
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");

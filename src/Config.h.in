@@ -17,7 +17,7 @@
 #pragma once
 #include <string_view>
 
-namespace AutowareAgent {
+namespace autoware_agent {
 constexpr std::string_view SRC_MAP_DIR = "@CMAKE_SOURCE_DIR@/src/map_routes";
 constexpr std::string_view TEST_MAP_DIR = "@CMAKE_SOURCE_DIR@/tests/unit";
 constexpr std::string_view INSTALL_MAP_DIR = "@CMAKE_INSTALL_PREFIX@/share/autoware_agent/maps";

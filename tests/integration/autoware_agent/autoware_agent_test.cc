@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace AutowareAgent;
+using namespace autoware_agent;
 
 class AutowareAgentTest : public ::testing::Test {
  protected:
@@ -113,13 +113,13 @@ TEST_F(AutowareAgentTest, FindNearestLane) {
   //   gps: { latitude: 35.68816945289868, longitude: 139.69425702193618 }
   GPSCoordinate near_lane_1{35.68816945289868, 139.69425702193618};
 
-  const LaneInfo* lane = config.FindNearestLane(near_lane_1);
+  const LaneInfo* lane = config.findNearestLane(near_lane_1);
   ASSERT_NE(lane, nullptr) << "FindNearestLane should return a lane";
   EXPECT_EQ(lane->lane_id, 1) << "Should snap to lane 1 (exact GPS match)";
 
   // Try a point that's slightly offset — it should still snap to the nearest
   GPSCoordinate offset{35.6882, 139.6943};
-  lane = config.FindNearestLane(offset);
+  lane = config.findNearestLane(offset);
   ASSERT_NE(lane, nullptr);
 }
 

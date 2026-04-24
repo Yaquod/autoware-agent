@@ -36,7 +36,7 @@
 #include <gtest/gtest.h>
 #include <zenoh.hxx>
 
-using namespace AutowareAgent;
+using namespace autoware_agent;
 using namespace std::chrono_literals;
 
 class FullTripTest : public ::testing::Test {

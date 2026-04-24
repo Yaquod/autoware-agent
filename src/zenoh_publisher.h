@@ -23,7 +23,7 @@
 
 #include <zenoh.hxx>
 
-namespace AutowareAgent {
+namespace autoware_agent {
 
 class ZenohPublisher {
  public:

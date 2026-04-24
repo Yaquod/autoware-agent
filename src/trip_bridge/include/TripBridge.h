@@ -39,9 +39,9 @@
 
 #include <tier4_system_msgs/msg/diag_graph_status.hpp>
 
-class TripBridge : public AutowareAgent::ZenohPublisher {
+class TripBridge : public autoware_agent::ZenohPublisher {
  public:
-  explicit TripBridge(std::shared_ptr<AutowareAgent::AutowareController> controller,
+  explicit TripBridge(std::shared_ptr<autoware_agent::AutowareController> controller,
                       rclcpp::Node::SharedPtr node,
                       const std::shared_ptr<zenoh::Session>& zsession);
 
@@ -72,7 +72,7 @@ class TripBridge : public AutowareAgent::ZenohPublisher {
   // added to see if system alive
   rclcpp::Time last_heartbeat_time_;
   // added to be able to access tripcontroller::status
-  std::shared_ptr<AutowareAgent::AutowareController> controller_;
+  std::shared_ptr<autoware_agent::AutowareController> controller_;
 
   // ros
   rclcpp::Node::SharedPtr node_;
@@ -87,21 +87,21 @@ class TripBridge : public AutowareAgent::ZenohPublisher {
 
   // ROS callbacks that would be posted on strand
   void onLocalizationState(
-    const autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr msg);
-  void onOperationMode(const autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg);
-  void onMrmState(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
-  void onHeartbeat(const autoware_adapi_v1_msgs::msg::Heartbeat::SharedPtr msg);
-  void onDiagState(const tier4_system_msgs::msg::DiagGraphStatus::SharedPtr msg);
+    autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr msg);
+  void onOperationMode(autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg);
+  void onMrmState(autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
+  void onHeartbeat(autoware_adapi_v1_msgs::msg::Heartbeat::SharedPtr msg);
+  void onDiagState(tier4_system_msgs::msg::DiagGraphStatus::SharedPtr msg);
 
   // TODO: complete functions
 
   // strand implementation
   void onLocalizationStateImpl(
-    const autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr msg);
-  void onOperationModeImpl(const autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg);
-  void onMrmStateImpl(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
-  void onHeartbeatImpl(const autoware_adapi_v1_msgs::msg::Heartbeat::SharedPtr msg);
-  void onDiagStateImpl(const tier4_system_msgs::msg::DiagGraphStatus::SharedPtr msg);
+    autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr msg);
+  void onOperationModeImpl(autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg);
+  void onMrmStateImpl(autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg);
+  void onHeartbeatImpl(autoware_adapi_v1_msgs::msg::Heartbeat::SharedPtr msg);
+  void onDiagStateImpl(tier4_system_msgs::msg::DiagGraphStatus::SharedPtr msg);
 
   // TODO: complete functions
   static vehicle_frame::LocalizationState toLocalizationState(uint16_t v);
@@ -111,4 +111,4 @@ class TripBridge : public AutowareAgent::ZenohPublisher {
   static vehicle_frame::MrmBehavior toMrmBehavior(uint8_t v);
 };
 
-#endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H
+#endif  // VEHICLEAUTOWAREAGENT_TRIPBRIDGE_H

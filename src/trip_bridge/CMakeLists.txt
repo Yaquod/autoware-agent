@@ -20,6 +20,7 @@ target_link_libraries(trip_bridge
 
         PUBLIC ${autoware_planning_msgs_TARGETS}
         PUBLIC ${tier4_external_api_msgs_TARGETS}
+        PUBLIC autoware_controller
         PUBLIC map_routes_lib
         PUBLIC config_header
         PUBLIC fmt::fmt

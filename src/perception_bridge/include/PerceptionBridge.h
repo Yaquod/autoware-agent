@@ -34,7 +34,7 @@
 
 #include <zenoh.hxx>
 
-class PerceptionBridge : public AutowareAgent::ZenohPublisher {
+class PerceptionBridge : public autoware_agent::ZenohPublisher {
  public:
   explicit PerceptionBridge(rclcpp::Node::SharedPtr node,
                             const std::shared_ptr<zenoh::Session>& zsession);

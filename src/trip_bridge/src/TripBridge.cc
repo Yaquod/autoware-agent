@@ -18,7 +18,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 
-TripBridge::TripBridge(std::shared_ptr<AutowareAgent::AutowareController> controller,
+TripBridge::TripBridge(std::shared_ptr<autoware_agent::AutowareController> controller,
                        rclcpp::Node::SharedPtr node,
                        const std::shared_ptr<zenoh::Session>& zsession)
   : ZenohPublisher(zsession, "autoware/trip")
@@ -281,9 +281,9 @@ vehicle_frame::TripState TripBridge::toTripState(TripState v) {
       return vehicle_frame::TRIP_PUBLISHING_INITIAL_POSE;
     case TripState::WAITING_LOCALISATION:
       return vehicle_frame::TRIP_WAITING_LOCALISATION;
-    case TripState::PUBLISHING_GOAL:
+    case TripState::QUERY_PUBLISHING_GOAL:
       return vehicle_frame::TRIP_PUBLISHING_GOAL;
-    case TripState::WAITING_ROUTE:
+    case TripState::QUERY_WAITING_ROUTE:
       return vehicle_frame::TRIP_WAITING_ROUTE;
     case TripState::ENGAGING:
       return vehicle_frame::TRIP_ENGAGING;

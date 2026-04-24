@@ -19,15 +19,17 @@
 
 #include "TripStates.h"
 #include "map_routes/RouteConfig.h"
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
 
 #include <chrono>
+namespace autoware_agent {
 
 struct TripStatus {
   TripState state{TripState::IDLE};
   std::string start_lanelet_id;
   double start_x{0.0}, start_y{0.0}, start_z{0.0};
   double start_qw{0.0}, start_qz{0.0};
-  AutowareAgent::GPSCoordinate goal_gps{0.0, 0.0};
+  autoware_agent::GPSCoordinate goal_gps{0.0, 0.0};
   std::string goal_lanelet_id;
   double goal_x{0.0}, goal_y{0.0}, goal_z{0.0};
   double goal_qw{0.0}, goal_qz{0.0};
@@ -36,4 +38,27 @@ struct TripStatus {
   std::chrono::steady_clock::time_point last_state_change;
 };
 
+struct LegEta {
+  bool        success {false};
+  double      distance_m {0.0};
+  double      eta_seconds {0.0};
+  std::string start_lane_id;
+  std::string goal_lane_id;
+  std::string error_message;
+};
+
+struct EtaQueryResult {
+  bool    success {false};
+  LegEta  pickup_leg;
+  LegEta  trip_leg;
+  std::string error_message;
+};
+
+struct HeldRoute {
+  autoware_planning_msgs::msg::LaneletRoute route;
+  double eta_seconds  = 0.0;
+  double distance_m   = 0.0;
+  GPSCoordinate goal_gps{0.0, 0.0};
+};
+}
 #endif  // VEHICLEAUTOWAREAGENT_TRIPSTATUS_H

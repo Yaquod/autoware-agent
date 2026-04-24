@@ -47,13 +47,19 @@
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 #include <tier4_vehicle_msgs/msg/battery_status.hpp>
 
-class ClusterBridge : public AutowareAgent::ZenohPublisher {
+class ClusterBridge : public autoware_agent::ZenohPublisher {
  public:
   explicit ClusterBridge(rclcpp::Node::SharedPtr node,
                          const std::shared_ptr<zenoh::Session>& zsession);
 
   ~ClusterBridge();
+
   void shutdown();
+
+  const FrameState& GetState()      const { return state_; }
+  std::mutex&       GetStateMutex()       { return state_mtx_; }
+  int64_t&          GetRequestId()        { return current_request_id_; }
+  boost::asio::io_context& GetIoContext() { return io_context_; }
 
  private:
   std::atomic<bool> shutdown_called_{false};
@@ -65,6 +71,8 @@ class ClusterBridge : public AutowareAgent::ZenohPublisher {
   boost::asio::steady_timer publisher_timer_;
   FrameState state_;
   uint64_t frame_seq_{0};
+  std::mutex state_mtx_;
+  int64_t current_request_id_{0};
 
   void scheduleNextTick();
   void onTick();
@@ -109,7 +117,6 @@ class ClusterBridge : public AutowareAgent::ZenohPublisher {
   void onVelocity(autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg);
   void onGear(autoware_vehicle_msgs::msg::GearReport::SharedPtr msg);
   void onMotionState(autoware_adapi_v1_msgs::msg::MotionState::SharedPtr msg);
-  void onOperationModeState(autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr msg);
   void onSteering(autoware_vehicle_msgs::msg::SteeringReport::SharedPtr msg);
   void onTurnIndicators(autoware_vehicle_msgs::msg::TurnIndicatorsReport::SharedPtr msg);
   void onHazardLights(autoware_vehicle_msgs::msg::HazardLightsReport::SharedPtr msg);

@@ -37,11 +37,11 @@
 #include <functional>
 #include <memory>
 
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include <tier4_external_api_msgs/srv/engage.hpp>
 
-namespace AutowareAgent {
-
-using StateChangeCb = std::function<void(TripState prev, TripState next)>;
+namespace autoware_agent {
 
 class TripController {
  public:
@@ -49,29 +49,55 @@ class TripController {
                  std::shared_ptr<boost::asio::io_context::strand> strand,
                  TripTimings timings = TripTimings{});
 
-  bool startTrip(GPSCoordinate goal_gps);
+  using EtaQueryCallback  = std::function<void(EtaQueryResult)>;
+  using StateChangeCb     = std::function<void(TripState, TripState)>;
+
+  /**
+   * @brief Pops the pickup route from the bank, localises the vehicle at start_gps,
+   * and engages.  When the vehicle arrives.  Requires queryEta() to have been called first to
+   * populate the route bank.
+   * @return Returns success or failure.
+   */
+  bool startTrip();
+
   void cancel();
+
   void tick();
 
   TripStatus status() const;
+
   void setStateChangeCallback(StateChangeCb cb);
 
+  /**
+   * @brief Drives the localisation, goal-publishing pipeline up to WAITING_ROUTE, waits for Autoware to confirm the route is SET, then reads segment data to compute an ETA.
+   * @param start_gps GPS coordinate for localising the vehicle at the start of the trip.
+   * @param goal_gps Goal set for destination need to go.
+   * @param cb A callback for the full Query data.
+   * @return Returns success or failure.
+   */
+  bool queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps, EtaQueryCallback cb);
+
+  /**
+   * @brief Called when the TripMove RPC arrives.  Pops the trip-leg route from
+   * the bank and engages to drive to the final goal.
+   * @return Returns success or failure.
+   */
+  bool move();
+
+  /**
+   * @brief ETA injection called by ClusterBridge Impl.
+   * @param distance_m Distance to be moved.
+   * @param time_seconds Time that car needs to reach goal.
+   */
+  void injectEta(double distance_m, double time_seconds);
+
  private:
-  void doPublishInitialPose();
-  void doPublishGoal();
-  void doPollRoute();
-  void doEngage();
-
-  // FIXED: Changed parameter type to match subscription
-  void onRouteReceived(const autoware_planning_msgs::msg::LaneletRoute& msg);
-
-  void transitionTo(TripState next);
-  long elapsed_ms(std::chrono::steady_clock::time_point since);
-
   rclcpp::Node::SharedPtr node_;
   const RouteConfig& route_config_;
   std::shared_ptr<boost::asio::io_context::strand> strand_;
   TripTimings timings_;
+  std::thread io_thread_;
+  double              assumed_speed_ms_ {8.33}; // ~30 km/h
 
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
@@ -87,6 +113,12 @@ class TripController {
   autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr current_loc_state_;
   autoware_adapi_v1_msgs::msg::RouteState::SharedPtr current_route_state_;
   autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr current_mode_state_;
+  autoware_planning_msgs::msg::LaneletRoute::SharedPtr      last_route_;
+
+  std::shared_ptr<tf2_ros::Buffer>            tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
+
 
   std::chrono::steady_clock::time_point last_publish_time_;
 
@@ -94,6 +126,37 @@ class TripController {
   StateChangeCb on_state_change_;
   std::chrono::steady_clock::time_point state_entered_at_;
   bool route_received_ = false;
+
+  enum class QueryLeg { PICKUP, TRIP };
+
+  bool             querying_       = false;
+  QueryLeg         current_leg_    = QueryLeg::PICKUP;
+  GPSCoordinate    query_start_gps_{0.0, 0.0};
+  GPSCoordinate    query_goal_gps_ {0.0, 0.0};
+  EtaQueryCallback query_cb_;
+  EtaQueryResult   query_result_;
+
+  bool   eta_received_  = false;
+  double eta_distance_m_ = 0.0;
+  double eta_seconds_    = 0.0;
+
+  std::optional<HeldRoute> pickup_route_;
+  std::optional<HeldRoute> trip_route_;
+
+  void doPublishInitialPose(double x, double y, double z, double qz, double qw);
+  void doPublishGoal(double x, double y, double z, double qz, double qw);
+  void doEngage();
+
+  void onRouteReceived(const autoware_planning_msgs::msg::LaneletRoute& msg);
+
+  void transitionTo(TripState next);
+  void startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps);
+  void finishQueryLeg();
+  void failQuery(const std::string& reason);
+
+  // Resolve current vehicle pose from /tf
+  std::optional<GPSCoordinate> getCurrentVehiclePose() const;
+  static long elapsed_ms(std::chrono::steady_clock::time_point since);
 };
 
 }  // namespace AutowareAgent

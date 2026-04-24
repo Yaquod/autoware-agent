@@ -32,15 +32,98 @@ service PlanningService {
 }
 
 // Service for trip management (based on the original VehicleGateway)
-service TripService {
-  rpc VehicleLogin(LoginRequest) returns (LoginResponse);
+service VehicleGateway {
+
   rpc SendEta(EtaRequest) returns (EtaResponse);
   rpc SendStatus(StatusRequest) returns (StatusResponse);
-  rpc SendArrive(ArriveRequest) returns (ArriveResponse);
-  rpc StartTrip(StartTripRequest) returns (StartTripResponse);
-  rpc CancelTrip(TripCommand) returns (CancelTripResponse);
-  rpc GetTripStatus(TripStatusRequest) returns (TripStatusResponse);
-  rpc StreamTripUpdates(stream TripUpdate) returns (google.protobuf.Empty);
+  rpc SendArrive(ArriveRequest)returns (ArriveResponse);
+  rpc UpdateVehicleLocation(UpdateVehicleLocationRequest) returns (UpdateVehicleLocationResponse);
+  rpc TripInit(TripInitRequest) returns (TripInitResponse);
+  rpc TripMove(TripMoveRequest) returns (TripMoveResponse);
+}
+
+message EtaRequest
+{
+  string vin_number = 1;
+  int64 request_id = 2;
+  double time = 3;
+  double fare = 4;
+}
+
+message EtaResponse
+{
+  bool success = 1;
+  string message = 2;
+}
+
+
+
+
+message StatusRequest
+{
+  string vin_number = 1;
+  int64 trip_id = 2;
+  string status = 3;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ArriveRequest{
+  string vin_number = 1;
+  int64 trip_id = 2;
+  double long = 3;
+  double lat = 4;
+}
+
+message ArriveResponse{
+  bool success = 1;
+  string message = 2;
+}
+
+
+
+
+message UpdateVehicleLocationRequest
+{
+  string vinNumber = 1;
+  double longitude = 2;
+  double latitude = 3;
+}
+
+message UpdateVehicleLocationResponse
+{
+  bool success = 1;
+  string message = 2;
+}
+
+
+message TripInitRequest {
+  string vin_number = 1;
+  int64 request_id = 2;
+  double start_long = 3;
+  double start_lat = 4;
+  double end_long = 5;
+  double end_lat = 6;
+}
+
+message TripInitResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message TripMoveRequest {
+  string vin_number = 1;
+  int64 trip_id = 2;
+  double longitude = 3;
+  double latitude = 4;
+}
+
+message TripMoveResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 service MapService {
@@ -227,42 +310,6 @@ message LoginRequest {
 }
 
 message LoginResponse {
-  bool success = 1;
-  string message = 2;
-}
-
-message EtaRequest {
-  string vin_number = 1;
-  string trip_id = 2;
-  double time = 3;
-  double fare = 4;
-}
-
-message EtaResponse {
-  bool success = 1;
-  string message = 2;
-}
-
-message StatusRequest
-{
-  string vin_number = 1;
-  string trip_id = 2;
-  string status = 3;
-}
-
-message StatusResponse {
-  bool success = 1;
-  string message = 2;
-}
-
-message ArriveRequest{
-  string vin_number = 1;
-  string trip_id = 2;
-  double long = 3;
-  double lat = 4;
-}
-
-message ArriveResponse{
   bool success = 1;
   string message = 2;
 }
