@@ -19,8 +19,8 @@
 namespace vehicle_gateway {
 
 VehicleGatewayClient::VehicleGatewayClient(const std::string& target_vm)
-  : stub_(vehicle_gateway::VehicleGateway::NewStub(grpc::CreateChannel(target_vm, grpc::InsecureChannelCredentials())))
-{
+  : stub_(vehicle_gateway::VehicleGateway::NewStub(
+      grpc::CreateChannel(target_vm, grpc::InsecureChannelCredentials()))) {
   // start completion queue to be ready for the first call
   cq_thread_ = std::thread(&VehicleGatewayClient::RunCompletionQueue, this);
 }
@@ -30,10 +30,10 @@ VehicleGatewayClient::~VehicleGatewayClient() {
 }
 
 void VehicleGatewayClient::ShutDown() {
-    cq_.Shutdown();
-    if (cq_thread_.joinable()) {
-      cq_thread_.join();
-    }
+  cq_.Shutdown();
+  if (cq_thread_.joinable()) {
+    cq_thread_.join();
+  }
 }
 
 void VehicleGatewayClient::RunCompletionQueue() {
@@ -54,17 +54,16 @@ void VehicleGatewayClient::RunCompletionQueue() {
 
 void VehicleGatewayClient::SendEta(const vehicle_gateway::EtaRequest& request,
                                    EtaCallback callback) {
-  using Call = AsyncCall<EtaResponse,EtaCallback>;
+  using Call = AsyncCall<EtaResponse, EtaCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncSendEta(&call->context, request, &cq_);
   call->reader->Finish(&call->response, &call->status, static_cast<void*>(call));
-
 }
 
 void VehicleGatewayClient::SendArrive(const vehicle_gateway::ArriveRequest& request,
                                       ArriveCallback callback) {
-  using Call = AsyncCall<ArriveResponse,ArriveCallback>;
+  using Call = AsyncCall<ArriveResponse, ArriveCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncSendArrive(&call->context, request, &cq_);
@@ -73,7 +72,7 @@ void VehicleGatewayClient::SendArrive(const vehicle_gateway::ArriveRequest& requ
 
 void VehicleGatewayClient::SendStatus(const vehicle_gateway::StatusRequest& request,
                                       StatusCallback callback) {
-  using Call = AsyncCall<StatusResponse,StatusCallback>;
+  using Call = AsyncCall<StatusResponse, StatusCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncSendStatus(&call->context, request, &cq_);
@@ -82,7 +81,7 @@ void VehicleGatewayClient::SendStatus(const vehicle_gateway::StatusRequest& requ
 
 void VehicleGatewayClient::TripInit(const vehicle_gateway::TripInitRequest& request,
                                     TripInitCallback callback) {
-  using Call = AsyncCall<TripInitResponse,TripInitCallback>;
+  using Call = AsyncCall<TripInitResponse, TripInitCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncTripInit(&call->context, request, &cq_);
@@ -91,7 +90,7 @@ void VehicleGatewayClient::TripInit(const vehicle_gateway::TripInitRequest& requ
 
 void VehicleGatewayClient::TripMove(const vehicle_gateway::TripMoveRequest& request,
                                     TripMoveCallback callback) {
-  using Call = AsyncCall<TripMoveResponse,TripMoveCallback>;
+  using Call = AsyncCall<TripMoveResponse, TripMoveCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncTripMove(&call->context, request, &cq_);
@@ -100,11 +99,11 @@ void VehicleGatewayClient::TripMove(const vehicle_gateway::TripMoveRequest& requ
 
 void VehicleGatewayClient::UpdateVehicleLocation(
   const vehicle_gateway::UpdateVehicleLocationRequest& request, UpdateLocationCallback callback) {
-  using Call = AsyncCall<UpdateVehicleLocationResponse,UpdateLocationCallback>;
+  using Call = AsyncCall<UpdateVehicleLocationResponse, UpdateLocationCallback>;
   auto* call = new Call;
   call->callback = std::move(callback);
   call->reader = stub_->AsyncUpdateVehicleLocation(&call->context, request, &cq_);
   call->reader->Finish(&call->response, &call->status, static_cast<void*>(call));
 }
 
-} // namespace vehicle_gateway
+}  // namespace vehicle_gateway

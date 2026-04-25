@@ -19,38 +19,38 @@
 #include <string>
 
 struct EtaData {
-  int64_t request_id;
-  double  time_seconds;   // remaining seconds from MissionRemainingDistanceTime
-  double  fare;           // computed externally; 0.0 if not yet known
+  int64_t request_id{0};
+  double time_seconds{0.0};  // remaining seconds from MissionRemainingDistanceTime
+  double fare{0.0};          // computed externally; 0.0 if not yet known
 };
 
 struct LocationData {
-  double longitude;
-  double latitude;
+  double longitude{0.0};
+  double latitud{0.0};
 };
 
 struct TripInitData {
-  int64_t request_id;
-  double  start_long;
-  double  start_lat;
-  double  end_long;
-  double  end_lat;
+  int64_t request_id{0};
+  double start_long{0.0};
+  double start_lat{0.0};
+  double end_long{0.0};
+  double end_lat{0.0};
 };
 
 struct TripMoveData {
-  int64_t trip_id;
-  double  longitude;
-  double  latitude;
+  int64_t trip_id{0};
+  double longitude{0.0};
+  double latitude{0.0};
 };
 
 struct ArriveData {
-  int64_t trip_id;
-  double  longitude;
-  double  latitude;
+  int64_t trip_id{0};
+  double longitude{0.0};
+  double latitude{0.0};
 };
 
 class IEtaProvider {
-public:
+ public:
   virtual ~IEtaProvider() = default;
 
   virtual EtaData GetEta() = 0;
@@ -64,37 +64,38 @@ class ILocationProvider {
 };
 
 class ITripManager {
-public:
+ public:
   virtual ~ITripManager() = default;
 
   /**
-     * Reads start/end coordinates and request_id from the current
-     * TripStatus (populated when AutowareController::startTrip() is called).
-     */
+   * Reads start/end coordinates and request_id from the current
+   * TripStatus (populated when AutowareController::startTrip() is called).
+   */
   virtual TripInitData GetTripInitData() = 0;
 
   /**
-     * Returns the current vehicle position *during* an active trip.
-     * Typically delegates to ILocationProvider internally, or reads from
-     * the same odometry state that ClusterBridge maintains.
-     */
+   * Returns the current vehicle position *during* an active trip.
+   * Typically delegates to ILocationProvider internally, or reads from
+   * the same odometry state that ClusterBridge maintains.
+   */
   virtual TripMoveData GetTripMoveData() = 0;
 
   /**
-     * Returns the position snapshot at the moment the trip ended.
-     * Should be the destination coordinates stored in TripStatus.
-     */
+   * Returns the position snapshot at the moment the trip ended.
+   * Should be the destination coordinates stored in TripStatus.
+   */
   virtual ArriveData GetArriveData() = 0;
 
   /**
-     * Maps the current TripState enum value to a server status string.
-     * E.g. TripState::DRIVING → "in_progress",
-     *      TripState::ARRIVED → "completed".
-     */
+   * Maps the current TripState enum value to a server status string.
+   * E.g. TripState::DRIVING → "in_progress",
+   *      TripState::ARRIVED → "completed".
+   */
   virtual std::string GetCurrentStatus() = 0;
 
   /** Server-side trip ID assigned at TripInit response time. */
   virtual int64_t GetActiveTripId() = 0;
+  virtual void SetActiveTripId(int64_t id) = 0;
 };
 
 #endif  // VEHICLE_AUTOWARE_AGENT_PROVIDERS_H

@@ -19,45 +19,47 @@
 
 #include "FrameStates.h"
 #include "Providers.h"
+
 #include <mutex>
 
 namespace vehicle_gateway {
 
 class ClusterEtaAdapter : public IEtaProvider {
  public:
-  ClusterEtaAdapter(const FrameState& state,
-                      std::mutex&       state_mtx,
-                      int64_t&          request_id)
-        : state_(state), mtx_(state_mtx), request_id_(request_id) {}
+  ClusterEtaAdapter(const FrameState& state, std::mutex& state_mtx, int64_t& request_id)
+    : state_(state)
+    , mtx_(state_mtx)
+    , request_id_(request_id) {}
 
   EtaData GetEta() override {
     std::lock_guard<std::mutex> lock(mtx_);
     return EtaData{
-      .request_id   = request_id_,
+      .request_id = request_id_,
       .time_seconds = static_cast<double>(state_.remaining_time_s),
-      .fare         = 0.0    // Cloud should takeover pricing
-  };
+      .fare = 0.0  // Cloud should takeover pricing
+    };
   }
 
-private:
+ private:
   const FrameState& state_;
-  std::mutex&       mtx_;
-  int64_t&          request_id_;
+  std::mutex& mtx_;
+  int64_t& request_id_;
 };
 
 class ClusterLocationAdapter : public ILocationProvider {
-public:
-  ClusterLocationAdapter(const FrameState& state,
-                      std::mutex& state_mtx): state_(state),mtx_(state_mtx){}
+ public:
+  ClusterLocationAdapter(const FrameState& state, std::mutex& state_mtx)
+    : state_(state)
+    , mtx_(state_mtx) {}
 
   LocationData GetCurrentLocation() override {
     std::lock_guard<std::mutex> lock(mtx_);
-    return LocationData{ .longitude = state_.longitude,
-                         .latitude  = state_.latitude };
+    return LocationData{.longitude = state_.longitude, .latitud = state_.latitude};
   }
-private:
+
+ private:
   const FrameState& state_;
-  std::mutex&       mtx_;
+  std::mutex& mtx_;
 };
-}
+}  // namespace vehicle_gateway
 #endif  // VEHICLE_AUTOWARE_AGENT_CLUSTERBRIDGEPROVIDER_H

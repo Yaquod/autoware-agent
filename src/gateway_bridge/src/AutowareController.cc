@@ -41,8 +41,9 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
 
   io_context_ = std::make_shared<boost::asio::io_context>();
   strand_ = std::make_shared<boost::asio::io_context::strand>(*io_context_);
-  work_guard_ = std::make_unique <boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
-    io_context_->get_executor());
+  work_guard_ =
+    std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
+      io_context_->get_executor());
 }
 
 AutowareController::~AutowareController() {
@@ -58,51 +59,63 @@ AutowareController::~AutowareController() {
 }
 
 void AutowareController::initialize() {
-  boost::asio::post(*strand_,[this]() {
+  boost::asio::post(*strand_, [this]() {
     trip_ctrl_ = std::make_unique<TripController>(shared_from_this(), *route_config_, strand_);
 
     trip_ctrl_->setStateChangeCallback(
       [this](TripState prev, TripState next) { onTripStateChanged(prev, next); });
 
+    trip_ctrl_->setArrivalCallbacks(
+      // Pickup arrived
+      [this]() {
+        if (arrival_callback_) {
+          arrival_callback_(ArrivalKind::PICKUP);
+        }
+      },
+      // Dropoff arrived
+      [this]() {
+        if (arrival_callback_) {
+          arrival_callback_(ArrivalKind::DROPOFF);
+        }
+      });
+
+    trip_ctrl_->initializeInMap();
+
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Initialization complete");
     spdlog::info("[AutowareAgent] Initialization complete");
   });
 
-  int period_timer = static_cast<int>(1000.0 / tick_hz_);
-  tick_timer_ = create_wall_timer(std::chrono::milliseconds(period_timer),
-                                  [this]() { boost::asio::post(*strand_,[this]() { onTickTimer(); }); });
+  const int PERIOD_MS = static_cast<int>(1000.0 / tick_hz_);
+  tick_timer_ = create_wall_timer(std::chrono::milliseconds(PERIOD_MS), [this]() {
+    boost::asio::post(*strand_, [this]() { onTickTimer(); });
+  });
 
   io_thread_ = std::thread([this]() { io_context_->run(); });
 }
 
-void AutowareController::startTrip(double latitude, double longitude,
-                                   std::function<void(bool)> callback) {
-  boost::asio::post(*strand_,
-    [this, latitude, longitude, callback]() { startTripImpl(latitude, longitude, callback); });
+void AutowareController::startTrip(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { startTripImpl(callback); });
 }
 
-void AutowareController::startTripImpl(double latitude, double longitude,
-                                       std::function<void(bool)> callback) {
+void AutowareController::move(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { moveImpl(callback); });
+}
+
+void AutowareController::startTripImpl(std::function<void(bool)> callback) {
   if (!trip_ctrl_) {
-    RCLCPP_ERROR(get_logger(),
-                 "[AutowareAgent] TripController not initialized. Call "
-                 "initialize() first.");
-    spdlog::error(
-      "[AutowareAgent] TripController not initialized. Call initialize() "
-      "first.");
-    if (callback) {
+    RCLCPP_ERROR(get_logger(), "[AutowareAgent] startTrip called before initialize()");
+    spdlog::error("[AutowareAgent] startTrip called before initialize()");
+    if (callback)
       callback(false);
-    }
     return;
   }
-  bool result = trip_ctrl_->startTrip();
-  if (callback) {
-    callback(result);
-  }
+  bool ok = trip_ctrl_->startTrip();
+  if (callback)
+    callback(ok);
 }
 
 void AutowareController::cancelTrip() {
-  boost::asio::post(*strand_,[this]() { cancelTripImpl(); });
+  boost::asio::post(*strand_, [this]() { cancelTripImpl(); });
 }
 
 void AutowareController::cancelTripImpl() {
@@ -112,26 +125,29 @@ void AutowareController::cancelTripImpl() {
 }
 
 void AutowareController::getTripStatus(std::function<void(TripStatus)> callback) const {
-  boost::asio::post(*strand_,[this, callback]() { getTripStatusImpl(callback); });
+  boost::asio::post(*strand_, [this, callback]() { getTripStatusImpl(callback); });
 }
 
 void AutowareController::getTripStatusImpl(std::function<void(TripStatus)> callback) const {
   if (!trip_ctrl_) {
-    if (callback) {
+    if (callback)
       callback(TripStatus{});
-    }
     return;
   }
-  TripStatus status = trip_ctrl_->status();
-  if (callback) {
-    callback(status);
-  }
+  if (callback)
+    callback(trip_ctrl_->status());
 }
 
 void AutowareController::onTickTimer() {
-  if (trip_ctrl_) {
-    trip_ctrl_->tick();
+  if (!trip_ctrl_)
+    return;
+
+  auto pose = trip_ctrl_->getCurrentVehiclePose();
+  if (pose.has_value()) {
+    trip_ctrl_->setCurrentGps(*pose);
   }
+
+  trip_ctrl_->tick();
 }
 
 void AutowareController::onTripStateChanged(TripState prev, TripState next) {
@@ -139,6 +155,8 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
     switch (s) {
       case TripState::IDLE:
         return "IDLE";
+      case TripState::INITIALIZING_IN_MAP:
+        return "INITIALIZING_IN_MAP";
       case TripState::QUERY_PUBLISHING_INITIAL_POSE:
         return "QUERY_PUBLISHING_INITIAL_POSE";
       case TripState::QUERY_WAITING_LOCALISATION:
@@ -169,8 +187,9 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
         return "CANCELLED";
       case TripState::FAILED:
         return "FAILED";
+      default:
+        return "UNKNOWN";
     }
-    return "UNKNOWN";
   };
 
   RCLCPP_INFO(get_logger(), "[AutowareAgent] %s -> %s", name(prev), name(next));
@@ -180,50 +199,63 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
     trip_state_callback_(prev, next);
   }
 
-  // Special handling for important transitions
   if (next == TripState::FAILED) {
-    RCLCPP_ERROR(get_logger(), "[AutowareAgent] FAILURE Trip failed");
-    spdlog::error("[AutowareAgent] FAILURE Trip failed");
+    RCLCPP_ERROR(get_logger(), "[AutowareAgent] Trip FAILED");
+    spdlog::error("[AutowareAgent] Trip FAILED");
   }
 
-  // When the trip becomes RUNNING or the vehicle is driving to pickup, log lane info
   if ((next == TripState::RUNNING || next == TripState::DRIVING_TO_PICKUP) && trip_ctrl_) {
     auto st = trip_ctrl_->status();
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Trip live: lane %s → lane %s",
-                st.start_lanelet_id.c_str(), st.goal_lanelet_id.c_str());
-    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}", st.start_lanelet_id,
-                 st.goal_lanelet_id);
+                st.start_lanelet_id_.c_str(), st.goal_lanelet_id_.c_str());
+    spdlog::info("[AutowareAgent] Trip live: lane {} → lane {}", st.start_lanelet_id_,
+                 st.goal_lanelet_id_);
   }
 
-  // If the routes are ready, provide a short info message about the planned route
   if (next == TripState::ROUTES_READY && trip_ctrl_) {
     auto st = trip_ctrl_->status();
-    RCLCPP_INFO(get_logger(), "[AutowareAgent] Routes ready: start=%s goal=%s",
-                st.start_lanelet_id.c_str(), st.goal_lanelet_id.c_str());
-    spdlog::info("[AutowareAgent] Routes ready: start={} goal={}", st.start_lanelet_id,
-                 st.goal_lanelet_id);
+    RCLCPP_INFO(get_logger(), "[AutowareAgent] Routes ready: pickup=%s goal=%s",
+                st.start_lanelet_id_.c_str(), st.goal_lanelet_id_.c_str());
+    spdlog::info("[AutowareAgent] Routes ready: pickup={} goal={}", st.start_lanelet_id_,
+                 st.goal_lanelet_id_);
   }
 }
 
 TripStatus AutowareController::getTripStatusSync() const {
-  return trip_ctrl_->status();
+  return trip_ctrl_ ? trip_ctrl_->status() : TripStatus{};
 }
 
 void AutowareController::setTripStateCallback(std::function<void(TripState, TripState)> cb) {
-  // Store the external callback so onTripStateChanged() can forward events.
   trip_state_callback_ = std::move(cb);
 }
 
-void AutowareController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps, RouteQueryCallback callback) {
-  boost::asio::post(*strand_,[this, start_gps, goal_gps, cb = std::move(callback)]() mutable {
-      if (!trip_ctrl_) {
-        RCLCPP_ERROR(get_logger(),
-                     "[AutowareAgent] queryEta called before initialize()");
-        if (cb) cb(RouteQueryResult{ .success = false,
-                                     .error_message = "not initialized" });
-        return;
-      }
-      trip_ctrl_->queryEta(start_gps,goal_gps, std::move(cb));
-    });
+void AutowareController::setArrivalCallback(ArrivalCallback cb) {
+  arrival_callback_ = std::move(cb);
 }
-}  // namespace AutowareAgent
+
+void AutowareController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
+                                  RouteQueryCallback callback) {
+  boost::asio::post(*strand_, [this, start_gps, goal_gps, cb = std::move(callback)]() mutable {
+    if (!trip_ctrl_) {
+      if (cb)
+        cb(EtaQueryResult{.success_ = false, .error_message_ = "not initialized"});
+      return;
+    }
+    trip_ctrl_->queryEta(start_gps, goal_gps, std::move(cb));
+  });
+}
+
+void AutowareController::moveImpl(std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    if (callback) {
+      callback(false);
+    }
+    return;
+  }
+  bool const OK = trip_ctrl_->move();
+  if (callback) {
+    callback(OK);
+  }
+}
+
+}  // namespace autoware_agent

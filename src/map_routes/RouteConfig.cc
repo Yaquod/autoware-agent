@@ -18,11 +18,11 @@
 
 #include "Config.h"
 
-#include <math.h>
-
 #include <cstdlib>
 #include <filesystem>
 #include <stdexcept>
+
+#include <math.h>
 
 namespace fs = std::filesystem;
 
@@ -136,9 +136,10 @@ GPSCoordinate RouteConfig::localCoordinateToGps(const LocalCoordinate& local) co
   double lat = NAN;
   double lon = NAN;
   double alt = NAN;
-  PROJ.Reverse(local.x - map_origin_.local_x, local.y - map_origin_.local_y, local.z, lat, lon, alt);
+  PROJ.Reverse(local.x - map_origin_.local_x, local.y - map_origin_.local_y, local.z, lat, lon,
+               alt);
 
-  return {.latitude=lat, .longitude=lon};
+  return {.latitude = lat, .longitude = lon};
 }
 const LaneInfo* RouteConfig::findNearestLane(const GPSCoordinate& gps) const {
   LocalCoordinate const TARGET = gpsToLocalCoordinate(gps);
@@ -190,4 +191,4 @@ std::string RouteConfig::resolveConfigPath(const std::string& filename) {
   throw std::runtime_error("Could not find config file: " + filename);
 }
 
-}  // namespace AutowareAgent
+}  // namespace autoware_agent

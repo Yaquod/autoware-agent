@@ -89,16 +89,16 @@ void TripBridge::onTick() {
 
   // manage data comes from autoware controller
   auto status = controller_->getTripStatusSync();
-  state_.trip_state = toTripState(status.state);
-  state_.start_lanelet_id = status.start_lanelet_id;
-  state_.start_x = status.start_x;
-  state_.start_y = status.start_y;
-  state_.start_z = status.start_z;
-  state_.goal_lanelet_id = status.goal_lanelet_id;
-  state_.goal_x = status.goal_x;
-  state_.goal_y = status.goal_y;
-  state_.goal_z = status.goal_z;
-  state_.goal_distance_m = status.goal_distance_m;
+  state_.trip_state = toTripState(status.state_);
+  state_.start_lanelet_id = status.start_lanelet_id_;
+  state_.start_x = status.start_x_;
+  state_.start_y = status.start_y_;
+  state_.start_z = status.start_z_;
+  state_.goal_lanelet_id = status.goal_lanelet_id_;
+  state_.goal_x = status.goal_x_;
+  state_.goal_y = status.goal_y_;
+  state_.goal_z = status.goal_z_;
+  state_.goal_distance_m = status.goal_distance_m_;
 
   auto t0 = std::chrono::steady_clock::now();
   broadcastFrame(buildFrame());

@@ -15,28 +15,25 @@
  */
 #include "AutowareApp.h"
 
+#include "AutowareControllerProvider.h"
+#include "ClusterBridgeProvider.h"
 #include "Config.h"
 #include "VehicleGatewayService.h"
-#include "ClusterBridgeProvider.h"
-#include "AutowareControllerProvider.h"
-
 #include "cluster_bridge/include/ClusterBridge.h"
-#include "planning_bridge/include/PlanningBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
+#include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
-#include <zenoh.hxx>
 
 #include <spdlog/spdlog.h>
+#include <zenoh.hxx>
 
 using namespace std::chrono_literals;
 
 namespace autoware_agent {
 
-AppHandles startAutowareApp(const std::string& yaml_path,
-                           const std::string& server_addr_in,
-                           const std::shared_ptr<zenoh::Session>& zsession_in,
-                           double controller_route_search_radius)
-{
+AppHandles startAutowareApp(const std::string& yaml_path, const std::string& server_addr_in,
+                            const std::shared_ptr<zenoh::Session>& zsession_in,
+                            double controller_route_search_radius) {
   AppHandles h;
 
   // Prepare a zenoh session if none provided.
@@ -55,7 +52,8 @@ AppHandles startAutowareApp(const std::string& yaml_path,
 
   spdlog::info("[AutowareApp] Yaml configs loaded : {}", yaml_path);
 
-  h.controller_ = std::make_shared<autoware_agent::AutowareController>(yaml_path, controller_route_search_radius);
+  h.controller_ =
+    std::make_shared<autoware_agent::AutowareController>(yaml_path, controller_route_search_radius);
   h.controller_->initialize();
 
   // Small delay to let controller come up
@@ -69,33 +67,35 @@ AppHandles startAutowareApp(const std::string& yaml_path,
   h.trip_bridge_ = std::make_shared<TripBridge>(h.controller_, node, h.zsession_);
 
   auto eta_adapter = std::make_shared<vehicle_gateway::ClusterEtaAdapter>(
-                                h.cluster_bridge_->GetState(),
-                                h.cluster_bridge_->GetStateMutex(),
-                                h.cluster_bridge_->GetRequestId());
+    h.cluster_bridge_->GetState(), h.cluster_bridge_->GetStateMutex(),
+    h.cluster_bridge_->GetRequestId());
 
   auto loc_adapter = std::make_shared<vehicle_gateway::ClusterLocationAdapter>(
-                                h.cluster_bridge_->GetState(),
-                                h.cluster_bridge_->GetStateMutex());
+    h.cluster_bridge_->GetState(), h.cluster_bridge_->GetStateMutex());
 
-  auto trip_adapter = std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
+  auto trip_adapter =
+    std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
 
   h.gateway_ = std::make_shared<vehicle_gateway::VehicleGatewayService>(
-        SERVER_ADDR, eta_adapter, loc_adapter, trip_adapter, "yaqoud-001", h.cluster_bridge_->GetIoContext());
+    SERVER_ADDR, eta_adapter, loc_adapter, trip_adapter, "yaqoud-001",
+    h.cluster_bridge_->GetIoContext());
 
   // Register trip state callback
-  h.controller_->setTripStateCallback(
-        [gw = h.gateway_](TripState prev, TripState next) {
-            spdlog::info("[AutowareApp] TripState {} → {}", static_cast<int>(prev), static_cast<int>(next));
-            if (next == TripState::WAITING_FOR_MOVE) {
-                gw->ReportTripInit(); gw->ReportEta(); gw->ReportAccepted();
-            } else if (next == TripState::RUNNING) {
-                gw->ReportDriving();
-            } else if (next == TripState::COMPLETED) {
-                gw->ReportArrive(); gw->ReportCompleted();
-            } else if (next == TripState::FAILED) {
-                gw->ReportStatus(next == TripState::CANCELLED ? "cancelled" : "error");
-            }
-        });
+  h.controller_->setTripStateCallback([gw = h.gateway_](TripState prev, TripState next) {
+    spdlog::info("[AutowareApp] TripState {} → {}", static_cast<int>(prev), static_cast<int>(next));
+    if (next == TripState::WAITING_FOR_MOVE) {
+      gw->ReportTripInit();
+      gw->ReportEta();
+      gw->ReportAccepted();
+    } else if (next == TripState::RUNNING) {
+      gw->ReportDriving();
+    } else if (next == TripState::COMPLETED) {
+      gw->ReportArrive();
+      gw->ReportCompleted();
+    } else if (next == TripState::FAILED) {
+      gw->ReportStatus(next == TripState::CANCELLED ? "cancelled" : "error");
+    }
+  });
 
   // Start ROS spinner in a thread. Caller is responsible for calling rclcpp::shutdown()
   h.ros_thread_ = std::thread([c = h.controller_]() { rclcpp::spin(c); });
@@ -105,15 +105,24 @@ AppHandles startAutowareApp(const std::string& yaml_path,
   return h;
 }
 
-void stopAutowareApp(AppHandles& h)
-{
-  if (h.planning_bridge_) { h.planning_bridge_->shutdown(); }
-  if (h.perception_bridge_) { h.perception_bridge_->shutdown(); }
-  if (h.trip_bridge_) { h.trip_bridge_->shutdown(); }
-  if (h.cluster_bridge_) { h.cluster_bridge_->shutdown(); }
+void stopAutowareApp(AppHandles& h) {
+  if (h.planning_bridge_) {
+    h.planning_bridge_->shutdown();
+  }
+  if (h.perception_bridge_) {
+    h.perception_bridge_->shutdown();
+  }
+  if (h.trip_bridge_) {
+    h.trip_bridge_->shutdown();
+  }
+  if (h.cluster_bridge_) {
+    h.cluster_bridge_->shutdown();
+  }
 
   // Join the ros thread; caller should have invoked rclcpp::shutdown() so spin exits.
-  if (h.ros_thread_.joinable()) { h.ros_thread_.join(); }
+  if (h.ros_thread_.joinable()) {
+    h.ros_thread_.join();
+  }
 
   // Clear handles
   h.gateway_.reset();
@@ -125,6 +134,4 @@ void stopAutowareApp(AppHandles& h)
   h.zsession_.reset();
 }
 
-} // namespace AutowareAgent
-
-
+}  // namespace autoware_agent

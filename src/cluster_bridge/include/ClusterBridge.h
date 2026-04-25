@@ -56,10 +56,18 @@ class ClusterBridge : public autoware_agent::ZenohPublisher {
 
   void shutdown();
 
-  const FrameState& GetState()      const { return state_; }
-  std::mutex&       GetStateMutex()       { return state_mtx_; }
-  int64_t&          GetRequestId()        { return current_request_id_; }
-  boost::asio::io_context& GetIoContext() { return io_context_; }
+  const FrameState& GetState() const {
+    return state_;
+  }
+  std::mutex& GetStateMutex() {
+    return state_mtx_;
+  }
+  int64_t& GetRequestId() {
+    return current_request_id_;
+  }
+  boost::asio::io_context& GetIoContext() {
+    return io_context_;
+  }
 
  private:
   std::atomic<bool> shutdown_called_{false};

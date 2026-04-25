@@ -42,6 +42,6 @@ class ZenohPublisher {
   std::shared_ptr<zenoh::Session> session_;
   zenoh::Publisher publisher_;
 };
-}  // namespace AutowareAgent
+}  // namespace autoware_agent
 
 #endif  // VEHICLE_AUTOWARE_AGENT_ZENOH_PUBLISHER_H

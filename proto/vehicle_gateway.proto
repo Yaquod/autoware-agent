@@ -111,7 +111,8 @@ message TripInitRequest {
 
 message TripInitResponse {
   bool success = 1;
-  string message = 2;
+  int64 trip_id = 2;
+  string message = 3;
 }
 
 message TripMoveRequest {

@@ -35,30 +35,29 @@ class VehicleGatewayService;
 #include <thread>
 
 // forward-declare zenoh Session to avoid including zenoh headers in tests
-namespace zenoh { class Session; }
+namespace zenoh {
+class Session;
+}
 
 namespace autoware_agent {
 
 struct AppHandles {
   std::shared_ptr<AutowareController> controller_;
-  std::shared_ptr<::ClusterBridge>      cluster_bridge_;
-  std::shared_ptr<::PlanningBridge>     planning_bridge_;
-  std::shared_ptr<::PerceptionBridge>   perception_bridge_;
-  std::shared_ptr<::TripBridge>         trip_bridge_;
+  std::shared_ptr<::ClusterBridge> cluster_bridge_;
+  std::shared_ptr<::PlanningBridge> planning_bridge_;
+  std::shared_ptr<::PerceptionBridge> perception_bridge_;
+  std::shared_ptr<::TripBridge> trip_bridge_;
   std::shared_ptr<vehicle_gateway::VehicleGatewayService> gateway_;
-  std::shared_ptr<zenoh::Session>     zsession_;
-  std::thread                          ros_thread_;
+  std::shared_ptr<zenoh::Session> zsession_;
+  std::thread ros_thread_;
 };
 
-AppHandles startAutowareApp(const std::string& yaml_path,
-                           const std::string& server_addr = {},
-                           const std::shared_ptr<zenoh::Session>& zsession = nullptr,
-                           double controller_route_search_radius = 10.0);
+AppHandles startAutowareApp(const std::string& yaml_path, const std::string& server_addr = {},
+                            const std::shared_ptr<zenoh::Session>& zsession = nullptr,
+                            double controller_route_search_radius = 10.0);
 
 void stopAutowareApp(AppHandles& handles);
 
-} // namespace AutowareAgent
+}  // namespace autoware_agent
 
-#endif // AUTOWARE_AGENT_AUTOWARE_APP_H
-
-
+#endif  // AUTOWARE_AGENT_AUTOWARE_APP_H

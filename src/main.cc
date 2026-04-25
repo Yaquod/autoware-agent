@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "AutowareApp.h"
 #include "AutowareController.h"
 #include "AutowareControllerProvider.h"
 #include "ClusterBridgeProvider.h"
@@ -23,7 +24,6 @@
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
-#include "AutowareApp.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -46,10 +46,13 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
 
-  std::string const YAML_PATH = std::string(autoware_agent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  std::string const YAML_PATH =
+    std::string(autoware_agent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
   autoware_agent::AppHandles app = autoware_agent::startAutowareApp(YAML_PATH);
 
-  while (!g_shutdown_requested.load()) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+  while (!g_shutdown_requested.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 
   rclcpp::shutdown();  // signals rclcpp::spin() to exit
   autoware_agent::stopAutowareApp(app);

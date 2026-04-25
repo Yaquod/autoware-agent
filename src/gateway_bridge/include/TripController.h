@@ -49,8 +49,9 @@ class TripController {
                  std::shared_ptr<boost::asio::io_context::strand> strand,
                  TripTimings timings = TripTimings{});
 
-  using EtaQueryCallback  = std::function<void(EtaQueryResult)>;
-  using StateChangeCb     = std::function<void(TripState, TripState)>;
+  using EtaQueryCallback = std::function<void(EtaQueryResult)>;
+  using StateChangeCb = std::function<void(TripState, TripState)>;
+  using ArrivalCb = std::function<void()>;
 
   /**
    * @brief Pops the pickup route from the bank, localises the vehicle at start_gps,
@@ -64,12 +65,17 @@ class TripController {
 
   void tick();
 
-  TripStatus status() const;
+  void initializeInMap();
+
+  [[nodiscard]] TripStatus status() const;
 
   void setStateChangeCallback(StateChangeCb cb);
 
+  void setArrivalCallbacks(ArrivalCb pickup_cb, ArrivalCb dropoff_cb);
+
   /**
-   * @brief Drives the localisation, goal-publishing pipeline up to WAITING_ROUTE, waits for Autoware to confirm the route is SET, then reads segment data to compute an ETA.
+   * @brief Drives the localisation, goal-publishing pipeline up to WAITING_ROUTE, waits for
+   * Autoware to confirm the route is SET, then reads segment data to compute an ETA.
    * @param start_gps GPS coordinate for localising the vehicle at the start of the trip.
    * @param goal_gps Goal set for destination need to go.
    * @param cb A callback for the full Query data.
@@ -91,13 +97,17 @@ class TripController {
    */
   void injectEta(double distance_m, double time_seconds);
 
+  [[nodiscard]] std::optional<GPSCoordinate> getCurrentVehiclePose() const;
+
+  void setCurrentGps(const GPSCoordinate& gps);
+
  private:
   rclcpp::Node::SharedPtr node_;
   const RouteConfig& route_config_;
   std::shared_ptr<boost::asio::io_context::strand> strand_;
   TripTimings timings_;
   std::thread io_thread_;
-  double              assumed_speed_ms_ {8.33}; // ~30 km/h
+  double assumed_speed_ms_{8.33};  // ~30 km/h
 
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
@@ -113,32 +123,38 @@ class TripController {
   autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr current_loc_state_;
   autoware_adapi_v1_msgs::msg::RouteState::SharedPtr current_route_state_;
   autoware_adapi_v1_msgs::msg::OperationModeState::SharedPtr current_mode_state_;
-  autoware_planning_msgs::msg::LaneletRoute::SharedPtr      last_route_;
+  autoware_planning_msgs::msg::LaneletRoute::SharedPtr last_route_;
 
-  std::shared_ptr<tf2_ros::Buffer>            tf_buffer_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-
-
 
   std::chrono::steady_clock::time_point last_publish_time_;
 
   TripStatus status_;
   StateChangeCb on_state_change_;
+  ArrivalCb on_pickup_arrived_;
+  ArrivalCb on_dropoff_arrived_;
   std::chrono::steady_clock::time_point state_entered_at_;
   bool route_received_ = false;
 
   enum class QueryLeg { PICKUP, TRIP };
 
-  bool             querying_       = false;
-  QueryLeg         current_leg_    = QueryLeg::PICKUP;
-  GPSCoordinate    query_start_gps_{0.0, 0.0};
-  GPSCoordinate    query_goal_gps_ {0.0, 0.0};
-  EtaQueryCallback query_cb_;
-  EtaQueryResult   query_result_;
+  double init_x_{0.0};
+  double init_y_{0.0};
+  double init_z_{0.0};
+  double init_qz_{0.0};
+  double init_qw_{1.0};
 
-  bool   eta_received_  = false;
+  bool querying_ = false;
+  QueryLeg current_leg_ = QueryLeg::PICKUP;
+  GPSCoordinate query_start_gps_{.latitude = 0.0, .longitude = 0.0};
+  GPSCoordinate query_goal_gps_{.latitude = 0.0, .longitude = 0.0};
+  EtaQueryCallback query_cb_;
+  EtaQueryResult query_result_;
+
+  bool eta_received_ = false;
   double eta_distance_m_ = 0.0;
-  double eta_seconds_    = 0.0;
+  double eta_seconds_ = 0.0;
 
   std::optional<HeldRoute> pickup_route_;
   std::optional<HeldRoute> trip_route_;
@@ -154,11 +170,9 @@ class TripController {
   void finishQueryLeg();
   void failQuery(const std::string& reason);
 
-  // Resolve current vehicle pose from /tf
-  std::optional<GPSCoordinate> getCurrentVehiclePose() const;
   static long elapsed_ms(std::chrono::steady_clock::time_point since);
 };
 
-}  // namespace AutowareAgent
+}  // namespace autoware_agent
 
 #endif  // VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H

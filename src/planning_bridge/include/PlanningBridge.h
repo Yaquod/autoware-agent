@@ -108,8 +108,7 @@ class PlanningBridge : public autoware_agent::ZenohPublisher {
   void onSteeringFactorImpl(autoware_adapi_v1_msgs::msg::SteeringFactorArray::SharedPtr msg);
 
   void onTargetVelocityImpl(autoware_internal_debug_msgs::msg::Float32Stamped::SharedPtr msg);
-  void onVelocityLimitImpl(
-    autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
+  void onVelocityLimitImpl(autoware_internal_planning_msgs::msg::VelocityLimit::SharedPtr msg);
   void onEtaImpl(autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg);
   void onRouteStateImpl(autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
   void onScenarioStateImpl(autoware_internal_planning_msgs::msg::Scenario::SharedPtr msg);

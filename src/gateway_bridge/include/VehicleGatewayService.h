@@ -28,36 +28,31 @@
 namespace vehicle_gateway {
 
 class VehicleGatewayService {
-public:
-  VehicleGatewayService(const std::string& target_vm,std::shared_ptr<IEtaProvider> eta_provider, std::shared_ptr<ILocationProvider> location_provider, std::shared_ptr<ITripManager> trip_manager,const std::string& vin_number, boost::asio::io_context& retry_io);
+ public:
+  VehicleGatewayService(const std::string& target_vm, std::shared_ptr<IEtaProvider> eta_provider,
+                        std::shared_ptr<ILocationProvider> location_provider,
+                        std::shared_ptr<ITripManager> trip_manager, const std::string& vin_number,
+                        boost::asio::io_context& retry_io);
 
   ~VehicleGatewayService();
 
-  void ReportEta();
-
-  // Report a textual status provided by caller (e.g. "cancelled", "error").
-  void ReportStatus(const std::string& status);
-
-  // Backwards-compatible: report current status as reported by ITripManager
-  void ReportStatus();
+  void ReportTripInit();
 
   void ReportArrive();
 
-  void ReportLocation();
-
-  // Trip lifecycle helpers called from main
-  void ReportTripInit();
+  // Status reports
   void ReportAccepted();
   void ReportDriving();
   void ReportCompleted();
-
-  void StartTrip();
+  void ReportEta();
+  void ReportLocation();
+  void ReportStatus();
+  void ReportStatus(const std::string& status);
 
   void MoveTrip();
-
   void Shutdown();
 
-private:
+ private:
   VehicleGatewayClient client_;
   std::shared_ptr<IEtaProvider> eta_provider_;
   std::shared_ptr<ILocationProvider> location_provider_;
@@ -65,7 +60,8 @@ private:
   std::string vin_number_;
   boost::asio::io_context& retry_io_;
 
-  void ScheduleRetry(std::chrono::milliseconds delay,std::function<void()> fn);
+  void StartTrip();
+  void ScheduleRetry(std::chrono::milliseconds delay, std::function<void()> fn);
 };
-}
+}  // namespace vehicle_gateway
 #endif  // VEHICLE_AUTOWARE_AGENT_VEHICLEGATEWAYSERVICE_H

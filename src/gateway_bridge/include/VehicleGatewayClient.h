@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef VEHICLE_AUTOWARE_AGENT_VEHICLEGATEWAY_H
 #define VEHICLE_AUTOWARE_AGENT_VEHICLEGATEWAY_H
 
@@ -24,9 +23,9 @@
 #include "vehicle_gateway.pb.h"
 
 #include <functional>
-#include <thread>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include <grpcpp/grpcpp.h>
 
@@ -34,12 +33,13 @@ namespace vehicle_gateway {
 using EtaCallback = std::function<void(bool ok, const vehicle_gateway::EtaResponse&)>;
 using StatusCallback = std::function<void(bool ok, const vehicle_gateway::StatusResponse&)>;
 using ArriveCallback = std::function<void(bool ok, const vehicle_gateway::ArriveResponse&)>;
-using UpdateLocationCallback = std::function<void(bool ok, const vehicle_gateway::UpdateVehicleLocationResponse&)>;
+using UpdateLocationCallback =
+  std::function<void(bool ok, const vehicle_gateway::UpdateVehicleLocationResponse&)>;
 using TripInitCallback = std::function<void(bool ok, const vehicle_gateway::TripInitResponse&)>;
 using TripMoveCallback = std::function<void(bool ok, const vehicle_gateway::TripMoveResponse&)>;
 
 class VehicleGatewayClient {
-public:
+ public:
   explicit VehicleGatewayClient(const std::string& target_vm);
 
   ~VehicleGatewayClient();
@@ -53,7 +53,8 @@ public:
 
   void SendArrive(const vehicle_gateway::ArriveRequest& request, ArriveCallback callback);
 
-  void UpdateVehicleLocation(const vehicle_gateway::UpdateVehicleLocationRequest& request, UpdateLocationCallback callback);
+  void UpdateVehicleLocation(const vehicle_gateway::UpdateVehicleLocationRequest& request,
+                             UpdateLocationCallback callback);
 
   void TripInit(const vehicle_gateway::TripInitRequest& request, TripInitCallback callback);
 
@@ -61,13 +62,13 @@ public:
 
   void ShutDown();
 
-private:
+ private:
   struct AsyncCallBase {
     virtual void OnComplete(bool ok) = 0;
     virtual ~AsyncCallBase() = default;
   };
 
-  template<typename Response, typename Callback>
+  template <typename Response, typename Callback>
   struct AsyncCall : public AsyncCallBase {
     grpc::ClientContext context;
     Response response;
@@ -89,5 +90,5 @@ private:
 
   void RunCompletionQueue();
 };
-}
+}  // namespace vehicle_gateway
 #endif  // VEHICLE_AUTOWARE_AGENT_VEHICLEGATEWAY_H

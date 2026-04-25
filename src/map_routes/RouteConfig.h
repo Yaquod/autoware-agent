@@ -101,6 +101,6 @@ class RouteConfig {
 
   static std::string resolveConfigPath(const std::string& filename);
 };
-}  // namespace AutowareAgent
+}  // namespace autoware_agent
 
 #endif  // AUTOWARE_CARLA_GNSS_ROUTECONFIG_H
