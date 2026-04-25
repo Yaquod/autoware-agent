@@ -306,8 +306,11 @@ void ClusterBridge::onBatteryStatusImpl(
 
 void ClusterBridge::onKinematicsStatusImpl(
   const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(state_mtx_);
   state_.accel_mps2 = msg->accel.accel.accel.linear.x;
   state_.yaw_rate = msg->twist.twist.twist.angular.z;
+  state_.longitude = msg->geographic_pose.position.longitude;
+  state_.latitude = msg->geographic_pose.position.latitude;
 }
 
 void ClusterBridge::onMotionStateImpl(
@@ -327,6 +330,7 @@ void ClusterBridge::onVelocityLimitImpl(
 
 void ClusterBridge::onEtaImpl(
   const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(state_mtx_);
   state_.remaining_distance_m = msg->remaining_distance;
   state_.remaining_time_s = msg->remaining_time;
 }

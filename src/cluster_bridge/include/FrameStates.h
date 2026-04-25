@@ -33,5 +33,7 @@ struct FrameState {
   vehicle_frame::MrmBehavior mrm_behavior{vehicle_frame::MRM_NONE};
   bool is_active{false};
   std::string description{""};
+  double longitude{0.0};
+  double latitude{0.0};
 };
 #endif  // VEHICLEAUTOWAREAGENT_FRAMESTATES_H

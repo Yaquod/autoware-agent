@@ -24,7 +24,7 @@
 #include <GeographicLib/LocalCartesian.hpp>
 #include <yaml-cpp/yaml.h>
 
-namespace AutowareAgent {
+namespace autoware_agent {
 struct GPSCoordinate {
   double latitude;
   double longitude;
@@ -84,7 +84,9 @@ class RouteConfig {
 
   [[nodiscard]] LocalCoordinate gpsToLocalCoordinate(const GPSCoordinate& gps) const;
 
-  [[nodiscard]] const LaneInfo* FindNearestLane(const GPSCoordinate& gps) const;
+  [[nodiscard]] GPSCoordinate localCoordinateToGps(const LocalCoordinate& local) const;
+
+  [[nodiscard]] const LaneInfo* findNearestLane(const GPSCoordinate& gps) const;
 
   [[nodiscard]] const LaneInfo* getLaneByID(int lane_id) const;
 
@@ -99,6 +101,6 @@ class RouteConfig {
 
   static std::string resolveConfigPath(const std::string& filename);
 };
-}  // namespace AutowareAgent
+}  // namespace autoware_agent
 
 #endif  // AUTOWARE_CARLA_GNSS_ROUTECONFIG_H

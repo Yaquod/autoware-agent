@@ -40,7 +40,8 @@ find_package(Threads REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(fastcdr REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system)
+set(Boost_NO_BOOST_CMAKE ON)
+find_package(Boost 1.74 REQUIRED COMPONENTS system)
 find_package(zenohc REQUIRED)
 find_package(zenohcxx REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -70,6 +71,8 @@ add_subdirectory(proto)
 # Main Executable
 add_executable(autoware_agent
         src/main.cc
+        src/AutowareApp.cpp
+        src/AutowareApp.h
         src/zenoh_publisher.h
 )
 

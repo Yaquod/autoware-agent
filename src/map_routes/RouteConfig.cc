@@ -22,9 +22,11 @@
 #include <filesystem>
 #include <stdexcept>
 
+#include <math.h>
+
 namespace fs = std::filesystem;
 
-namespace AutowareAgent {
+namespace autoware_agent {
 
 RouteConfig::RouteConfig(const std::string& config_file) {
   loadFromYaml(config_file);
@@ -119,26 +121,38 @@ void RouteConfig::loadFromYaml(const std::string& config_file) {
 }
 
 LocalCoordinate RouteConfig::gpsToLocalCoordinate(const GPSCoordinate& gps) const {
-  GeographicLib::LocalCartesian proj(map_origin_.latitude, map_origin_.longitude, 0.0);
+  GeographicLib::LocalCartesian const PROJ(map_origin_.latitude, map_origin_.longitude, 0.0);
 
-  double x, y, z;
-  proj.Forward(gps.latitude, gps.longitude, 0.0, x, y, z);
+  double x = NAN;
+  double y = NAN;
+  double z = NAN;
+  PROJ.Forward(gps.latitude, gps.longitude, 0.0, x, y, z);
 
   return {map_origin_.local_x + x, map_origin_.local_y + y, 0.0};
 }
+GPSCoordinate RouteConfig::localCoordinateToGps(const LocalCoordinate& local) const {
+  GeographicLib::LocalCartesian const PROJ(map_origin_.latitude, map_origin_.longitude, 0.0);
 
-const LaneInfo* RouteConfig::FindNearestLane(const GPSCoordinate& gps) const {
-  LocalCoordinate target = gpsToLocalCoordinate(gps);
+  double lat = NAN;
+  double lon = NAN;
+  double alt = NAN;
+  PROJ.Reverse(local.x - map_origin_.local_x, local.y - map_origin_.local_y, local.z, lat, lon,
+               alt);
+
+  return {.latitude = lat, .longitude = lon};
+}
+const LaneInfo* RouteConfig::findNearestLane(const GPSCoordinate& gps) const {
+  LocalCoordinate const TARGET = gpsToLocalCoordinate(gps);
 
   double min_dist = std::numeric_limits<double>::max();
   const LaneInfo* nearest = nullptr;
 
   for (const auto& lane : lanes_) {
-    double dx = lane.local.x - target.x;
-    double dy = lane.local.y - target.y;
-    double dist = std::sqrt(dx * dx + dy * dy);
-    if (dist < min_dist) {
-      min_dist = dist;
+    double const DX = lane.local.x - TARGET.x;
+    double const DY = lane.local.y - TARGET.y;
+    double const DIST = std::sqrt((DX * DX) + (DY * DY));
+    if (DIST < min_dist) {
+      min_dist = DIST;
       nearest = &lane;
     }
   }
@@ -162,19 +176,19 @@ std::string RouteConfig::resolveConfigPath(const std::string& filename) {
   if (input.is_absolute())
     return input.string();
 
-  fs::path test_path = fs::path(AutowareAgent::TEST_MAP_DIR) / filename;
+  fs::path test_path = fs::path(autoware_agent::TEST_MAP_DIR) / filename;
   if (fs::exists(test_path))
     return test_path.string();
 
-  fs::path src_path = fs::path(AutowareAgent::SRC_MAP_DIR) / filename;
+  fs::path src_path = fs::path(autoware_agent::SRC_MAP_DIR) / filename;
   if (fs::exists(src_path))
     return src_path.string();
 
-  fs::path install_path = fs::path(AutowareAgent::INSTALL_MAP_DIR) / filename;
+  fs::path install_path = fs::path(autoware_agent::INSTALL_MAP_DIR) / filename;
   if (fs::exists(install_path))
     return install_path.string();
 
   throw std::runtime_error("Could not find config file: " + filename);
 }
 
-}  // namespace AutowareAgent
+}  // namespace autoware_agent

@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace AutowareAgent;
+using namespace autoware_agent;
 
 class RouteConfigTest : public ::testing::Test {
  protected:
@@ -106,7 +106,7 @@ TEST_F(RouteConfigTest, GetLaneByID) {
 
 TEST_F(RouteConfigTest, FindNearestLane) {
   GPSCoordinate gps{35.690, 139.692};  // Close to lane 101
-  const LaneInfo* nearest_lane = route_config_.FindNearestLane(gps);
+  const LaneInfo* nearest_lane = route_config_.findNearestLane(gps);
   ASSERT_NE(nearest_lane, nullptr);
   EXPECT_EQ(nearest_lane->lane_id, 101);
 }
