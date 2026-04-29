@@ -40,6 +40,8 @@ service VehicleGateway {
   rpc UpdateVehicleLocation(UpdateVehicleLocationRequest) returns (UpdateVehicleLocationResponse);
   rpc TripInit(TripInitRequest) returns (TripInitResponse);
   rpc TripMove(TripMoveRequest) returns (TripMoveResponse);
+  rpc VehicleCommandStream (stream VehicleEvent)
+      returns (stream GatewayCommand);
 }
 
 message EtaRequest
@@ -57,6 +59,23 @@ message EtaResponse
 }
 
 
+message GatewayCommand {
+  oneof command {
+    TripInitRequest trip_init = 1;
+    TripMoveRequest trip_move = 2;
+  }
+}
+
+message VehicleEvent {
+  oneof event {
+    TripInitResponse  trip_init_ack  = 1;
+    TripMoveResponse  trip_move_ack  = 2;
+    EtaRequest        eta            = 3;
+    StatusRequest     status         = 4;
+    ArriveRequest     arrive         = 5;
+    UpdateVehicleLocationRequest   location       = 6;
+  }
+}
 
 
 message StatusRequest

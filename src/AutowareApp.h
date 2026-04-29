@@ -16,6 +16,8 @@
 #ifndef AUTOWARE_AGENT_AUTOWARE_APP_H
 #define AUTOWARE_AGENT_AUTOWARE_APP_H
 
+#include "VehicleGatewayStreamClient.h"
+
 #include <memory>
 
 namespace autoware_agent {
@@ -47,7 +49,7 @@ struct AppHandles {
   std::shared_ptr<::PlanningBridge> planning_bridge_;
   std::shared_ptr<::PerceptionBridge> perception_bridge_;
   std::shared_ptr<::TripBridge> trip_bridge_;
-  std::shared_ptr<vehicle_gateway::VehicleGatewayService> gateway_;
+  std::shared_ptr<vehicle_gateway::VehicleGatewayStreamClient> stream_client_;
   std::shared_ptr<zenoh::Session> zsession_;
   std::thread ros_thread_;
 };
