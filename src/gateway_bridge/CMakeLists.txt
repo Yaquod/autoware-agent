@@ -12,13 +12,10 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_library(autoware_controller
         src/AutowareController.cc
         src/TripController.cc
-        src/VehicleGatewayClient.cc
-        include/VehicleGatewayClient.h
-        src/VehicleGatewayService.cc
-        include/VehicleGatewayService.h
         include/Providers.h
         include/ClusterBridgeProvider.h
         include/AutowareControllerProvider.h
+        include/VehicleGatewayStreamClient.h
 )
 
 target_link_libraries(autoware_controller

@@ -18,7 +18,6 @@
 #include "AutowareControllerProvider.h"
 #include "ClusterBridgeProvider.h"
 #include "Config.h"
-#include "VehicleGatewayService.h"
 #include "cluster_bridge/include/ClusterBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
@@ -48,7 +47,7 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
     h.zsession_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(zconfig)));
   }
 
-  std::string const SERVER_ADDR = "localhost:50051";
+  std::string const SERVER_ADDR = "192.168.64.7:50051";
 
   spdlog::info("[AutowareApp] Yaml configs loaded : {}", yaml_path);
 
@@ -76,26 +75,51 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
   auto trip_adapter =
     std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
 
-  h.gateway_ = std::make_shared<vehicle_gateway::VehicleGatewayService>(
-    SERVER_ADDR, eta_adapter, loc_adapter, trip_adapter, "yaqoud-001",
-    h.cluster_bridge_->GetIoContext());
+  auto stream_client = std::make_shared<vehicle_gateway::VehicleGatewayStreamClient>(
+    "192.168.64.7:50051", trip_adapter.get(), eta_adapter.get(), loc_adapter.get(),
+    "ORIN_NANO_001");
 
-  // Register trip state callback
-  h.controller_->setTripStateCallback([gw = h.gateway_](TripState prev, TripState next) {
-    spdlog::info("[AutowareApp] TripState {} → {}", static_cast<int>(prev), static_cast<int>(next));
+  stream_client->set_handlers(
+    {.on_trip_init =
+       [ctrl = h.controller_](const vehicle_gateway::TripInitRequest& req) {
+         autoware_agent::GPSCoordinate start{.latitude = req.start_lat(),
+                                             .longitude = req.start_long()};
+         autoware_agent::GPSCoordinate goal{.latitude = req.end_lat(), .longitude = req.end_long()};
+         ctrl->queryEta(start, goal, [ctrl](autoware_agent::EtaQueryResult r) {
+           if (!r.success_) {
+             spdlog::error("[AutowareApp] queryEta failed: {}", r.error_message_);
+             return;
+           }
+           ctrl->startTrip([](bool ok) {
+             if (!ok)
+               spdlog::error("[AutowareApp] startTrip rejected");
+           });
+         });
+       },
+
+     .on_trip_move =
+       [ctrl = h.controller_](const vehicle_gateway::TripMoveRequest&) {
+         ctrl->move([](bool ok) {
+           if (!ok)
+             spdlog::error("[AutowareApp] move() rejected");
+         });
+       }});
+
+  h.controller_->setTripStateCallback([sc = stream_client](TripState, TripState next) {
     if (next == TripState::WAITING_FOR_MOVE) {
-      gw->ReportTripInit();
-      gw->ReportEta();
-      gw->ReportAccepted();
-    } else if (next == TripState::RUNNING) {
-      gw->ReportDriving();
-    } else if (next == TripState::COMPLETED) {
-      gw->ReportArrive();
-      gw->ReportCompleted();
-    } else if (next == TripState::FAILED) {
-      gw->ReportStatus(next == TripState::CANCELLED ? "cancelled" : "error");
-    }
+      sc->ReportTripInitAck();
+      sc->ReportEta();
+      sc->ReportStatus("accepted");
+    } else if (next == TripState::RUNNING)
+      sc->ReportStatus("in_progress");
+    else if (next == TripState::COMPLETED) {
+      sc->ReportArrive();
+      sc->ReportStatus("completed");
+    } else if (next == TripState::FAILED)
+      sc->ReportStatus("error");
   });
+
+  h.stream_client_ = stream_client;
 
   // Start ROS spinner in a thread. Caller is responsible for calling rclcpp::shutdown()
   h.ros_thread_ = std::thread([c = h.controller_]() { rclcpp::spin(c); });
@@ -118,6 +142,8 @@ void stopAutowareApp(AppHandles& h) {
   if (h.cluster_bridge_) {
     h.cluster_bridge_->shutdown();
   }
+  if (h.stream_client_)
+    h.stream_client_->shutdown();
 
   // Join the ros thread; caller should have invoked rclcpp::shutdown() so spin exits.
   if (h.ros_thread_.joinable()) {
@@ -125,7 +151,6 @@ void stopAutowareApp(AppHandles& h) {
   }
 
   // Clear handles
-  h.gateway_.reset();
   h.trip_bridge_.reset();
   h.perception_bridge_.reset();
   h.planning_bridge_.reset();
