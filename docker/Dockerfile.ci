@@ -59,6 +59,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     lld-${CLANG_VERSION} \
     llvm-${CLANG_VERSION} \
     libclang-rt-${CLANG_VERSION}-dev \
+    libomp-${CLANG_VERSION}-dev \
     # Build tools
     ninja-build \
     ccache \

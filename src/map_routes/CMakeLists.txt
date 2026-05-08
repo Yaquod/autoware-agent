@@ -14,7 +14,7 @@ add_library(map_routes_lib OBJECT
         MapProjectorInfo.cc
 )
 
-install(FILES nishishinjuku_routes.yaml
+install(FILES lanelet2_map.osm map_config.yaml
         DESTINATION share/autoware_agent/maps)
 
 target_compile_definitions(map_routes_lib PRIVATE

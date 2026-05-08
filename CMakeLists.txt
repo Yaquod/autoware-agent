@@ -43,6 +43,7 @@ find_package(Boost 1.74 REQUIRED COMPONENTS system)
 find_package(zenohc REQUIRED)
 find_package(zenohcxx REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(OpenMP REQUIRED)
 find_package(protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 
