@@ -25,11 +25,11 @@
 
 namespace autoware_agent {
 
-TripController::TripController(rclcpp::Node::SharedPtr node, const RouteConfig& route_config,
+TripController::TripController(rclcpp::Node::SharedPtr node, const LaneletMap& route_config,
                                std::shared_ptr<boost::asio::io_context::strand> strand,
                                TripTimings timings)
   : node_(std::move(node))
-  , route_config_(route_config)
+  , lanelet_map_(route_config)
   , strand_(std::move(strand))
   , timings_(timings) {
   auto pose_qos = rclcpp::QoS(1).reliable().durability_volatile();
@@ -84,7 +84,7 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const RouteConfig& 
 }
 
 void TripController::initializeInMap() {
-  const FixedStartPosition* fixed_start = route_config_.getDefaultStart();
+  const FixedStartPosition* fixed_start = lanelet_map_.getDefaultStart();
   if (!fixed_start) {
     RCLCPP_ERROR(node_->get_logger(),
                  "[AutowareAgent] No fixed start position in route config — "
@@ -94,9 +94,8 @@ void TripController::initializeInMap() {
 
   RCLCPP_INFO(node_->get_logger(),
               "[AutowareAgent] Initializing vehicle in map at fixed start '%s' "
-              "lane=%d (%.2f, %.2f)",
-              fixed_start->name.c_str(), fixed_start->lane_id, fixed_start->local.x,
-              fixed_start->local.y);
+              "lane= (%.2f, %.2f)",
+              fixed_start->name.c_str(), fixed_start->local.x, fixed_start->local.y);
   init_x_ = fixed_start->local.x;
   init_y_ = fixed_start->local.y;
   init_z_ = fixed_start->local.z;
@@ -171,7 +170,7 @@ bool TripController::startTrip() {
     return false;
   }
 
-  const LaneInfo* start_lane = route_config_.findNearestLane(pickup_route_->goal_gps_);
+  const LaneInfo* start_lane = lanelet_map_.findNearestLane(pickup_route_->goal_gps_);
   if (!start_lane) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] startTrip — cannot resolve pickup lane");
     transitionTo(TripState::FAILED);
@@ -208,7 +207,7 @@ bool TripController::move() {
     return false;
   }
 
-  const LaneInfo* goal_lane = route_config_.findNearestLane(trip_route_->goal_gps_);
+  const LaneInfo* goal_lane = lanelet_map_.findNearestLane(trip_route_->goal_gps_);
   if (!goal_lane) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] move() — cannot resolve goal lane");
     transitionTo(TripState::FAILED);
@@ -413,14 +412,14 @@ void TripController::tick() {
 }
 
 void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps) {
-  const LaneInfo* from_lane = route_config_.findNearestLane(from_gps);
+  const LaneInfo* from_lane = lanelet_map_.findNearestLane(from_gps);
   if (!from_lane) {
     failQuery("cannot resolve lane for " +
               std::string(current_leg_ == QueryLeg::PICKUP ? "pickup origin" : "trip start"));
     return;
   }
 
-  const LaneInfo* to_lane = route_config_.findNearestLane(to_gps);
+  const LaneInfo* to_lane = lanelet_map_.findNearestLane(to_gps);
   if (!to_lane) {
     failQuery("cannot resolve lane for " +
               std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
@@ -442,7 +441,7 @@ void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps)
   status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
   status_.goal_gps_ = to_gps;
 
-  LocalCoordinate raw = route_config_.gpsToLocalCoordinate(to_gps);
+  LocalCoordinate raw = lanelet_map_.gpsToLocal(to_gps);
   double dx = to_lane->local.x - raw.x;
   double dy = to_lane->local.y - raw.y;
   status_.goal_distance_m_ = std::sqrt(dx * dx + dy * dy);
@@ -656,7 +655,7 @@ std::optional<GPSCoordinate> TripController::getCurrentVehiclePose() const {
     LocalCoordinate const local{.x = tf.transform.translation.x,
                                 .y = tf.transform.translation.y,
                                 .z = tf.transform.translation.z};
-    return route_config_.localCoordinateToGps(local);
+    return lanelet_map_.localToGps(local);
   } catch (const tf2::TransformException& ex) {
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] TF lookup failed: %s", ex.what());
     return std::nullopt;

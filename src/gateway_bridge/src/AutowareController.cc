@@ -16,6 +16,8 @@
 
 #include "AutowareController.h"
 
+#include "map_routes/MapProjectorInfo.h"
+
 #include <spdlog/spdlog.h>
 
 namespace autoware_agent {
@@ -29,15 +31,33 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
   RCLCPP_INFO(get_logger(), "[AutowareAgent] Loading Route configs: %s", map_path.c_str());
   spdlog::info("[AutowareAgent] Loading Route configs: {}", map_path);
 
-  route_config_ = std::make_unique<RouteConfig>(map_path);
-  RCLCPP_INFO(get_logger(),
-              "[AutowareAgent] Route config loaded — map \"%s\", %zu lanes, "
-              "%u start(s)",
-              route_config_->getMapName().c_str(), route_config_->getLanesCount(),
-              route_config_->getDefaultStart() ? 1u : 0u);
-  spdlog::info("[AutowareAgent] Route config loaded — map \"{}\", {} lanes, {} start(s)",
-               route_config_->getMapName(), route_config_->getLanesCount(),
-               (route_config_->getDefaultStart() != nullptr) ? 1u : 0u);
+  std::string dir_path = map_path;
+  std::string osm_path = map_path + "/lanelet2_map.osm";
+
+  if (map_path.length() >= 4 && map_path.substr(map_path.length() - 4) == ".osm") {
+    size_t last_slash = map_path.find_last_of('/');
+    dir_path = (last_slash != std::string::npos) ? map_path.substr(0, last_slash) : ".";
+    osm_path = map_path;
+  }
+
+  auto proj_info = MapProjectorInfo::load(dir_path);
+
+  lanelet_map_ = std::make_unique<LaneletMap>(osm_path, proj_info.origin_lat, proj_info.origin_lon,
+                                              proj_info.local_offset_x, proj_info.local_offset_y);
+
+  if (proj_info.has_start) {
+    lanelet_map_->setDefaultStart(proj_info.start_name,
+                                  GPSCoordinate{proj_info.start_lat, proj_info.start_lon});
+    const auto* start = lanelet_map_->getDefaultStart();
+    RCLCPP_INFO(get_logger(),
+                "[AutowareAgent] LaneletMap loaded — %zu lanelets, start '%s' → local (%.2f, %.2f)",
+                lanelet_map_->getLaneletCount(), start->name.c_str(), start->local.x,
+                start->local.y);
+  } else {
+    RCLCPP_INFO(get_logger(),
+                "[AutowareAgent] LaneletMap loaded — %zu lanelets (no start position configured)",
+                lanelet_map_->getLaneletCount());
+  }
 
   io_context_ = std::make_shared<boost::asio::io_context>();
   strand_ = std::make_shared<boost::asio::io_context::strand>(*io_context_);
@@ -60,7 +80,7 @@ AutowareController::~AutowareController() {
 
 void AutowareController::initialize() {
   boost::asio::post(*strand_, [this]() {
-    trip_ctrl_ = std::make_unique<TripController>(shared_from_this(), *route_config_, strand_);
+    trip_ctrl_ = std::make_unique<TripController>(shared_from_this(), *lanelet_map_, strand_);
 
     trip_ctrl_->setStateChangeCallback(
       [this](TripState prev, TripState next) { onTripStateChanged(prev, next); });

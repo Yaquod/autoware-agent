@@ -153,7 +153,7 @@ docker run --rm \
 ## Run Autoware
 
 we are using Shinjuku-Map from AWSIM
-https://tier4.github.io/AWSIM/Downloads/
+https://autowarefoundation.github.io/AWSIM/Downloads/
 
 ```bash
 # Set the map path

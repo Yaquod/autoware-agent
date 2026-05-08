@@ -40,8 +40,7 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
 
-  std::string const YAML_PATH =
-    std::string(autoware_agent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+  std::string const YAML_PATH = std::string(autoware_agent::SRC_MAP_DIR) + "/lanelet2_map.osm";
   autoware_agent::AppHandles app = autoware_agent::startAutowareApp(YAML_PATH);
 
   while (!g_shutdown_requested.load()) {

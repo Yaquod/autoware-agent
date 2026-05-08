@@ -16,11 +16,11 @@
 
 #include "AutowareController.h"
 #include "Config.h"
-#include "RouteConfig.h"
 #include "TripController.h"
 #include "TripStates.h"
 #include "TripStatus.h"
 #include "cluster_bridge/include/ClusterBridge.h"
+#include "map_routes/LaneletMap.h"
 
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -49,7 +49,7 @@ class FullTripTest : public ::testing::Test {
     auto z_config = zenoh::Config::create_default();
     z_session_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(z_config)));
 
-    yaml_path_ = std::string(SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+    map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
     goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
   }
 
@@ -98,7 +98,7 @@ class FullTripTest : public ::testing::Test {
   }
 
   void createController() {
-    controller_ = std::make_shared<AutowareController>(yaml_path_, 10.0);
+    controller_ = std::make_shared<AutowareController>(map_path_, 10.0);
     controller_->initialize();
 
     // Pass the Zenoh Session to ClusterBridge
@@ -183,7 +183,7 @@ class FullTripTest : public ::testing::Test {
   }
 
   // Configurations
-  std::string yaml_path_;
+  std::string map_path_;
   GPSCoordinate goal_gps_;
 
   // Components

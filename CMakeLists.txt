@@ -36,16 +36,14 @@ if (ENABLE_SANITIZERS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Sanitizers.c
 endif ()
 
 find_package(Threads REQUIRED)
-
 find_package(rclcpp REQUIRED)
 find_package(fastcdr REQUIRED)
 find_package(yaml-cpp REQUIRED)
-set(Boost_NO_BOOST_CMAKE ON)
 find_package(Boost 1.74 REQUIRED COMPONENTS system)
 find_package(zenohc REQUIRED)
 find_package(zenohcxx REQUIRED)
 find_package(PkgConfig REQUIRED)
-
+find_package(OpenMP REQUIRED)
 find_package(protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 
@@ -59,7 +57,6 @@ configure_file(
 add_library(config_header INTERFACE)
 target_include_directories(config_header INTERFACE ${PROTO_GEN_DIR})
 
-# Subdirectories
 add_subdirectory(src/map_routes)
 add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
@@ -68,7 +65,6 @@ add_subdirectory(src/perception_bridge)
 add_subdirectory(src/trip_bridge)
 add_subdirectory(proto)
 
-# Main Executable
 add_executable(autoware_agent
         src/main.cc
         src/AutowareApp.cpp
@@ -98,12 +94,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 endif ()
 
-if(BUILD_TESTING)
+if (BUILD_TESTING)
     find_package(ament_cmake_gtest REQUIRED)
     find_package(GTest REQUIRED)
     enable_testing()
     add_subdirectory(tests)
-endif()
+endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux"
         AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/systemd/autoware-agent.service")
@@ -111,11 +107,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux"
             DESTINATION /lib/systemd/system)
 endif ()
 
-install(TARGETS autoware_agent
-        RUNTIME DESTINATION bin)
-install(TARGETS autoware_agent
-        DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS autoware_agent RUNTIME DESTINATION bin)
+install(TARGETS autoware_agent DESTINATION lib/${PROJECT_NAME})
 
 message(STATUS "==========================================")
 message(STATUS "Vehicle Autoware Agent")
@@ -141,4 +134,5 @@ message(STATUS "Build options:")
 message(STATUS "  Tests:           ${BUILD_TESTS}")
 message(STATUS "  Sanitizers:      ${ENABLE_SANITIZERS}")
 message(STATUS "==========================================")
+
 ament_package()

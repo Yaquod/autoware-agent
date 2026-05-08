@@ -18,7 +18,7 @@
 #define VEHICLEAUTOWAREAGENT_TRIPSTATUS_H
 
 #include "TripStates.h"
-#include "map_routes/RouteConfig.h"
+#include "map_routes/LaneletMap.h"
 
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 

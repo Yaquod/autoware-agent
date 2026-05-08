@@ -67,7 +67,7 @@ class AutowareController : public rclcpp::Node {
   void setArrivalCallback(ArrivalCallback cb);
 
  private:
-  std::unique_ptr<RouteConfig> route_config_;
+  std::unique_ptr<LaneletMap> lanelet_map_;
   std::unique_ptr<TripController> trip_ctrl_;
   rclcpp::TimerBase::SharedPtr tick_timer_;
   double tick_hz_;
