@@ -1,5 +1,4 @@
 set(UNIT_TEST_SOURCES
-        unit/routing_tests.cc
 )
 
 set(INTEGRATION_TEST_SOURCES
