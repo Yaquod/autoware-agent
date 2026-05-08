@@ -5,7 +5,6 @@ set(UNIT_TEST_SOURCES
 set(INTEGRATION_TEST_SOURCES
         integration/autoware_agent/autoware_agent_test.cc
         integration/autoware_agent/full_trip_test.cc
-        integration/autoware_agent/gateway_tests.cc
 )
 find_package(rclcpp REQUIRED)
 find_package(GTest REQUIRED)

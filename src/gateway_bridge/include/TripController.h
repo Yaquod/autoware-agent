@@ -17,7 +17,7 @@
 #ifndef VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 #define VEHICLEAUTOWAREAGENT_TRIPCONTROLLER_H
 
-#include "RouteConfig.h"
+#include "LaneletMap.h"
 #include "TripStates.h"
 #include "TripStatus.h"
 #include "TripTimings.h"
@@ -45,7 +45,7 @@ namespace autoware_agent {
 
 class TripController {
  public:
-  TripController(rclcpp::Node::SharedPtr node, const RouteConfig& route_config,
+  TripController(rclcpp::Node::SharedPtr node, const LaneletMap& route_config,
                  std::shared_ptr<boost::asio::io_context::strand> strand,
                  TripTimings timings = TripTimings{});
 
@@ -103,7 +103,7 @@ class TripController {
 
  private:
   rclcpp::Node::SharedPtr node_;
-  const RouteConfig& route_config_;
+  const LaneletMap& lanelet_map_;
   std::shared_ptr<boost::asio::io_context::strand> strand_;
   TripTimings timings_;
   std::thread io_thread_;

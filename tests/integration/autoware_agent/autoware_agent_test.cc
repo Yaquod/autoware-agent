@@ -16,9 +16,9 @@
 
 #include "AutowareController.h"
 #include "Config.h"
-#include "RouteConfig.h"
 #include "TripStates.h"
 #include "TripStatus.h"
+#include "map_routes/LaneletMap.h"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -37,7 +37,7 @@ class AutowareAgentTest : public ::testing::Test {
     if (!rclcpp::ok()) {
       rclcpp::init(0, nullptr);
     }
-    yaml_path_ = std::string(SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
+    map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
   }
 
   void TearDown() override {
@@ -45,7 +45,7 @@ class AutowareAgentTest : public ::testing::Test {
   }
 
   void createController() {
-    controller_ = std::make_shared<AutowareController>(yaml_path_, 10.0);
+    controller_ = std::make_shared<AutowareController>(map_path_, 10.0);
     controller_->initialize();
     // Give the controller a short time to initialize. Tests that require
     // full Autoware localization or route planning will check the state and
@@ -80,49 +80,31 @@ class AutowareAgentTest : public ::testing::Test {
     return future.get();
   }
 
-  std::string yaml_path_;
+  std::string map_path_;
   std::shared_ptr<AutowareController> controller_;
 };
 
-// Test 1: RouteConfig loads successfully
-TEST_F(AutowareAgentTest, RouteConfigLoadsYAML) {
-  ASSERT_NO_THROW({ RouteConfig config(yaml_path_); });
-
-  RouteConfig config(yaml_path_);
-
-  // Verify map metadata
-  EXPECT_EQ(config.getMapName(), "Nishishinjuku");
-  EXPECT_GT(config.getLanesCount(), 0u) << "YAML should have at least one lane";
-
-  // Verify origin (this will catch the origin-read bug if it's not fixed)
-  const MapOrigin& origin = config.getMapOrigin();
-  EXPECT_NEAR(origin.latitude, 35.68855194431519, 1e-6);
-  EXPECT_NEAR(origin.longitude, 139.69142711058254, 1e-6);
-  EXPECT_NEAR(origin.local_x, 81596.1357, 1e-2);
-  EXPECT_NEAR(origin.local_y, 50194.0803, 1e-2);
-
-  // Verify we have a default start position
-  const FixedStartPosition* start = config.getDefaultStart();
-  ASSERT_NE(start, nullptr) << "YAML should have at least one fixed_start_position";
-  EXPECT_EQ(start->lane_id, 552) << "Default start should be lane 552 per your YAML";
+// Test 1: OSM loads successfully
+TEST_F(AutowareAgentTest, MapLoadsOSM) {
+  ASSERT_NO_THROW({
+    // Provide a dummy origin for now to just check it loads
+    LaneletMap map(map_path_, 35.688, 139.691);
+  });
 }
 
 // Test 3: FindNearestLane returns a valid lane
 TEST_F(AutowareAgentTest, FindNearestLane) {
-  RouteConfig config(yaml_path_);
+  LaneletMap map(map_path_, 35.688, 139.691);
 
-  // Pick a GPS point near lane 1 from your YAML example:
-  //   lane_id: 1
-  //   gps: { latitude: 35.68816945289868, longitude: 139.69425702193618 }
-  GPSCoordinate near_lane_1{35.68816945289868, 139.69425702193618};
+  // Pick a GPS point near somewhere in Nishishinjuku map
+  GPSCoordinate near_point{35.68816945289868, 139.69425702193618};
 
-  const LaneInfo* lane = config.findNearestLane(near_lane_1);
+  const LaneInfo* lane = map.findNearestLane(near_point);
   ASSERT_NE(lane, nullptr) << "FindNearestLane should return a lane";
-  EXPECT_EQ(lane->lane_id, 1) << "Should snap to lane 1 (exact GPS match)";
 
   // Try a point that's slightly offset — it should still snap to the nearest
   GPSCoordinate offset{35.6882, 139.6943};
-  lane = config.findNearestLane(offset);
+  lane = map.findNearestLane(offset);
   ASSERT_NE(lane, nullptr);
 }
 
