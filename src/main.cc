@@ -83,6 +83,16 @@ int main(int argc, char** argv) {
   std::thread ros_thread([&controller]() { rclcpp::spin(controller); });
 
 
+  std::this_thread::sleep_for(std::chrono::seconds(2));  // wait for everything to init
+  controller->startTrip(
+      35.68814679007944,   // ← from test file
+      139.69440756809428,
+      [](bool success) {
+          spdlog::info("[main] startTrip result: {}", success);
+      }
+  );
+
+
 
 
   while (!g_shutdown_requested.load()) {
