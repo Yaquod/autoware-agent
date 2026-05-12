@@ -11,6 +11,8 @@
 
     <depend>rclcpp</depend>
     <depend>fastcdr</depend>
+    <depend>tf2_ros</depend>
+    <depend>tf2_geometry_msgs</depend>
 
     <depend>sensor_msgs</depend>
     <depend>geometry_msgs</depend>
@@ -24,9 +26,13 @@
     <depend>autoware_perception_msgs</depend>
     <depend>tier4_vehicle_msgs</depend>
     <depend>tier4_external_api_msgs</depend>
-    <depend> tier4_system_msgs</depend>
+    <depend>tier4_system_msgs</depend>
     <depend>libpcl-all-dev</depend>
     <depend>pcl_conversions</depend>
+    <depend>lanelet2_core</depend>
+    <depend>lanelet2_io</depend>
+    <depend>lanelet2_projection</depend>
+    <depend>zenohcxx</depend>
 
     <depend>yaml-cpp</depend>
     <depend>libboost-system-dev</depend>

@@ -18,81 +18,23 @@
 
 #include <boost/asio/bind_executor.hpp>
 
-class ClusterBridge::ClusterServiceImpl final : public vehicle_frame::ClusterService::Service {
- public:
-  explicit ClusterServiceImpl(ClusterBridge& parent) : parent_(parent){};
-
-  grpc::Status Subscribe(grpc::ServerContext* context,
-                         const vehicle_frame::SubscribeRequest* request,
-                         grpc::ServerWriter<vehicle_frame::VehicleFrame>* writer) override {
-    auto session = std::make_shared<ClientSession>();
-    session->writer = writer;
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      parent_.grpc_clients_.push_back(session);
-    }
-
-    while (!context->IsCancelled() && session->alive) {
-      vehicle_frame::VehicleFrame frame;
-      {
-        std::unique_lock<std::mutex> lk(session->mu);
-        session->cv.wait_for(lk, std::chrono::milliseconds(100),
-                             [&session] { return !session->pending.empty() || !session->alive; });
-        if (session->pending.empty())
-          continue;
-        frame = std::move(session->pending.front());
-        session->pending.pop();
-      }
-      if (!writer->Write(frame))
-        break;
-    }
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      auto& vec = parent_.grpc_clients_;
-      vec.erase(std::remove(vec.begin(), vec.end(), session), vec.end());
-    }
-    return grpc::Status::OK;
-  }
-
-  grpc::Status GetLatestFrame(grpc::ServerContext* context,
-                              const vehicle_frame::SubscribeRequest* request,
-                              vehicle_frame::VehicleFrame* response) override {
-    std::promise<vehicle_frame::VehicleFrame> promise;
-    auto future = promise.get_future();
-
-    boost::asio::post(parent_.strand_, [&parent = parent_, p = std::move(promise)]() mutable {
-      p.set_value(parent.buildFrame());
-    });
-
-    *response = future.get();
-    return grpc::Status::OK;
-  }
-
- private:
-  ClusterBridge& parent_;
-};
-
-ClusterBridge::ClusterBridge(rclcpp::Node::SharedPtr node, const std::string& grpc_address)
-  : node_(std::move(node))
-  , grpc_address_(grpc_address)
+ClusterBridge::ClusterBridge(rclcpp::Node::SharedPtr node,
+                             const std::shared_ptr<zenoh::Session>& zsession)
+  : ZenohPublisher(zsession, "autoware/cluster")
+  , strand_(io_context_)
   , work_guard_(boost::asio::make_work_guard(io_context_))
   , publisher_timer_(io_context_)
-  , strand_(io_context_) {
+  , node_(std::move(node)) {
   RCLCPP_INFO(node_->get_logger(), "[ClusterBridge] Booting..");
   io_thread_ = std::thread([this]() { io_context_.run(); });
 
   auto sensor_qos = rclcpp::SensorDataQoS();
-  auto reliable_qos = rclcpp::QoS(1).reliable().durability_volatile();
-  auto transient_local_qos = rclcpp::QoS(1).transient_local();
   auto perception_qos = rclcpp::QoS(1).best_effort().durability_volatile();
 
   velocity_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::VelocityReport>(
     "/vehicle/status/velocity_status", sensor_qos,
     [this](const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg) { onVelocity(msg); });
 
-  // TODO: complete other subscribers
   gear_sub_ = node_->create_subscription<autoware_vehicle_msgs::msg::GearReport>(
     "/vehicle/status/gear_status", sensor_qos,
     [this](const autoware_vehicle_msgs::msg::GearReport::SharedPtr msg) { onGear(msg); });
@@ -173,7 +115,6 @@ ClusterBridge::ClusterBridge(rclcpp::Node::SharedPtr node, const std::string& gr
     "/api/fail_safe/mrm_state", sensor_qos,
     [this](const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg) { onMrmState(msg); });
 
-  grpc_service_ = std::make_unique<ClusterServiceImpl>(*this);
   boost::asio::post(strand_, [this]() { scheduleNextTick(); });
   RCLCPP_INFO(node_->get_logger(), "[ClusterBrdige] Ready...");
 }
@@ -182,42 +123,14 @@ ClusterBridge::~ClusterBridge() {
   shutdown();
 }
 
-void ClusterBridge::prepareGrpcServer() {
-  builder_.AddListeningPort(grpc_address_, grpc::InsecureServerCredentials());
-  builder_.RegisterService(grpc_service_.get());
-}
-
-grpc::ServerBuilder& ClusterBridge::getBuilder() {
-  return builder_;
-}
-
-
 void ClusterBridge::shutdown() {
-
-
   publisher_timer_.cancel();
   work_guard_.reset();
 
   if (io_thread_.joinable()) {
     io_thread_.join();
   }
-
-  if (grpc_server_) {
-    grpc_server_->Shutdown();
-  }
-
-
 }
-
-
-void ClusterBridge::runGrpcServer() {
-  grpc_server_ = builder_.BuildAndStart();
-  RCLCPP_INFO(node_->get_logger(), "[ClusterBridge] gRPC server on %s", grpc_address_.c_str());
-  grpc_server_->Wait();
-}
-
-
-
 
 void ClusterBridge::scheduleNextTick() {
   publisher_timer_.expires_after(std::chrono::microseconds(16667));  // 60hz
@@ -225,11 +138,11 @@ void ClusterBridge::scheduleNextTick() {
     boost::asio::bind_executor(strand_, [this](const boost::system::error_code& ec) {
       if (ec == boost::asio::error::operation_aborted)
         return;
-      ontick();
+      onTick();
     }));
 }
 
-void ClusterBridge::ontick() {
+void ClusterBridge::onTick() {
   auto t0 = std::chrono::steady_clock::now();
   broadcastFrame(buildFrame());
   auto dt = std::chrono::steady_clock::now() - t0;
@@ -249,7 +162,6 @@ vehicle_frame::VehicleFrame ClusterBridge::buildFrame() {
   frame.mutable_velocity()->set_speed_kmh(state_.speed_kmh);
   frame.set_gear(state_.gear);
 
-  // TODO: complete all frame from state struct which is being update on ROS callbacks
   frame.set_steering_angle_deg(state_.steering_angle_deg);
   frame.set_hazard_on(state_.hazard_on);
   frame.set_turn_signal(state_.turn_signal);
@@ -280,21 +192,8 @@ vehicle_frame::VehicleFrame ClusterBridge::buildFrame() {
 }
 
 void ClusterBridge::broadcastFrame(const vehicle_frame::VehicleFrame& frame) {
-  std::lock_guard<std::mutex> lk(clients_mutex_);
-  for (auto& session : grpc_clients_) {
-    {
-      std::lock_guard<std::mutex> slk(session->mu);
-      if (session->pending.size() > 5)
-        session->pending.pop();
-      session->pending.push(frame);
-    }
-    session->cv.notify_one();
-  }
+  publish(frame.SerializeAsString());
 }
-
-// ROS Callbacks called on ROS executor thread, each one does only one thing post the message to
-// strand
-// TODO: complete all on-##name functions
 
 void ClusterBridge::onVelocity(const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = msg]() mutable { onVelocityImpl(msg); });
@@ -365,17 +264,9 @@ void ClusterBridge::onObjects(
   });
 }
 
-// void ClusterBridge::onSurroundObjects(const
-// autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg) {
-//   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable {onSurroundObjectsImpl(msg);
-//   });
-//
-// }
-
 void ClusterBridge::onMrmState(const autoware_adapi_v1_msgs::msg::MrmState::SharedPtr msg) {
   boost::asio::post(strand_, [this, msg = std::move(msg)]() mutable { onMrmStateImpl(msg); });
 }
-// TODO: complete all on-##nameImpl functions
 
 void ClusterBridge::onVelocityImpl(
   const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg) {
@@ -415,8 +306,11 @@ void ClusterBridge::onBatteryStatusImpl(
 
 void ClusterBridge::onKinematicsStatusImpl(
   const autoware_adapi_v1_msgs::msg::VehicleKinematics::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(state_mtx_);
   state_.accel_mps2 = msg->accel.accel.accel.linear.x;
   state_.yaw_rate = msg->twist.twist.twist.angular.z;
+  state_.longitude = msg->geographic_pose.position.longitude;
+  state_.latitude = msg->geographic_pose.position.latitude;
 }
 
 void ClusterBridge::onMotionStateImpl(
@@ -436,6 +330,7 @@ void ClusterBridge::onVelocityLimitImpl(
 
 void ClusterBridge::onEtaImpl(
   const autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(state_mtx_);
   state_.remaining_distance_m = msg->remaining_distance;
   state_.remaining_time_s = msg->remaining_time;
 }

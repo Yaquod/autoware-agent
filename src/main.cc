@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
+#include "AutowareApp.h"
 #include "AutowareController.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
-#include "perception_bridge/include/PerceptionBridge.h"
-#include "planning_bridge/include/PlanningBridge.h"
-#include "trip_bridge/include/TripBridge.h"
-
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -29,10 +26,11 @@
 #include <string>
 
 #include <spdlog/spdlog.h>
+#include <zenoh.hxx>
 
 static std::atomic<bool> g_shutdown_requested{false};
 
-void signalHandler(int /*signal*/) {
+static void signalHandler(int /*signal*/) {
   g_shutdown_requested.store(true);
 }
 
@@ -42,6 +40,7 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, signalHandler);
   std::signal(SIGTERM, signalHandler);
 
+<<<<<<< HEAD
   std::string yaml_path = std::string(AutowareAgent::SRC_MAP_DIR) + "/nishishinjuku_routes.yaml";
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[AutowareAgent] Yaml configs loaded: %s",
@@ -94,27 +93,17 @@ int main(int argc, char** argv) {
 
 
 
+=======
+  std::string const YAML_PATH = std::string(autoware_agent::SRC_MAP_DIR) + "/lanelet2_map.osm";
+  autoware_agent::AppHandles app = autoware_agent::startAutowareApp(YAML_PATH);
+>>>>>>> 0713a0b91a362ff643eab8386cfbc53500ef34c6
 
   while (!g_shutdown_requested.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
-
-
   rclcpp::shutdown();  // signals rclcpp::spin() to exit
-  if (ros_thread.joinable())
-    ros_thread.join();
-
-  planning_bridge->shutdown();
-  perception_bridge->shutdown();
-  trip_bridge->shutdown();
-  cluster_bridge->shutdown();
-
-  if (cluster_bridge_thread.joinable()) {
-    cluster_bridge_thread.join();
-  }
-
-
+  autoware_agent::stopAutowareApp(app);
 
   RCLCPP_INFO(rclcpp::get_logger("main"), "[main] Shutting down…");
   spdlog::info("[main] Shutting down…");

@@ -1,5 +1,4 @@
 set(UNIT_TEST_SOURCES
-        unit/routing_tests.cc
 )
 
 set(INTEGRATION_TEST_SOURCES
@@ -41,6 +40,8 @@ install(TARGETS autoware_tests DESTINATION lib/${PROJECT_NAME})
 if (BUILD_INTEGRATION_TESTS)
     find_package(rclcpp REQUIRED)
     find_package(geometry_msgs REQUIRED)
+    find_package(sensor_msgs REQUIRED)
+    find_package(tier4_system_msgs REQUIRED)
     find_package(autoware_vehicle_msgs REQUIRED)
     find_package(tier4_external_api_msgs REQUIRED)
     find_package(autoware_perception_msgs REQUIRED)
@@ -57,6 +58,7 @@ if (BUILD_INTEGRATION_TESTS)
     add_executable(autoware_integration_tests
             test_main.cpp
             ${INTEGRATION_TEST_SOURCES}
+            ${CMAKE_SOURCE_DIR}/src/AutowareApp.cpp
             ${PROTO_SRCS}
             ${GRPC_SRCS}
     )
@@ -75,12 +77,16 @@ if (BUILD_INTEGRATION_TESTS)
             autoware_controller
             map_routes_lib
             cluster_bridge
+            planning_bridge
+            perception_bridge
+            trip_bridge
             rclcpp::rclcpp
-            gRPC::grpc++
-            protobuf::libprotobuf
+            PUBLIC proto_lib
             ${GRPC_LIBRARIES}
             ${Protobuf_LIBRARIES}
             ${geometry_msgs_TARGETS}
+            ${sensor_msgs_TARGETS}
+            ${tier4_system_msgs_TARGETS}
             ${autoware_vehicle_msgs_TARGETS}
             ${autoware_adapi_v1_msgs_TARGETS}
             ${autoware_planning_msgs_TARGETS}
@@ -99,8 +105,6 @@ if (BUILD_INTEGRATION_TESTS)
             GTest::gmock
             GTest::gtest_main
     )
-
-    add_dependencies(autoware_integration_tests generate_proto_code)
 
     set_target_properties(autoware_integration_tests PROPERTIES
             BUILD_RPATH "/opt/ros/humble/lib;$ENV{HOME}/autoware/install/lib"

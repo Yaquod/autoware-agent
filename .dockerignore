@@ -1,0 +1,6 @@
+# Ignore everything by default
+**
+
+# Allow only the files actually used in the Dockerfile
+!docker/Dockerfile.ci
+!docker/entrypoint.sh

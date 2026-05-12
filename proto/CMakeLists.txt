@@ -1,4 +1,4 @@
-file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*")
+file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 
 if (NOT PROTO_FILES)
     message(WARNING "No .proto files found in ${CMAKE_CURRENT_SOURCE_DIR}")
@@ -10,7 +10,8 @@ if (NOT PROTO_FILES)
     return()
 endif ()
 
-message(STATUS "Found ${CMAKE_CURRENT_LIST_LENGTH} .proto files")
+list(LENGTH PROTO_FILES PROTO_COUNT)
+message(STATUS "Found ${PROTO_COUNT} .proto files")
 
 add_library(proto_lib STATIC)
 
@@ -36,19 +37,19 @@ foreach (PROTO_FILE ${PROTO_FILES})
             --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
             -I${CMAKE_CURRENT_SOURCE_DIR}
             ${PROTO_ABS}
-            DEPENDS ${PROTO_ABS}
+            DEPENDS ${PROTO_ABS} protobuf::protoc gRPC::grpc_cpp_plugin
             COMMENT "Generating C++ code from ${PROTO_NAME}.proto"
             VERBATIM
     )
 
-    list(APPEND GENERATED_SOURCES ${PROTO_SRC} ${GRPC_SRC})
+    list(APPEND GENERATED_SOURCES ${PROTO_SRC} ${GRPC_SRC} ${PROTO_HDR} ${GRPC_HDR})
 endforeach ()
 
 target_sources(proto_lib PRIVATE ${GENERATED_SOURCES})
 
 target_include_directories(proto_lib
         PUBLIC
-        ${CMAKE_CURRENT_BINARY_DIR}
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
 )
 
 target_link_libraries(proto_lib

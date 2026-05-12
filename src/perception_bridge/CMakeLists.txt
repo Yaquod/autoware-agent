@@ -28,23 +28,23 @@ target_link_libraries(perception_bridge
         PUBLIC ${PCL_LIBRARIES}
         PUBLIC ${pcl_conversions_LIBRARIES}
 
-
+        PUBLIC proto_lib
+        PUBLIC zenohc::lib
+        PUBLIC zenohcxx::zenohc
         PUBLIC map_routes_lib
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
-        PUBLIC gRPC::grpc++
-        PUBLIC protobuf::libprotobuf
         PRIVATE Boost::system
 )
 
-add_dependencies(perception_bridge generate_proto_code)
 
 target_include_directories(perception_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../map_routes
         ${CMAKE_BINARY_DIR}/generated
 
+        ${zenohcxx_INCLUDE_DIRS}
         ${PCL_INCLUDE_DIRS}
         ${pcl_conversions_INCLUDE_DIRS}
 )

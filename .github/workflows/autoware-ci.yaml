@@ -14,7 +14,7 @@ concurrency:
 
 env:
   ROS_DISTRO: humble
-  AUTOWARE_IMAGE: ghcr.io/autowarefoundation/autoware:universe-devel
+  AUTOWARE_IMAGE: ghcr.io/yaquod/autoware-agent-ci:latest
   AGENT_PKG: vehicle_autoware_agent
   CLANG_VERSION: 17
 
@@ -25,26 +25,13 @@ jobs:
     permissions:
       contents: write
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install clang-format-${{ env.CLANG_VERSION }}
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends wget gnupg lsb-release
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-format-${{ env.CLANG_VERSION }}
-          ln -sf /usr/bin/clang-format-${{ env.CLANG_VERSION }} /usr/local/bin/clang-format
 
       - name: Run clang-format and auto-fix
         run: |
@@ -84,30 +71,18 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            wget gnupg lsb-release python3-pip cmake ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev \
-            libgmock-dev libgtest-dev
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-${{ env.CLANG_VERSION }} \
-            clang-tidy-${{ env.CLANG_VERSION }}
-          ln -sf /usr/bin/clang-tidy-${{ env.CLANG_VERSION }} /usr/local/bin/clang-tidy
-          pip3 install --quiet colcon-common-extensions vcstool
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.ROS_DISTRO }}-tidy-or-test-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ env.ROS_DISTRO }}-
 
       - name: Source ROS2 + import Autoware deps
         run: |
@@ -121,13 +96,17 @@ jobs:
       - name: Build with compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS)
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          export CMAKE_PREFIX_PATH="$HOME/.local:/usr/local:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+          
           if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
-              -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
         shell: bash
@@ -172,7 +151,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     strategy:
       fail-fast: false
       matrix:
@@ -181,20 +160,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ccache ninja-build pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc \
-            libprotobuf-dev \
-            libyaml-cpp-dev \
-            libgmock-dev libgtest-dev \
-            libboost-system-dev \
-            ros-${{ env.ROS_DISTRO }}-fastcdr || true
-          pip3 install --quiet colcon-common-extensions vcstool
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -218,11 +183,14 @@ jobs:
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs zenohcxx ament_cmake_clang_format autoware_internal_msgs"
 
       - name: Build
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+          export CMAKE_PREFIX_PATH="$HOME/.local:/usr/local:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+    
           if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           export CCACHE_DIR=~/.ccache
           colcon build \
@@ -253,81 +221,52 @@ jobs:
     permissions:
       checks: write
       contents: read
-    needs: build
+    needs: clang-format
     container:
-      image: ghcr.io/autowarefoundation/autoware:universe-devel
+      image: ghcr.io/yaquod/autoware-agent-ci:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            python3-pip ninja-build wget gnupg perl pkg-config \
-            libgrpc++-dev libgrpc-dev \
-            protobuf-compiler protobuf-compiler-grpc libprotobuf-dev \
-            libyaml-cpp-dev libboost-system-dev \
-            libgmock-dev libgtest-dev
-          pip3 install --quiet colcon-common-extensions vcstool
-          apt-get install -y --no-install-recommends \
-            cpanminus libperlio-gzip-perl libjson-perl
-          cpanm --notest --quiet \
-            Capture::Tiny \
-            DateTime \
-            Date::Parse \
-            Digest::MD5 \
-            File::Spec \
-            Memory::Process \
-            Storable \
-            JSON::XS
-          wget -qO /tmp/lcov.tar.gz \
-            https://github.com/linux-test-project/lcov/releases/download/v2.1/lcov-2.1.tar.gz
-          tar -xzf /tmp/lcov.tar.gz -C /tmp
-          make -C /tmp/lcov-2.1 install PREFIX=/usr/local -j$(nproc)
-          # clang + llvm-cov so lcov reads clang .gcda files correctly
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{ env.CLANG_VERSION }} main" \
-            > /etc/apt/sources.list.d/llvm.list
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            clang-${{ env.CLANG_VERSION }} \
-            llvm-${{ env.CLANG_VERSION }}
-          # Shim: lcov --gcov-tool calls this instead of system gcov
-          printf '#!/bin/bash\nexec llvm-cov-%s gcov "$@"\n' \
-            "${{ env.CLANG_VERSION }}" > /usr/local/bin/llvm-gcov
-          chmod +x /usr/local/bin/llvm-gcov
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Cache ccache
+        uses: actions/cache@v4
         with:
-          name: build-RelWithDebInfo
+            path: ~/.ccache
+            key: ccache-${{ env.ROS_DISTRO }}-tidy-or-test-${{ hashFiles('**/CMakeLists.txt') }}
+            restore-keys: |
+              ccache-${{ env.ROS_DISTRO }}-
 
-      - name: Import workspace + rosdep
+      - name: Import workspace rosdep
         run: |
           . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
           if [ -f autoware_agent.repos ]; then
             mkdir -p src
             vcs import src < autoware_agent.repos
           fi
-          rrosdep init 2>/dev/null || true
+          rosdep init 2>/dev/null || true
           rosdep update --rosdistro=${{ env.ROS_DISTRO }}
           rosdep install -y \
           --rosdistro=${{ env.ROS_DISTRO }} \
           --from-paths . \
           --ignore-src \
-          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs"
+          --skip-keys="fastcdr grpc++ protobuf-dev libboost-system-dev geographiclib tier4_external_api_msgs tier4_vehicle_msgs autoware_vehicle_msgs autoware_adapi_v1_msgs autoware_planning_msgs autoware_internal_debug_msgs autoware_internal_planning_msgs autoware_perception_msgs tier4_system_msgs autoware_internal_msgs ament_cmake_clang_format zenohcxx"
 
       - name: Build with coverage flags
         run: |
-          . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
-          if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
-          colcon build \
-            --cmake-args \
-              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              "-DCMAKE_CXX_FLAGS=--coverage" \
-              "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
+            . /opt/ros/${{ env.ROS_DISTRO }}/setup.sh
+            export CMAKE_PREFIX_PATH="$HOME/.local:/usr/local:$CMAKE_PREFIX_PATH"
+            export LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+            
+            if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
+            colcon build \
+             --cmake-args \
+               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+               -DCMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }} \
+               -DCMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+               "-DCMAKE_CXX_FLAGS=--coverage" \
+               "-DCMAKE_EXE_LINKER_FLAGS=--coverage" \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+
 
@@ -337,29 +276,25 @@ jobs:
           if [ -f /opt/autoware/setup.sh ]; then . /opt/autoware/setup.sh; fi
           export LLVM_PROFILE_FILE="build/%p.profraw"
           . install/setup.sh
+          # Added --ctest-args -j$(nproc) to run C++ tests in parallel across all cores
           colcon test \
             --packages-select ${{ env.AGENT_PKG }} \
             --event-handlers console_cohesion+ \
-            --return-code-on-test-failure
+            --return-code-on-test-failure \
+            --ctest-args -j$(nproc)
           colcon test-result --verbose
 
       - name: Generate coverage report
         run: |
-          lcov --capture \
-            --directory build/ \
-            --output-file coverage.info \
-            --ignore-errors inconsistent,inconsistent \
-            --ignore-errors usage,usage \
-            --rc geninfo_unexecuted_blocks=1
-          lcov --remove coverage.info \
-            '/usr/*' '*/test/*' '*/mock/*' \
-            --output-file coverage_filtered.info \
-            --ignore-errors inconsistent,inconsistent \
-            --ignore-errors unused,unused
-          lcov --summary coverage_filtered.info
-          genhtml coverage_filtered.info \
-                  --output-directory coverage_html \
-                  --title "AutowareAgent Coverage"
+            mkdir -p coverage_html
+            # Use gcovr instead of lcov
+            gcovr --gcov-executable "llvm-cov-17 gcov" \
+                  --root . \
+                  --filter "src/" \
+                  --exclude ".*test.*" \
+                  --exclude ".*mock.*" \
+                  --html-details coverage_html/index.html \
+                  --print-summary
 
       - name: Upload coverage HTML
         uses: actions/upload-artifact@v4

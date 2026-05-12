@@ -1,0 +1,237 @@
+/*
+ * Copyright 2026 wafdy
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "LaneletMap.h"
+
+#include "Config.h"  // TEST_MAP_DIR / SRC_MAP_DIR / INSTALL_MAP_DIR
+
+#include <cmath>
+#include <filesystem>
+#include <limits>
+#include <stdexcept>
+
+#include <lanelet2_core/geometry/Point.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <spdlog/spdlog.h>
+
+namespace fs = std::filesystem;
+namespace autoware_agent {
+
+LaneletMap::LaneletMap(const std::string& osm_path, double origin_lat, double origin_lon,
+                       double local_offset_x, double local_offset_y)
+  : origin_lat_(origin_lat)
+  , origin_lon_(origin_lon)
+  , offset_x_(local_offset_x)
+  , offset_y_(local_offset_y) {
+  std::string const full_path = resolveOsmPath(osm_path);
+  if (!fs::exists(full_path)) {
+    throw std::runtime_error("[LaneletMap] File not found: " + full_path);
+  }
+
+  // The UTM projector uses the map's WGS-84 origin so that all projected
+  // (x,y) values are in the same metric frame as Autoware's local map.
+  lanelet::Origin const ll_origin{{origin_lat_, origin_lon_}};
+  projector_ = std::make_shared<lanelet::projection::UtmProjector>(ll_origin);
+
+  lanelet::ErrorMessages errors;
+  map_ = lanelet::load(full_path, *projector_, &errors);
+
+  for (const auto& e : errors) {
+    spdlog::warn("[LaneletMap] Load warning: {}", e);
+  }
+
+  if (!map_ || map_->laneletLayer.empty()) {
+    throw std::runtime_error("[LaneletMap] Map has no lanelets: " + full_path);
+  }
+
+  spdlog::info("[LaneletMap] Loaded {} lanelets from {}", map_->laneletLayer.size(), full_path);
+}
+
+bool LaneletMap::isLoaded() const {
+  return map_ && !map_->laneletLayer.empty();
+}
+
+size_t LaneletMap::getLaneletCount() const {
+  return map_ ? map_->laneletLayer.size() : 0u;
+}
+
+LocalCoordinate LaneletMap::gpsToLocal(const GPSCoordinate& gps) const {
+  GeographicLib::LocalCartesian proj(origin_lat_, origin_lon_, 0.0);
+  double x{}, y{}, z{};
+  proj.Forward(gps.latitude, gps.longitude, 0.0, x, y, z);
+  return {offset_x_ + x, offset_y_ + y, 0.0};
+}
+
+GPSCoordinate LaneletMap::localToGps(const LocalCoordinate& local) const {
+  GeographicLib::LocalCartesian proj(origin_lat_, origin_lon_, 0.0);
+  double lat{}, lon{}, alt{};
+  proj.Reverse(local.x - offset_x_, local.y - offset_y_, local.z, lat, lon, alt);
+  return {lat, lon};
+}
+
+const LaneInfo* LaneletMap::findNearestLane(const GPSCoordinate& gps) const {
+  if (!isLoaded())
+    return nullptr;
+
+  // Convert the query GPS to the local map frame for distance comparisons.
+  LocalCoordinate const target = gpsToLocal(gps);
+
+  double min_dist = std::numeric_limits<double>::max();
+  lanelet::Id best_id = lanelet::InvalId;
+
+  for (const auto& ll : map_->laneletLayer) {
+    const auto& cl = ll.centerline();
+    if (cl.empty())
+      continue;
+
+    // Representative point: midpoint of the centre-line.
+    const auto& mid = cl[cl.size() / 2];
+
+    // mid.x() / mid.y() are in UTM relative to the projector origin;
+    // apply the same local offset used in gpsToLocal().
+    double const lx = offset_x_ + mid.x();
+    double const ly = offset_y_ + mid.y();
+    double const dx = lx - target.x;
+    double const dy = ly - target.y;
+    double const dist = std::sqrt(dx * dx + dy * dy);
+
+    if (dist < min_dist) {
+      min_dist = dist;
+      best_id = ll.id();
+    }
+  }
+
+  if (best_id == lanelet::InvalId)
+    return nullptr;
+
+  // Check the cache first — avoids repeated construction for the same lanelet.
+  for (const auto& cached : cache_) {
+    if (cached.lane_id == static_cast<int>(best_id))
+      return &cached;
+  }
+
+  lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
+  cache_.emplace_back(makeLaneInfo(ll));
+
+  spdlog::debug(
+    "[LaneletMap] GPS ({:.6f},{:.6f}) → lanelet {} "
+    "local ({:.2f},{:.2f}) dist={:.1f}m",
+    gps.latitude, gps.longitude, best_id, cache_.back().local.x, cache_.back().local.y, min_dist);
+
+  return &cache_.back();
+}
+
+const LaneInfo* LaneletMap::getLaneById(int lane_id) const {
+  for (const auto& cached : cache_) {
+    if (cached.lane_id == lane_id)
+      return &cached;
+  }
+  if (!map_->laneletLayer.exists(static_cast<lanelet::Id>(lane_id)))
+    return nullptr;
+
+  lanelet::ConstLanelet const ll = map_->laneletLayer.get(static_cast<lanelet::Id>(lane_id));
+  cache_.emplace_back(makeLaneInfo(ll));
+  return &cache_.back();
+}
+
+void LaneletMap::setDefaultStart(const std::string& name, const GPSCoordinate& gps) {
+  FixedStartPosition pos;
+  pos.name = name;
+  pos.gps = gps;
+
+  // Resolve the lanelet immediately so the rest of the code gets stable
+  // local coordinates without an extra lookup later.
+  const LaneInfo* lane = findNearestLane(gps);
+  if (lane) {
+    pos.local = lane->local;
+    pos.orientation = lane->orientation;
+  } else {
+    // Fallback: raw projection (no nearest-lanelet snap).
+    pos.local = gpsToLocal(gps);
+    spdlog::warn(
+      "[LaneletMap] setDefaultStart: no lanelet found near "
+      "({:.6f},{:.6f}) — using raw projection",
+      gps.latitude, gps.longitude);
+  }
+
+  default_start_ = pos;
+  spdlog::info("[LaneletMap] Default start '{}' → local ({:.2f},{:.2f})", name, pos.local.x,
+               pos.local.y);
+}
+
+const FixedStartPosition* LaneletMap::getDefaultStart() const {
+  return default_start_.has_value() ? &default_start_.value() : nullptr;
+}
+
+// ── Path resolution ───────────────────────────────────────────────────────────
+
+std::string LaneletMap::resolveOsmPath(const std::string& filename) {
+  fs::path input(filename);
+  if (input.is_absolute() && fs::exists(input))
+    return input.string();
+
+  // Relative path: probe the same directories RouteConfig used.
+  for (const auto& base : {autoware_agent::TEST_MAP_DIR, autoware_agent::SRC_MAP_DIR,
+                           autoware_agent::INSTALL_MAP_DIR}) {
+    fs::path candidate = fs::path(base) / filename;
+    if (fs::exists(candidate))
+      return candidate.string();
+  }
+
+  // Last resort: return as-is and let the caller surface the error.
+  return filename;
+}
+
+// ── Private helpers ───────────────────────────────────────────────────────────
+
+LaneInfo LaneletMap::makeLaneInfo(const lanelet::ConstLanelet& ll) const {
+  const auto& cl = ll.centerline();
+  const auto& mid = cl[cl.size() / 2];
+
+  double const lx = offset_x_ + mid.x();
+  double const ly = offset_y_ + mid.y();
+  double const yaw_rad = laneletYaw(ll);
+  auto const [qz, qw] = yawToQuat(yaw_rad);
+
+  LaneInfo info;
+  info.lane_id = static_cast<int>(ll.id());
+  info.local.x = lx;
+  info.local.y = ly;
+  info.local.z = 0.0;
+  info.gps = localToGps({lx, ly, 0.0});
+  info.orientation.x = 0.0;
+  info.orientation.y = 0.0;
+  info.orientation.z = qz;
+  info.orientation.w = qw;
+  info.orientation.yaw_degrees = yaw_rad * 180.0 / M_PI;
+  return info;
+}
+
+double LaneletMap::laneletYaw(const lanelet::ConstLanelet& ll) {
+  const auto& cl = ll.centerline();
+  if (cl.size() < 2)
+    return 0.0;
+  const auto& p0 = cl.front();
+  const auto& p1 = cl.back();
+  return std::atan2(p1.y() - p0.y(), p1.x() - p0.x());
+}
+
+std::pair<double, double> LaneletMap::yawToQuat(double yaw_rad) {
+  double const h = yaw_rad * 0.5;
+  return {std::sin(h), std::cos(h)};  // {qz, qw}
+}
+
+}  // namespace autoware_agent
