@@ -65,19 +65,19 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
   h.perception_bridge_ = std::make_shared<PerceptionBridge>(node, h.zsession_);
   h.trip_bridge_ = std::make_shared<TripBridge>(h.controller_, node, h.zsession_);
 
-  auto eta_adapter = std::make_shared<vehicle_gateway::ClusterEtaAdapter>(
+  h.eta_adapter_ = std::make_shared<vehicle_gateway::ClusterEtaAdapter>(
     h.cluster_bridge_->GetState(), h.cluster_bridge_->GetStateMutex(),
     h.cluster_bridge_->GetRequestId());
 
-  auto loc_adapter = std::make_shared<vehicle_gateway::ClusterLocationAdapter>(
+  h.loc_adapter_ = std::make_shared<vehicle_gateway::ClusterLocationAdapter>(
     h.cluster_bridge_->GetState(), h.cluster_bridge_->GetStateMutex());
 
-  auto trip_adapter =
-    std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
+  h.trip_adapter_ = std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
 
   auto stream_client = std::make_shared<vehicle_gateway::VehicleGatewayStreamClient>(
-    "192.168.64.7:50051", trip_adapter.get(), eta_adapter.get(), loc_adapter.get(),
-    "ORIN_NANO_001");
+    "192.168.64.7:50051",
+    h.trip_adapter_.get(),  // ← now backed by h, lives as long as AppHandles
+    h.eta_adapter_.get(), h.loc_adapter_.get(), "ORIN_NANO_001");
 
   stream_client->set_handlers(
     {.on_trip_init =
@@ -151,6 +151,9 @@ void stopAutowareApp(AppHandles& h) {
   }
 
   // Clear handles
+  h.trip_adapter_.reset();
+  h.eta_adapter_.reset();
+  h.loc_adapter_.reset();
   h.trip_bridge_.reset();
   h.perception_bridge_.reset();
   h.planning_bridge_.reset();

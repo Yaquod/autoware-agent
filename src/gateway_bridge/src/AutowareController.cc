@@ -100,7 +100,7 @@ void AutowareController::initialize() {
       });
 
     trip_ctrl_->initializeInMap();
-
+    ready_.store(true);
     RCLCPP_INFO(get_logger(), "[AutowareAgent] Initialization complete");
     spdlog::info("[AutowareAgent] Initialization complete");
   });
@@ -255,6 +255,12 @@ void AutowareController::setArrivalCallback(ArrivalCallback cb) {
 
 void AutowareController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
                                   RouteQueryCallback callback) {
+  if (!ready_.load()) {
+    spdlog::warn("[AutowareAgent] queryEta rejected — controller not ready yet");
+    if (callback)
+      callback(EtaQueryResult{.success_ = false, .error_message_ = "controller not ready"});
+    return;
+  }
   boost::asio::post(*strand_, [this, start_gps, goal_gps, cb = std::move(callback)]() mutable {
     if (!trip_ctrl_) {
       if (cb)

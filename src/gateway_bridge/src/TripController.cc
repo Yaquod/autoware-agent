@@ -85,20 +85,12 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const LaneletMap& r
 
 void TripController::initializeInMap() {
   const FixedStartPosition* fixed_start = lanelet_map_.getDefaultStart();
-  if (!fixed_start) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "[AutowareAgent] No fixed start position in route config — "
-                 "cannot initialize vehicle in map");
+  if (!fixed_start)
     return;
-  }
 
-  RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] Initializing vehicle in map at fixed start '%s' "
-              "lane= (%.2f, %.2f)",
-              fixed_start->name.c_str(), fixed_start->local.x, fixed_start->local.y);
   init_x_ = fixed_start->local.x;
   init_y_ = fixed_start->local.y;
-  init_z_ = fixed_start->local.z;
+  init_z_ = 40.734;
   init_qz_ = fixed_start->orientation.z;
   init_qw_ = fixed_start->orientation.w;
 
@@ -264,15 +256,24 @@ void TripController::tick() {
       if (!current_loc_state_ ||
           current_loc_state_->state !=
             autoware_adapi_v1_msgs::msg::LocalizationInitializationState::INITIALIZED) {
-        // Republish fixed start pose every second until Autoware localizes
         if (elapsed_ms(last_publish_time_) >= 1000) {
           doPublishInitialPose(init_x_, init_y_, init_z_, init_qz_, init_qw_);
           last_publish_time_ = std::chrono::steady_clock::now();
         }
       } else {
-        RCLCPP_INFO(node_->get_logger(),
-                    "[AutowareAgent] Vehicle localized in map — ready for queries");
-        transitionTo(TripState::IDLE);
+        // Also verify TF is actually available before declaring ready
+        auto pose = getCurrentVehiclePose();
+        if (!pose.has_value()) {
+          // Localized but TF not yet available — keep republishing
+          if (elapsed_ms(last_publish_time_) >= 1000) {
+            doPublishInitialPose(init_x_, init_y_, init_z_, init_qz_, init_qw_);
+            last_publish_time_ = std::chrono::steady_clock::now();
+          }
+        } else {
+          RCLCPP_INFO(node_->get_logger(),
+                      "[AutowareAgent] Vehicle localized in map — ready for queries");
+          transitionTo(TripState::IDLE);
+        }
       }
       break;
 
@@ -412,33 +413,126 @@ void TripController::tick() {
 }
 
 void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps) {
-  const LaneInfo* from_lane = lanelet_map_.findNearestLane(from_gps);
-  if (!from_lane) {
-    failQuery("cannot resolve lane for " +
-              std::string(current_leg_ == QueryLeg::PICKUP ? "pickup origin" : "trip start"));
+  constexpr unsigned kMaxCandidates = 20;
+
+  // For the pickup leg, the vehicle is already physically present at from_gps.
+  // Use the actual TF-localized lane as the authoritative from_lane so we never
+  // pick a downstream neighbour (e.g. 309) when the vehicle is at 307.
+  const LaneInfo* from_lane = nullptr;
+  if (current_leg_ == QueryLeg::PICKUP) {
+    auto vehicle_pose = getCurrentVehiclePose();
+    if (vehicle_pose) {
+      from_lane = lanelet_map_.findNearestLane(*vehicle_pose);
+    }
+    if (!from_lane) {
+      // Fallback: nearest passable to the supplied GPS
+      auto cands = lanelet_map_.findNearestLanes(from_gps, kMaxCandidates);
+      from_lane = cands.empty() ? nullptr : cands[0];
+    }
+  }
+
+  // For the trip leg (or if pickup fallback above still has no from_lane),
+  // find the nearest-to-goal pair where canRoute succeeds.
+  const LaneInfo* to_lane = nullptr;
+
+  if (from_lane) {
+    // from_lane is fixed — just find the best reachable to_lane
+    auto to_cands = lanelet_map_.findNearestLanes(to_gps, kMaxCandidates);
+    for (const LaneInfo* tc : to_cands) {
+      if (tc->lane_id == from_lane->lane_id) {
+        to_lane = tc;
+        break;
+      }
+      if (lanelet_map_.canRoute(from_lane->lane_id, tc->lane_id)) {
+        to_lane = tc;
+        break;
+      }
+    }
+    if (!to_lane) {
+      failQuery("no graph path from lane " + std::to_string(from_lane->lane_id) +
+                " to any candidate near goal (" + std::to_string(to_gps.latitude) + "," +
+                std::to_string(to_gps.longitude) + ")");
+      return;
+    }
+  } else {
+    // Trip leg: both from and to are unknown — search all pairs
+    auto from_cands = lanelet_map_.findNearestLanes(from_gps, kMaxCandidates);
+    auto to_cands = lanelet_map_.findNearestLanes(to_gps, kMaxCandidates);
+
+    if (from_cands.empty()) {
+      failQuery("no passable lanelets near " +
+                std::string(current_leg_ == QueryLeg::PICKUP ? "pickup origin" : "trip start"));
+      return;
+    }
+    if (to_cands.empty()) {
+      failQuery("no passable lanelets near " +
+                std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
+      return;
+    }
+
+    for (const LaneInfo* fc : from_cands) {
+      for (const LaneInfo* tc : to_cands) {
+        if (fc->lane_id == tc->lane_id) {
+          from_lane = fc;
+          to_lane = tc;
+          goto found;
+        }
+        if (lanelet_map_.canRoute(fc->lane_id, tc->lane_id)) {
+          from_lane = fc;
+          to_lane = tc;
+          goto found;
+        }
+      }
+    }
+
+  found:
+    if (!from_lane || !to_lane) {
+      failQuery("no graph path between any candidate lane pair near (" +
+                std::to_string(from_gps.latitude) + "," + std::to_string(from_gps.longitude) +
+                ") → (" + std::to_string(to_gps.latitude) + "," + std::to_string(to_gps.longitude) +
+                ")");
+      return;
+    }
+  }
+
+  // ── Same-lane shortcut ──────────────────────────────────────────────────
+  if (from_lane->lane_id == to_lane->lane_id) {
+    RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] %s leg: same lane %ld — skipping route query",
+                current_leg_ == QueryLeg::PICKUP ? "Pickup" : "Trip", from_lane->lane_id);
+    spdlog::info("[AutowareAgent] {} leg: same lane {} — skipping",
+                 current_leg_ == QueryLeg::PICKUP ? "Pickup" : "Trip", from_lane->lane_id);
+
+    eta_distance_m_ = 0.0;
+    eta_seconds_ = 0.0;
+    eta_received_ = true;
+
+    status_.start_x_ = from_lane->local.x;
+    status_.start_y_ = from_lane->local.y;
+    status_.start_z_ = from_lane->local.z;
+    status_.start_qw_ = from_lane->orientation.w;
+    status_.start_qz_ = from_lane->orientation.z;
+    status_.start_lanelet_id_ = std::to_string(from_lane->lane_id);
+    status_.goal_x_ = to_lane->local.x;
+    status_.goal_y_ = to_lane->local.y;
+    status_.goal_z_ = to_lane->local.z;
+    status_.goal_qw_ = to_lane->orientation.w;
+    status_.goal_qz_ = to_lane->orientation.z;
+    status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
+    status_.goal_gps_ = to_gps;
+    status_.goal_distance_m_ = 0.0;
+
+    finishQueryLeg();
     return;
   }
 
-  const LaneInfo* to_lane = lanelet_map_.findNearestLane(to_gps);
-  if (!to_lane) {
-    failQuery("cannot resolve lane for " +
-              std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
-    return;
-  }
-
-  status_.start_x_ = from_lane->local.x;
-  status_.start_y_ = from_lane->local.y;
-  status_.start_z_ = from_lane->local.z;
-  status_.start_qw_ = from_lane->orientation.w;
-  status_.start_qz_ = from_lane->orientation.z;
+  // ── Fill status ─────────────────────────────────────────────────────────
   status_.start_lanelet_id_ = std::to_string(from_lane->lane_id);
-
+  status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
   status_.goal_x_ = to_lane->local.x;
   status_.goal_y_ = to_lane->local.y;
   status_.goal_z_ = to_lane->local.z;
   status_.goal_qw_ = to_lane->orientation.w;
   status_.goal_qz_ = to_lane->orientation.z;
-  status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
   status_.goal_gps_ = to_gps;
 
   LocalCoordinate raw = lanelet_map_.gpsToLocal(to_gps);
@@ -446,11 +540,53 @@ void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps)
   double dy = to_lane->local.y - raw.y;
   status_.goal_distance_m_ = std::sqrt(dx * dx + dy * dy);
 
-  RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Query %s leg: lane %s → lane %s",
-              current_leg_ == QueryLeg::PICKUP ? "pickup" : "trip",
-              status_.start_lanelet_id_.c_str(), status_.goal_lanelet_id_.c_str());
+  // ── Initial pose for QUERY state machine ────────────────────────────────
+  // Pickup leg: vehicle is already localized at its real position — use that.
+  //             Publishing the from_lane centroid would confuse Autoware's
+  //             route_handler which needs the pose to land inside a known lanelet.
+  // Trip leg:   vehicle must be re-localized to the pickup point (from_lane).
+  if (current_leg_ == QueryLeg::PICKUP) {
+    // Use actual vehicle TF pose lane for the initial pose
+    auto vehicle_pose = getCurrentVehiclePose();
+    const LaneInfo* pose_lane = nullptr;
+    if (vehicle_pose) {
+      pose_lane = lanelet_map_.findNearestLane(*vehicle_pose);
+    }
+    if (!pose_lane)
+      pose_lane = from_lane;
 
-  transitionTo(TripState::QUERY_PUBLISHING_INITIAL_POSE);
+    status_.start_x_ = pose_lane->local.x;
+    status_.start_y_ = pose_lane->local.y;
+    status_.start_z_ = pose_lane->local.z;
+    status_.start_qw_ = pose_lane->orientation.w;
+    status_.start_qz_ = pose_lane->orientation.z;
+  } else {
+    status_.start_x_ = from_lane->local.x;
+    status_.start_y_ = from_lane->local.y;
+    status_.start_z_ = from_lane->local.z;
+    status_.start_qw_ = from_lane->orientation.w;
+    status_.start_qz_ = from_lane->orientation.z;
+  }
+
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] Query %s leg: lane %s → lane %s "
+              "(pose at (%.2f,%.2f) goal at (%.2f,%.2f))",
+              current_leg_ == QueryLeg::PICKUP ? "pickup" : "trip",
+              status_.start_lanelet_id_.c_str(), status_.goal_lanelet_id_.c_str(), status_.start_x_,
+              status_.start_y_, status_.goal_x_, status_.goal_y_);
+  spdlog::info(
+    "[AutowareAgent] Query {} leg: lane {} → lane {} "
+    "(pose ({:.2f},{:.2f}) goal ({:.2f},{:.2f}))",
+    current_leg_ == QueryLeg::PICKUP ? "pickup" : "trip", status_.start_lanelet_id_,
+    status_.goal_lanelet_id_, status_.start_x_, status_.start_y_, status_.goal_x_, status_.goal_y_);
+
+  // Pickup leg: vehicle already localized — skip straight to publishing the goal.
+  // Trip leg:   must re-localize to pickup point first.
+  if (current_leg_ == QueryLeg::PICKUP) {
+    transitionTo(TripState::QUERY_PUBLISHING_GOAL);
+  } else {
+    transitionTo(TripState::QUERY_PUBLISHING_INITIAL_POSE);
+  }
 }
 
 void TripController::finishQueryLeg() {
@@ -464,7 +600,7 @@ void TripController::finishQueryLeg() {
       .route_ = last_route_ ? *last_route_ : autoware_planning_msgs::msg::LaneletRoute{},
       .eta_seconds_ = eta_seconds_,
       .distance_m_ = eta_distance_m_,
-      .goal_gps_ = query_start_gps_  // pickup destination = trip start
+      .goal_gps_ = query_start_gps_  // pickup destination = trip leg start
     };
 
     RCLCPP_INFO(node_->get_logger(),
@@ -476,6 +612,8 @@ void TripController::finishQueryLeg() {
     current_leg_ = QueryLeg::TRIP;
     current_route_state_.reset();
     route_received_ = false;
+
+    // Pass the original pickup GPS directly — no lossy lane-centroid roundtrip
     startQueryLeg(query_start_gps_, query_goal_gps_);
 
   } else {
@@ -556,7 +694,7 @@ void TripController::doPublishGoal(double x, double y, double z, double qz, doub
 
   msg.pose.position.x = x;
   msg.pose.position.y = y;
-  msg.pose.position.z = z;
+  msg.pose.position.z = z > 0.0 ? z : init_z_;
   msg.pose.orientation.x = 0.0;
   msg.pose.orientation.y = 0.0;
   msg.pose.orientation.z = qz;

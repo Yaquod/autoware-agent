@@ -78,6 +78,7 @@ class AutowareController : public rclcpp::Node {
   std::thread io_thread_;
   std::function<void(TripState, TripState)> trip_state_callback_;
   ArrivalCallback arrival_callback_;
+  std::atomic<bool> ready_{false};
 
   void onTickTimer();
 

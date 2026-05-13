@@ -27,6 +27,8 @@
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 namespace autoware_agent {
 
@@ -53,7 +55,7 @@ struct Orientation {
  * Populated from the Lanelet2 map at query time.
  */
 struct LaneInfo {
-  int lane_id{};
+  int64_t lane_id{};
   GPSCoordinate gps{};
   LocalCoordinate local{};
   Orientation orientation{};
@@ -98,13 +100,19 @@ class LaneletMap {
    * The returned pointer is stable for the lifetime of this LaneletMap
    * instance (results are cached internally).
    */
-  [[nodiscard]] const LaneInfo* findNearestLane(const GPSCoordinate& gps) const;
+  std::vector<const LaneInfo*> findNearestLanes(const GPSCoordinate& gps,
+                                                unsigned max_candidates) const;
+  const LaneInfo* findNearestLane(const GPSCoordinate& gps) const;
+
+  const LaneInfo* findNearestRoutableLane(const GPSCoordinate& gps) const;
+
+  const LaneInfo* findNearestReachableLane(const GPSCoordinate& gps) const;
 
   /**
    * Look up a lanelet by its integer ID.
    * Returns nullptr when the ID is not present in the map.
    */
-  [[nodiscard]] const LaneInfo* getLaneById(int lane_id) const;
+  [[nodiscard]] const LaneInfo* getLaneById(int64_t lane_id) const;
 
   /**
    * The fixed vehicle start position (e.g. depot, taxi stand).
@@ -123,6 +131,8 @@ class LaneletMap {
    *  RouteConfig::resolveConfigPath() used (absolute > test > src > install). */
   static std::string resolveOsmPath(const std::string& filename);
 
+  bool canRoute(int64_t from_lane_id, int64_t to_lane_id) const;
+
  private:
   double origin_lat_{};
   double origin_lon_{};
@@ -131,9 +141,15 @@ class LaneletMap {
 
   std::shared_ptr<lanelet::LaneletMap> map_;
   std::shared_ptr<lanelet::projection::UtmProjector> projector_;
+  std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_;
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_;
+  lanelet::LaneletSubmapConstPtr passable_map_;
 
   mutable std::vector<LaneInfo> cache_;  // results of findNearestLane()
   std::optional<FixedStartPosition> default_start_;
+
+  const LaneInfo* findNearestLaneImpl(const GPSCoordinate& gps, bool need_following,
+                                      bool need_previous) const;
 
   /** Build a LaneInfo from a resolved lanelet (centroid + yaw). */
   [[nodiscard]] LaneInfo makeLaneInfo(const lanelet::ConstLanelet& ll) const;
@@ -143,6 +159,8 @@ class LaneletMap {
 
   /** Quaternion {qz, qw} for a pure-Z rotation. */
   static std::pair<double, double> yawToQuat(double yaw_rad);
+
+  const LaneInfo* ensureCached(lanelet::Id id) const;
 };
 
 }  // namespace autoware_agent

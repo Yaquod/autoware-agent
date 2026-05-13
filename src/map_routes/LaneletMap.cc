@@ -16,15 +16,18 @@
 
 #include "LaneletMap.h"
 
-#include "Config.h"  // TEST_MAP_DIR / SRC_MAP_DIR / INSTALL_MAP_DIR
+#include "Config.h"
 
 #include <cmath>
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
 
-#include <lanelet2_core/geometry/Point.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_matching/LaneletMatching.h>
+#include <lanelet2_routing/Route.h>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
@@ -58,6 +61,10 @@ LaneletMap::LaneletMap(const std::string& osm_path, double origin_lat, double or
   }
 
   spdlog::info("[LaneletMap] Loaded {} lanelets from {}", map_->laneletLayer.size(), full_path);
+  traffic_rules_ = lanelet::traffic_rules::TrafficRulesFactory::create(
+    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+  routing_graph_ = lanelet::routing::RoutingGraph::build(*map_, *traffic_rules_);
+  passable_map_ = routing_graph_->passableSubmap();
 }
 
 bool LaneletMap::isLoaded() const {
@@ -75,6 +82,21 @@ LocalCoordinate LaneletMap::gpsToLocal(const GPSCoordinate& gps) const {
   return {offset_x_ + x, offset_y_ + y, 0.0};
 }
 
+bool LaneletMap::canRoute(int64_t from_lane_id, int64_t to_lane_id) const {
+  if (!routing_graph_)
+    return true;
+
+  if (!map_->laneletLayer.exists(static_cast<lanelet::Id>(from_lane_id)) ||
+      !map_->laneletLayer.exists(static_cast<lanelet::Id>(to_lane_id)))
+    return false;
+
+  auto from_ll = map_->laneletLayer.get(static_cast<lanelet::Id>(from_lane_id));
+  auto to_ll = map_->laneletLayer.get(static_cast<lanelet::Id>(to_lane_id));
+
+  auto route = routing_graph_->getRoute(from_ll, to_ll);
+  return route.has_value();
+}
+
 GPSCoordinate LaneletMap::localToGps(const LocalCoordinate& local) const {
   GeographicLib::LocalCartesian proj(origin_lat_, origin_lon_, 0.0);
   double lat{}, lon{}, alt{};
@@ -82,59 +104,90 @@ GPSCoordinate LaneletMap::localToGps(const LocalCoordinate& local) const {
   return {lat, lon};
 }
 
+std::vector<const LaneInfo*> LaneletMap::findNearestLanes(const GPSCoordinate& gps,
+                                                          unsigned max_candidates) const {
+  if (!isLoaded())
+    return {};
+
+  // Query point in Lanelet2's internal frame (without our local offset)
+  LocalCoordinate lc = gpsToLocal(gps);
+  lanelet::BasicPoint2d query(lc.x - offset_x_, lc.y - offset_y_);
+
+  // R-tree query on passable submap — already excludes non-vehicle lanelets
+  auto nearest = lanelet::geometry::findNearest(passable_map_->laneletLayer, query, max_candidates);
+
+  std::vector<const LaneInfo*> result;
+  result.reserve(nearest.size());
+  for (auto& [dist, ll] : nearest) {
+    // Skip if traffic rules say this participant can't pass it
+    if (!traffic_rules_->canPass(ll))
+      continue;
+    result.push_back(ensureCached(ll.id()));
+  }
+  return result;
+}
+
 const LaneInfo* LaneletMap::findNearestLane(const GPSCoordinate& gps) const {
+  auto ranked = findNearestLanes(gps, 1);
+  return ranked.empty() ? nullptr : ranked[0];
+}
+
+const LaneInfo* LaneletMap::findNearestRoutableLane(const GPSCoordinate& gps) const {
+  return findNearestLaneImpl(gps, /*need_following=*/true, /*need_previous=*/false);
+}
+
+const LaneInfo* LaneletMap::findNearestReachableLane(const GPSCoordinate& gps) const {
+  return findNearestLaneImpl(gps, /*need_following=*/false, /*need_previous=*/true);
+}
+
+const LaneInfo* LaneletMap::findNearestLaneImpl(const GPSCoordinate& gps, bool need_following,
+                                                bool need_previous) const {
   if (!isLoaded())
     return nullptr;
 
-  // Convert the query GPS to the local map frame for distance comparisons.
-  LocalCoordinate const target = gpsToLocal(gps);
+  LocalCoordinate lc = gpsToLocal(gps);
+  lanelet::BasicPoint2d query(lc.x - offset_x_, lc.y - offset_y_);
 
-  double min_dist = std::numeric_limits<double>::max();
-  lanelet::Id best_id = lanelet::InvalId;
+  constexpr unsigned kCandidates = 20;
+  auto nearest = lanelet::geometry::findNearest(passable_map_->laneletLayer, query, kCandidates);
 
-  for (const auto& ll : map_->laneletLayer) {
-    const auto& cl = ll.centerline();
-    if (cl.empty())
+  if (nearest.empty()) {
+    spdlog::warn("[LaneletMap] findNearest: no passable lanelets near ({:.6f},{:.6f})",
+                 gps.latitude, gps.longitude);
+    return nullptr;
+  }
+
+  lanelet::matching::Object2d obj;
+  obj.pose.translation() = query;
+  obj.pose.linear() = Eigen::Rotation2Dd(0).toRotationMatrix();  // heading unknown
+
+  for (auto& [dist, ll] : nearest) {
+    // Skip if routing connectivity not satisfied
+    if (need_following && routing_graph_->following(ll).empty())
+      continue;
+    if (need_previous && routing_graph_->previous(ll).empty())
       continue;
 
-    // Representative point: midpoint of the centre-line.
-    const auto& mid = cl[cl.size() / 2];
+    // Skip if traffic rules say this lanelet isn't passable for our participant
+    if (!traffic_rules_->canPass(ll))
+      continue;
 
-    // mid.x() / mid.y() are in UTM relative to the projector origin;
-    // apply the same local offset used in gpsToLocal().
-    double const lx = offset_x_ + mid.x();
-    double const ly = offset_y_ + mid.y();
-    double const dx = lx - target.x;
-    double const dy = ly - target.y;
-    double const dist = std::sqrt(dx * dx + dy * dy);
-
-    if (dist < min_dist) {
-      min_dist = dist;
-      best_id = ll.id();
-    }
+    lanelet::Id id = ll.id();
+    spdlog::debug(
+      "[LaneletMap] GPS ({:.6f},{:.6f}) → lanelet {} dist={:.1f}m "
+      "(following={} previous={})",
+      gps.latitude, gps.longitude, id, dist, routing_graph_->following(ll).size(),
+      routing_graph_->previous(ll).size());
+    return ensureCached(id);
   }
 
-  if (best_id == lanelet::InvalId)
-    return nullptr;
-
-  // Check the cache first — avoids repeated construction for the same lanelet.
-  for (const auto& cached : cache_) {
-    if (cached.lane_id == static_cast<int>(best_id))
-      return &cached;
-  }
-
-  lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
-  cache_.emplace_back(makeLaneInfo(ll));
-
-  spdlog::debug(
-    "[LaneletMap] GPS ({:.6f},{:.6f}) → lanelet {} "
-    "local ({:.2f},{:.2f}) dist={:.1f}m",
-    gps.latitude, gps.longitude, best_id, cache_.back().local.x, cache_.back().local.y, min_dist);
-
-  return &cache_.back();
+  // Fallback: first passable lanelet regardless of connectivity
+  spdlog::warn("[LaneletMap] No routable lanelet near ({:.6f},{:.6f}) — using nearest passable",
+               gps.latitude, gps.longitude);
+  return ensureCached(nearest.front().second.id());
 }
 
-const LaneInfo* LaneletMap::getLaneById(int lane_id) const {
+const LaneInfo* LaneletMap::getLaneById(int64_t lane_id) const {
   for (const auto& cached : cache_) {
     if (cached.lane_id == lane_id)
       return &cached;
@@ -143,6 +196,15 @@ const LaneInfo* LaneletMap::getLaneById(int lane_id) const {
     return nullptr;
 
   lanelet::ConstLanelet const ll = map_->laneletLayer.get(static_cast<lanelet::Id>(lane_id));
+  cache_.emplace_back(makeLaneInfo(ll));
+  return &cache_.back();
+}
+
+const LaneInfo* LaneletMap::ensureCached(lanelet::Id id) const {
+  for (const auto& c : cache_)
+    if (c.lane_id == static_cast<int64_t>(id))
+      return &c;
+  auto ll = map_->laneletLayer.get(id);
   cache_.emplace_back(makeLaneInfo(ll));
   return &cache_.back();
 }
@@ -176,8 +238,6 @@ const FixedStartPosition* LaneletMap::getDefaultStart() const {
   return default_start_.has_value() ? &default_start_.value() : nullptr;
 }
 
-// ── Path resolution ───────────────────────────────────────────────────────────
-
 std::string LaneletMap::resolveOsmPath(const std::string& filename) {
   fs::path input(filename);
   if (input.is_absolute() && fs::exists(input))
@@ -195,8 +255,6 @@ std::string LaneletMap::resolveOsmPath(const std::string& filename) {
   return filename;
 }
 
-// ── Private helpers ───────────────────────────────────────────────────────────
-
 LaneInfo LaneletMap::makeLaneInfo(const lanelet::ConstLanelet& ll) const {
   const auto& cl = ll.centerline();
   const auto& mid = cl[cl.size() / 2];
@@ -207,7 +265,7 @@ LaneInfo LaneletMap::makeLaneInfo(const lanelet::ConstLanelet& ll) const {
   auto const [qz, qw] = yawToQuat(yaw_rad);
 
   LaneInfo info;
-  info.lane_id = static_cast<int>(ll.id());
+  info.lane_id = static_cast<int64_t>(ll.id());
   info.local.x = lx;
   info.local.y = ly;
   info.local.z = 0.0;

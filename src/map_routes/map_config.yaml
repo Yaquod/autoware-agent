@@ -4,6 +4,6 @@ map_config:
   elevation: 34.137
 
 start_position:
-  latitude: 35.68855194431519
-  longitude: 139.69142711058254
+  latitude: 35.690068
+  longitude: 139.693642
   name: "default"

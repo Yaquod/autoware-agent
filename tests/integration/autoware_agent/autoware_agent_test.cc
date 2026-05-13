@@ -294,3 +294,129 @@ TEST_F(AutowareAgentTest, RejectDuplicateTrip) {
   bool started2 = startTripSync(goal2.latitude, goal2.longitude);
   EXPECT_FALSE(started2) << "Should reject second trip while one is in progress";
 }
+
+// Test: QueryEta returns valid result for two GPS points in the map
+TEST_F(AutowareAgentTest, QueryEtaReturnsTwoLegs) {
+  createController();
+
+  TripStatus status = getStatusSync();
+  if (status.state_ != TripState::IDLE) {
+    GTEST_SKIP() << "Controller not IDLE (state=" << static_cast<int>(status.state_)
+                 << ") - requires Autoware localization";
+  }
+
+  // Two real points from your Tokyo map
+  GPSCoordinate pickup{35.690068, 139.693642};
+  GPSCoordinate goal{35.690904, 139.695086};
+
+  std::promise<RouteQueryResult> promise;
+  auto future = promise.get_future();
+
+  controller_->queryEta(pickup, goal, [&promise](RouteQueryResult r) { promise.set_value(r); });
+
+  // queryEta drives the FSM through several states — spin while waiting
+  auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  while (rclcpp::ok() && std::chrono::steady_clock::now() < deadline) {
+    rclcpp::spin_some(controller_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Check if future is ready without blocking
+    if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+      break;
+  }
+
+  ASSERT_EQ(future.wait_for(std::chrono::milliseconds(0)), std::future_status::ready)
+    << "queryEta did not complete within 60s";
+
+  RouteQueryResult result = future.get();
+
+  // ── Basic success check ───────────────────────────────────────────────────
+  ASSERT_TRUE(result.success_) << "queryEta failed: " << result.error_message_;
+
+  // ── Pickup leg ────────────────────────────────────────────────────────────
+  EXPECT_TRUE(result.pickup_leg_.success_) << "Pickup leg failed";
+  EXPECT_GT(result.pickup_leg_.distance_m_, 0) << "Pickup distance should be > 0";
+  EXPECT_GT(result.pickup_leg_.eta_seconds_, 0) << "Pickup ETA should be > 0";
+  EXPECT_FALSE(result.pickup_leg_.start_lane_id_.empty());
+  EXPECT_FALSE(result.pickup_leg_.goal_lane_id_.empty());
+
+  std::cout << "[ETA] Pickup leg: " << result.pickup_leg_.distance_m_ << " m / "
+            << result.pickup_leg_.eta_seconds_ << " s"
+            << "  lanes " << result.pickup_leg_.start_lane_id_ << " → "
+            << result.pickup_leg_.goal_lane_id_ << "\n";
+
+  // ── Trip leg ──────────────────────────────────────────────────────────────
+  EXPECT_TRUE(result.trip_leg_.success_) << "Trip leg failed";
+  EXPECT_GT(result.trip_leg_.distance_m_, 0) << "Trip distance should be > 0";
+  EXPECT_GT(result.trip_leg_.eta_seconds_, 0) << "Trip ETA should be > 0";
+  EXPECT_FALSE(result.trip_leg_.start_lane_id_.empty());
+  EXPECT_FALSE(result.trip_leg_.goal_lane_id_.empty());
+
+  std::cout << "[ETA] Trip leg:   " << result.trip_leg_.distance_m_ << " m / "
+            << result.trip_leg_.eta_seconds_ << " s"
+            << "  lanes " << result.trip_leg_.start_lane_id_ << " → "
+            << result.trip_leg_.goal_lane_id_ << "\n";
+
+  // ── Sanity: controller returns to IDLE after query ────────────────────────
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  status = getStatusSync();
+  EXPECT_EQ(status.state_, TripState::ROUTES_READY)
+    << "After successful queryEta, state should be ROUTES_READY";
+}
+
+TEST_F(AutowareAgentTest, QueryEtaDumpNearbyLanes) {
+  LaneletMap map(map_path_, 35.68855194431519, 139.69142711058254, 0.0, 0.0);
+
+  // Dump the 10 closest passable lanes to the pickup point
+  // so we can pick a good test coordinate
+  struct Candidate {
+    int64_t id;
+    double dist;
+    double lx;
+    double ly;
+  };
+  std::vector<Candidate> candidates;
+
+  GPSCoordinate pickup{35.690068, 139.693642};
+  auto target = map.gpsToLocal(pickup);
+
+  // We need access to internals — just print what findNearestLane returns
+  // and its neighbors by trying slightly offset points
+  std::vector<std::pair<double, double>> offsets = {{0, 0},  {5, 0},   {-5, 0}, {0, 5},   {0, -5},
+                                                    {10, 0}, {-10, 0}, {0, 10}, {0, -10}, {15, 15}};
+
+  std::cout << "[Dump] Target local: (" << target.x << ", " << target.y << ")\n";
+  for (auto [dx, dy] : offsets) {
+    GPSCoordinate offset_gps = map.localToGps({target.x + dx, target.y + dy, 0});
+    const LaneInfo* lane = map.findNearestLane(offset_gps);
+    if (lane) {
+      std::cout << "[Dump] offset(" << dx << "," << dy << ") → lane " << lane->lane_id << " local ("
+                << lane->local.x << ", " << lane->local.y << ")"
+                << " canRoute→3012620: " << map.canRoute(lane->lane_id, 3012620) << "\n";
+    }
+  }
+}
+
+TEST_F(AutowareAgentTest, QueryEtaLaneSnapping) {
+  LaneletMap map(map_path_, 35.68855194431519, 139.69142711058254, 0.0, 0.0);
+
+  GPSCoordinate pickup{35.690068, 139.693642};  // snaps to lane 307
+  GPSCoordinate goal{35.690904, 139.695086};    // snaps to lane 3012620
+
+  const LaneInfo* pickup_lane = map.findNearestLane(pickup);
+  const LaneInfo* goal_lane = map.findNearestLane(goal);
+
+  ASSERT_NE(pickup_lane, nullptr);
+  ASSERT_NE(goal_lane, nullptr);
+
+  std::cout << "[Snap] Pickup → lane " << pickup_lane->lane_id << " local (" << pickup_lane->local.x
+            << ", " << pickup_lane->local.y << ")\n";
+  std::cout << "[Snap] Goal   → lane " << goal_lane->lane_id << " local (" << goal_lane->local.x
+            << ", " << goal_lane->local.y << ")\n";
+
+  EXPECT_LT(pickup_lane->lane_id, 10'000'000LL) << "Snapped to artifact lanelet";
+  EXPECT_LT(goal_lane->lane_id, 10'000'000LL) << "Snapped to artifact lanelet";
+  EXPECT_TRUE(map.canRoute(pickup_lane->lane_id, goal_lane->lane_id))
+    << "Pickup lane " << pickup_lane->lane_id << " → goal lane " << goal_lane->lane_id
+    << " not connected";
+}

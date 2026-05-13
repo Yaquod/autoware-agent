@@ -1,6 +1,8 @@
 find_package(lanelet2_core       REQUIRED)
 find_package(lanelet2_io         REQUIRED)
 find_package(lanelet2_projection REQUIRED)
+find_package(lanelet2_routing    REQUIRED)
+find_package(autoware_lanelet2_extension REQUIRED)
 find_package(GeographicLib       REQUIRED)
 find_package(yaml-cpp            REQUIRED)
 
@@ -27,6 +29,8 @@ target_link_libraries(map_routes_lib
         lanelet2_core::lanelet2_core
         lanelet2_io::lanelet2_io
         lanelet2_projection::lanelet2_projection
+        lanelet2_routing::lanelet2_routing
+        ${autoware_lanelet2_extension_LIBRARIES}
         PUBLIC ${TARGETS}
 )
 
@@ -37,8 +41,10 @@ target_include_directories(map_routes_lib
         ${CMAKE_BINARY_DIR}/generated
         ${CMAKE_SOURCE_DIR}/src
         ${GEOGRAPHICLIB_INCLUDE_DIRS}
+        ${autoware_lanelet2_extension_INCLUDE_DIRS}
 )
 
 target_compile_options(map_routes_lib PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra
+        -Wno-class-memaccess>
 )

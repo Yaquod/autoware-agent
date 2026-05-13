@@ -141,7 +141,7 @@ class TripController {
 
   double init_x_{0.0};
   double init_y_{0.0};
-  double init_z_{0.0};
+  double init_z_{40.734};
   double init_qz_{0.0};
   double init_qw_{1.0};
 
