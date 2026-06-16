@@ -29,6 +29,8 @@ struct MapProjectorInfo {
   double elevation{0.0};
   double local_offset_x{0.0};
   double local_offset_y{0.0};
+    
+
 
   bool has_start{false};
   std::string start_name;

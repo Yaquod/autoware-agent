@@ -50,7 +50,9 @@ class FullTripTest : public ::testing::Test {
     z_session_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(z_config)));
 
     map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
-    goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
+    // goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
+  goal_gps_ = GPSCoordinate{35.68791931, 139.69142432};
+
   }
 
   void TearDown() override {
@@ -90,6 +92,15 @@ class FullTripTest : public ::testing::Test {
   // Synchronous wrapper for queryEta
   RouteQueryResult queryEtaSync(double start_lat, double start_lon, double goal_lat,
                                 double goal_lon) {
+
+
+                                   // ADD THIS:
+  std::cout << "[DEBUG queryEtaSync] called with start=(" 
+            << start_lat << "," << start_lon 
+            << ") goal=(" << goal_lat << "," << goal_lon << ")\n";
+
+
+
     std::promise<RouteQueryResult> promise;
     auto future = promise.get_future();
     controller_->queryEta(GPSCoordinate{start_lat, start_lon}, GPSCoordinate{goal_lat, goal_lon},
@@ -222,21 +233,48 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   std::cout << "========================================\n";
 
   // Phase 1: Start trip
-  std::cout << "\n[Phase 1] Starting trip...\n";
+  std::cout << "\n[Phase 1] Starting trip again...\n";
 
   // Ensure controller is ready (IDLE) before querying/planning. If the
   // controller is still INITIALIZING_IN_MAP, the environment likely does
   // not have the full Autoware localisation/route planner running — skip
   // the full trip lifecycle in that case to keep test runs stable.
+
+ 
+
+
   TripStatus st = getStatusSync();
   if (st.state_ != TripState::IDLE) {
     GTEST_SKIP() << "Controller not IDLE (state=" << static_cast<int>(st.state_)
                  << ") - skipping CompleteTripLifecycle (requires Autoware services)";
   }
 
+
+
+
+
+
+
+
+
+
+          
+
   // Populate route bank by querying ETA for the goal before starting the trip
-  auto qr = queryEtaSync(st.start_gps_.latitude, st.start_gps_.longitude, goal_gps_.latitude,
-                         goal_gps_.longitude);
+  // auto qr = queryEtaSync(st.start_gps_.latitude, st.start_gps_.longitude, goal_gps_.latitude,
+  //                        goal_gps_.longitude);
+
+
+  // auto qr = queryEtaSync(35.68855194431519, 139.69142711058254,
+  //                       goal_gps_.latitude, goal_gps_.longitude);
+
+
+// AFTER (pickup = goal_gps_ which is 300m away, destination = further point):
+auto qr = queryEtaSync(
+    goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
+    35.68787578,          139.69133365            // destination: lane 198
+);
+                        
   if (!qr.success_) {
     GTEST_SKIP() << "queryEta failed: " << qr.error_message_ << " - skipping CompleteTripLifecycle";
   }
@@ -342,37 +380,37 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
 }
 
 // Simpler test for debugging
-TEST_F(FullTripTest, BasicPublishTest) {
-  createController();
+// TEST_F(FullTripTest, BasicPublishTest) {
+//   createController();
 
-  std::cout << "\n[Test] Basic publish test\n";
+//   std::cout << "\n[Test] Basic publish test\n";
 
-  // Ensure routes are populated by querying ETA before starting the trip
-  auto qr =
-    queryEtaSync(goal_gps_.latitude, goal_gps_.longitude, goal_gps_.latitude, goal_gps_.longitude);
-  if (!qr.success_) {
-    std::cout << "  WARNING: queryEta failed: " << qr.error_message_ << "\n";
-  }
+//   // Ensure routes are populated by querying ETA before starting the trip
+//   auto qr =
+//     queryEtaSync(goal_gps_.latitude, goal_gps_.longitude, goal_gps_.latitude, goal_gps_.longitude);
+//   if (!qr.success_) {
+//     std::cout << "  WARNING: queryEta failed: " << qr.error_message_ << "\n";
+//   }
 
-  bool started = startTripSync(goal_gps_.latitude, goal_gps_.longitude);
-  if (!started) {
-    std::cout << "  WARNING: startTrip returned false; continuing test to observe publications\n";
-  }
+//   bool started = startTripSync(goal_gps_.latitude, goal_gps_.longitude);
+//   if (!started) {
+//     std::cout << "  WARNING: startTrip returned false; continuing test to observe publications\n";
+//   }
 
-  std::cout << "  Spinning for 10 seconds to observe publications...\n";
+//   std::cout << "  Spinning for 10 seconds to observe publications...\n";
 
-  for (int i = 0; i < 100; ++i) {
-    rclcpp::spin_some(monitor_node_);
-    std::this_thread::sleep_for(100ms);
+//   for (int i = 0; i < 100; ++i) {
+//     rclcpp::spin_some(monitor_node_);
+//     std::this_thread::sleep_for(100ms);
 
-    TripStatus status = getStatusSync();
-    if (i % 10 == 0) {
-      std::cout << "  t=" << i / 10 << "s  State=" << static_cast<int>(status.state_)
-                << "  InitPose=" << initial_pose_received_ << "  Goal=" << goal_received_
-                << "  Route=" << route_received_ << "  ZenohMsgs=" << zenoh_msgs_count_.load()
-                << "\n";
-    }
-  }
+//     TripStatus status = getStatusSync();
+//     if (i % 10 == 0) {
+//       std::cout << "  t=" << i / 10 << "s  State=" << static_cast<int>(status.state_)
+//                 << "  InitPose=" << initial_pose_received_ << "  Goal=" << goal_received_
+//                 << "  Route=" << route_received_ << "  ZenohMsgs=" << zenoh_msgs_count_.load()
+//                 << "\n";
+//     }
+//   }
 
-  std::cout << "  Test complete - check output above\n";
-}
+//   std::cout << "  Test complete - check output above\n";
+// }

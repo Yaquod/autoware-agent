@@ -36,6 +36,8 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const LaneletMap& r
   initial_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "/initialpose", pose_qos);
 
+
+  
   goal_pub_ =
     node_->create_publisher<geometry_msgs::msg::PoseStamped>("/planning/mission_planning/goal", 1);
 
@@ -108,6 +110,12 @@ void TripController::initializeInMap() {
 
 bool TripController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
                               EtaQueryCallback cb) {
+
+
+     std::cout<<"Received queryEta request: start(" << start_gps.latitude << ", " << start_gps.longitude
+              << ") → goal(" << goal_gps.latitude << ", " << goal_gps.longitude << ")\n";
+              
+              
   if (status_.state_ != TripState::IDLE) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] queryEta rejected — not IDLE (state=%d)",
                  static_cast<int>(status_.state_));
@@ -306,6 +314,13 @@ void TripController::tick() {
                     status_.goal_qw_);
       route_received_ = false;
       current_route_state_.reset();
+      
+
+      //added
+      spdlog::info("[TripController] goal pose: x={:.3f} y={:.3f} qz={:.4f} qw={:.4f}",
+    status_.goal_x_, status_.goal_y_, status_.goal_qz_, status_.goal_qw_);
+
+
       transitionTo(TripState::QUERY_WAITING_ROUTE);
       break;
 
@@ -316,6 +331,13 @@ void TripController::tick() {
           doPublishGoal(status_.goal_x_, status_.goal_y_, status_.goal_z_, status_.goal_qz_,
                         status_.goal_qw_);
           last_publish_time_ = std::chrono::steady_clock::now();
+
+
+          //added
+          spdlog::info("[TripController] route_state={}", 
+    current_route_state_ ? current_route_state_->state : -1);
+
+
         }
         if (elapsed_ms(state_entered_at_) >= timings_.route_timeout_ms) {
           failQuery("timeout waiting for route on " +
@@ -425,6 +447,22 @@ void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps)
               std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
     return;
   }
+
+  RCLCPP_ERROR(node_->get_logger(),
+  "[DEBUG startQueryLeg] from_lane=%p lane_id=%ld   to_lane=%p lane_id=%ld",
+  (void*)from_lane, from_lane->lane_id ,
+  (void*)to_lane,  to_lane->lane_id   );
+
+
+ RCLCPP_ERROR(node_->get_logger(),
+    "[DEBUG startQueryLeg] from_gps=(%.6f, %.6f) to_gps=(%.6f, %.6f)",
+    from_gps.latitude, from_gps.longitude,
+    to_gps.latitude,   to_gps.longitude);
+
+
+
+  
+
 
   status_.start_x_ = from_lane->local.x;
   status_.start_y_ = from_lane->local.y;
@@ -567,6 +605,13 @@ void TripController::doPublishGoal(double x, double y, double z, double qz, doub
   spdlog::info("[AutowareAgent] Published goal ({:.2f}, {:.2f})", x, y);
 }
 
+
+
+
+
+
+
+
 void TripController::doEngage() {
   if (!mode_client_->service_is_ready() || !engage_client_->service_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] Engagement services not ready yet");
@@ -652,9 +697,35 @@ void TripController::setCurrentGps(const GPSCoordinate& gps) {
 std::optional<GPSCoordinate> TripController::getCurrentVehiclePose() const {
   try {
     auto tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+
+
+
+
+     RCLCPP_ERROR(node_->get_logger(),
+      "[DEBUG TF] base_link in map frame: x=%.3f y=%.3f z=%.3f",
+      tf.transform.translation.x,
+      tf.transform.translation.y,
+      tf.transform.translation.z);
+
+
     LocalCoordinate const local{.x = tf.transform.translation.x,
                                 .y = tf.transform.translation.y,
                                 .z = tf.transform.translation.z};
+
+                                    auto gps = lanelet_map_.localToGps(local);
+
+
+                                     RCLCPP_ERROR(node_->get_logger(),
+      "[DEBUG TF→GPS] lat=%.6f lon=%.6f",
+      gps.latitude, gps.longitude);
+      if (gps.latitude  < 35.0 || gps.latitude  > 36.0 ||
+        gps.longitude < 139.0 || gps.longitude > 140.0) {
+      RCLCPP_WARN(node_->get_logger(),
+        "[AutowareAgent] TF→GPS out of Nishishinjuku range (%.6f, %.6f) — ignoring",
+        gps.latitude, gps.longitude);
+      return std::nullopt;  // caller will use fixed start instead
+    }
+
     return lanelet_map_.localToGps(local);
   } catch (const tf2::TransformException& ex) {
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] TF lookup failed: %s", ex.what());

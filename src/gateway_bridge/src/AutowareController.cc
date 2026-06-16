@@ -43,7 +43,9 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
   auto proj_info = MapProjectorInfo::load(dir_path);
 
   lanelet_map_ = std::make_unique<LaneletMap>(osm_path, proj_info.origin_lat, proj_info.origin_lon,
-                                              proj_info.local_offset_x, proj_info.local_offset_y);
+                                              proj_info.local_offset_x, proj_info.local_offset_y
+                                                                                      
+                                            ) ;
 
   if (proj_info.has_start) {
     lanelet_map_->setDefaultStart(proj_info.start_name,

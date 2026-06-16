@@ -29,6 +29,7 @@
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include "autoware_adapi_v1_msgs/srv/set_route_points.hpp"
 #include <rclcpp/rclcpp.hpp>
 
 #include <boost/asio.hpp>
@@ -118,6 +119,8 @@ class TripController {
     loc_state_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr route_state_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr mode_state_sub_;
+
+  
 
   // Thread-safe state storage
   autoware_adapi_v1_msgs::msg::LocalizationInitializationState::SharedPtr current_loc_state_;

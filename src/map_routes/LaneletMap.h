@@ -27,6 +27,8 @@
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 namespace autoware_agent {
 
@@ -53,7 +55,7 @@ struct Orientation {
  * Populated from the Lanelet2 map at query time.
  */
 struct LaneInfo {
-  int lane_id{};
+   int64_t lane_id{};
   GPSCoordinate gps{};
   LocalCoordinate local{};
   Orientation orientation{};
@@ -78,7 +80,11 @@ struct FixedStartPosition {
 class LaneletMap {
  public:
   LaneletMap(const std::string& osm_path, double origin_lat, double origin_lon,
-             double local_offset_x = 0.0, double local_offset_y = 0.0);
+             double local_offset_x = 0.0, double local_offset_y = 0.0
+            
+            )
+             
+             ;
 
   ~LaneletMap() = default;
 
@@ -87,6 +93,13 @@ class LaneletMap {
 
   /** Autoware local map frame -> GPS. */
   [[nodiscard]] GPSCoordinate localToGps(const LocalCoordinate& local) const;
+  
+
+
+  //added
+  void debugRouteConnectivity(int64_t from_id, int64_t to_id) const;
+  void debugVerifyLocalPoint(const std::string& label,
+                                        double local_x, double local_y) const;
 
   /**
    * Find the nearest drivable lanelet to the given GPS coordinate.
@@ -104,7 +117,7 @@ class LaneletMap {
    * Look up a lanelet by its integer ID.
    * Returns nullptr when the ID is not present in the map.
    */
-  [[nodiscard]] const LaneInfo* getLaneById(int lane_id) const;
+  [[nodiscard]] const LaneInfo* getLaneById(int64_t  lane_id) const;
 
   /**
    * The fixed vehicle start position (e.g. depot, taxi stand).
@@ -128,6 +141,12 @@ class LaneletMap {
   double origin_lon_{};
   double offset_x_{};
   double offset_y_{};
+  double mgrs_origin_x_{0.0};
+double mgrs_origin_y_{0.0};
+
+
+// Add to private members of LaneletMap:
+lanelet::routing::RoutingGraphPtr routing_graph_;
 
   std::shared_ptr<lanelet::LaneletMap> map_;
   std::shared_ptr<lanelet::projection::UtmProjector> projector_;

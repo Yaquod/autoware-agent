@@ -3,6 +3,8 @@ find_package(lanelet2_io         REQUIRED)
 find_package(lanelet2_projection REQUIRED)
 find_package(GeographicLib       REQUIRED)
 find_package(yaml-cpp            REQUIRED)
+#added
+find_package(lanelet2_routing REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GEOGRAPHICLIB REQUIRED geographiclib)
@@ -27,6 +29,8 @@ target_link_libraries(map_routes_lib
         lanelet2_core::lanelet2_core
         lanelet2_io::lanelet2_io
         lanelet2_projection::lanelet2_projection
+        #addded
+        lanelet2_routing::lanelet2_routing 
         PUBLIC ${TARGETS}
 )
 
