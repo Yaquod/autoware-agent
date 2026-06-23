@@ -89,8 +89,7 @@
 
           // Build routing graph (do this once after map_ is loaded)
 auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
-    lanelet::Locations::Germany,   // or Japan — affects speed limits only
-    lanelet::Participants::Vehicle);
+    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
 routing_graph_ = lanelet::routing::RoutingGraph::build(*map_, *traffic_rules);
 spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
              map_->laneletLayer.size());
@@ -99,9 +98,9 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
 
 
 
-       debugVerifyLocalPoint("vehicle_start", -10.79, -3.31);
-debugVerifyLocalPoint("pickup_goal",   -1.19,  -70.17);
-      debugRouteConnectivity(406, 195);
+
+      debugRouteConnectivity(406, 406);
+       debugRouteConnectivity(195, 384);
   }
 
   bool LaneletMap::isLoaded() const {
@@ -380,7 +379,76 @@ lanelet::ConstLanelet to_ll   = *to_it;
 
 
 
+// LaneletMap.cpp
+const LaneInfo* LaneletMap::findNearestConnectedLane(
+    const GPSCoordinate& gps, lanelet::Id reference_id, bool must_be_reachable_from_ref) const {
+  if (!isLoaded() || !routing_graph_)
+    return nullptr;
 
+  LocalCoordinate const target = gpsToLocal(gps);
+
+  lanelet::ConstLanelet reference_ll = map_->laneletLayer.get(reference_id);
+
+  // Get the full set of lanelets reachable from (or that reach) the reference,
+  // within a generous radius — e.g. 2km, adjust to your map size.
+  lanelet::ConstLanelets candidates;
+  if (must_be_reachable_from_ref) {
+    candidates = routing_graph_->reachableSet(reference_ll, 2000.0);
+  } else {
+    // reachable TO reference — i.e. predecessors transitively
+    // lanelet2 doesn't have a direct "reverse reachableSet", so build it
+    // by checking each lanelet's reachableSet for membership of reference
+    for (const auto& ll : map_->laneletLayer) {
+      auto reach = routing_graph_->reachableSet(ll, 2000.0);
+      for (const auto& r : reach) {
+        if (r.id() == reference_id) {
+          candidates.push_back(ll);
+          break;
+        }
+      }
+    }
+  }
+
+  double min_dist = std::numeric_limits<double>::max();
+  lanelet::Id best_id = lanelet::InvalId;
+
+  for (const auto& ll : candidates) {
+    auto subtype = ll.attributes().find("subtype");
+    if (subtype != ll.attributes().end()) {
+      const std::string& st = subtype->second.value();
+      if (st == "crosswalk" || st == "walkway" || st == "stairs" || st == "pedestrian")
+        continue;
+    }
+    const auto& cl = ll.centerline();
+    if (cl.empty()) continue;
+    const auto& mid = cl[cl.size() / 2];
+    double const lx = offset_x_ + mid.x();
+    double const ly = offset_y_ + mid.y();
+    double const dx = lx - target.x;
+    double const dy = ly - target.y;
+    double const dist = std::sqrt(dx * dx + dy * dy);
+    if (dist < min_dist) {
+      min_dist = dist;
+      best_id = ll.id();
+    }
+  }
+
+  if (best_id == lanelet::InvalId) {
+    spdlog::warn("[LaneletMap] No connected candidate found near ({:.6f},{:.6f}) "
+                 "relative to reference lane {}", gps.latitude, gps.longitude, reference_id);
+    return nullptr;
+  }
+
+  for (const auto& cached : cache_) {
+    if (cached.lane_id == static_cast<int64_t>(best_id))
+      return &cached;
+  }
+  lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
+  cache_.emplace_back(makeLaneInfo(ll));
+  spdlog::info("[LaneletMap] GPS ({:.6f},{:.6f}) → connected lanelet {} dist={:.1f}m",
+               gps.latitude, gps.longitude, best_id, min_dist);
+  return &cache_.back();
+}
 
 
 

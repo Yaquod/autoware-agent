@@ -47,7 +47,7 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
     h.zsession_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(zconfig)));
   }
 
-  std::string const SERVER_ADDR = "192.168.64.7:50051";
+  std::string const SERVER_ADDR = "127.0.0.1:50051";
 
   spdlog::info("[AutowareApp] Yaml configs loaded : {}", yaml_path);
 
@@ -76,20 +76,28 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
     std::make_shared<vehicle_gateway::AutowareControllerTripAdapter>(h.controller_);
 
   auto stream_client = std::make_shared<vehicle_gateway::VehicleGatewayStreamClient>(
-    "192.168.64.7:50051", trip_adapter.get(), eta_adapter.get(), loc_adapter.get(),
+    "127.0.0.1:50051", trip_adapter.get(), eta_adapter.get(), loc_adapter.get(),
     "ORIN_NANO_001");
 
   stream_client->set_handlers(
     {.on_trip_init =
-       [ctrl = h.controller_](const vehicle_gateway::TripInitRequest& req) {
+       [ctrl = h.controller_ , sc = stream_client ](const vehicle_gateway::TripInitRequest& req) {
          autoware_agent::GPSCoordinate start{.latitude = req.start_lat(),
                                              .longitude = req.start_long()};
          autoware_agent::GPSCoordinate goal{.latitude = req.end_lat(), .longitude = req.end_long()};
-         ctrl->queryEta(start, goal, [ctrl](autoware_agent::EtaQueryResult r) {
+         ctrl->queryEta(start, goal, [ctrl, sc](autoware_agent::EtaQueryResult r) {
            if (!r.success_) {
              spdlog::error("[AutowareApp] queryEta failed: {}", r.error_message_);
              return;
            }
+
+
+           //added 
+        double total_distance_m = r.pickup_leg_.distance_m_ + r.trip_leg_.distance_m_;
+        double total_eta_s      = r.pickup_leg_.eta_seconds_ + r.trip_leg_.eta_seconds_;
+
+        sc->ReportEta(total_distance_m, total_eta_s); 
+
            ctrl->startTrip([](bool ok) {
              if (!ok)
                spdlog::error("[AutowareApp] startTrip rejected");
@@ -108,7 +116,7 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
   h.controller_->setTripStateCallback([sc = stream_client](TripState, TripState next) {
     if (next == TripState::WAITING_FOR_MOVE) {
       sc->ReportTripInitAck();
-      sc->ReportEta();
+     // sc->ReportEta();
       sc->ReportStatus("accepted");
     } else if (next == TripState::RUNNING)
       sc->ReportStatus("in_progress");

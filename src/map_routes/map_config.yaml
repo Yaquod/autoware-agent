@@ -4,6 +4,11 @@ map_config:
   elevation: 34.137
 
 
+local_offset:
+  x: 81596.1357
+  y: 50194.0803
+
+
 start_position:
   latitude: 35.68855194431519
   longitude: 139.69142711058254

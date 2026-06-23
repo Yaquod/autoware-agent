@@ -53,6 +53,10 @@ class FullTripTest : public ::testing::Test {
     // goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
   goal_gps_ = GPSCoordinate{35.68791931, 139.69142432};
 
+    // goal_gps_ = GPSCoordinate{35.1024578, 139.123478};
+
+
+
   }
 
   void TearDown() override {
@@ -269,12 +273,22 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   //                       goal_gps_.latitude, goal_gps_.longitude);
 
 
-// AFTER (pickup = goal_gps_ which is 300m away, destination = further point):
+//AFTER (pickup = goal_gps_ which is 300m away, destination = further point):
 auto qr = queryEtaSync(
     goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
-    35.68787578,          139.69133365            // destination: lane 198
+     35.23978,         139.87945      
 );
-                        
+
+
+// auto qr = queryEtaSync(
+//     goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
+//      35.1350987,         139.226579      
+// );
+
+
+             
+
+       
   if (!qr.success_) {
     GTEST_SKIP() << "queryEta failed: " << qr.error_message_ << " - skipping CompleteTripLifecycle";
   }
@@ -324,7 +338,7 @@ auto qr = queryEtaSync(
                 << static_cast<int>(s.state_) << "\n";
       last_state = s.state_;
     }
-    return s.state_ == TripState::RUNNING || s.state_ == TripState::FAILED;
+    return s.state_ == TripState::RUNNING || s.state_ == TripState::FAILED ;
   });
 
   status = getStatusSync();
@@ -364,6 +378,45 @@ auto qr = queryEtaSync(
     }
   }
 
+
+
+
+  // Phase 6: Move to final destination
+if (status.state_ == TripState::WAITING_FOR_MOVE) {
+  std::cout << "\n[Phase 6] Calling move() to drive to destination...\n";
+
+  std::promise<bool> move_promise;
+  auto move_future = move_promise.get_future();
+  controller_->move([&move_promise](bool ok) { move_promise.set_value(ok); });
+  bool move_ok = move_future.get();
+
+  ASSERT_TRUE(move_ok) << "move() should succeed when in WAITING_FOR_MOVE";
+
+  std::cout << "  move() returned true — waiting for RUNNING/COMPLETED...\n";
+
+  TripState last = TripState::WAITING_FOR_MOVE;
+  spinFor(60s, [this, &last]() {
+    TripStatus s = getStatusSync();
+    if (s.state_ != last) {
+      std::cout << "  State transition: " << static_cast<int>(last)
+                << " -> " << static_cast<int>(s.state_) << "\n";
+      last = s.state_;
+    }
+    return s.state_ == TripState::COMPLETED || s.state_ == TripState::FAILED;
+  });
+
+  status = getStatusSync();
+  std::cout << "  Final state after Phase 6: " << static_cast<int>(status.state_) << "\n";
+
+  if (status.state_ == TripState::COMPLETED) {
+    std::cout << "  ✓ Trip COMPLETED — vehicle reached final destination!\n";
+  } else {
+    std::cout << "  ✗ Trip did not complete. State: "
+               << static_cast<int>(status.state_) << "\n";
+  }
+}
+
+
   // Summary
   std::cout << "\n========================================\n";
   std::cout << "Test Summary\n";
@@ -379,38 +432,38 @@ auto qr = queryEtaSync(
   std::cin.get();
 }
 
-// Simpler test for debugging
-// TEST_F(FullTripTest, BasicPublishTest) {
-//   createController();
+//Simpler test for debugging
+TEST_F(FullTripTest, BasicPublishTest) {
+  createController();
 
-//   std::cout << "\n[Test] Basic publish test\n";
+  std::cout << "\n[Test] Basic publish test\n";
 
-//   // Ensure routes are populated by querying ETA before starting the trip
-//   auto qr =
-//     queryEtaSync(goal_gps_.latitude, goal_gps_.longitude, goal_gps_.latitude, goal_gps_.longitude);
-//   if (!qr.success_) {
-//     std::cout << "  WARNING: queryEta failed: " << qr.error_message_ << "\n";
-//   }
+  // Ensure routes are populated by querying ETA before starting the trip
+  auto qr =
+    queryEtaSync(goal_gps_.latitude, goal_gps_.longitude, goal_gps_.latitude, goal_gps_.longitude);
+  if (!qr.success_) {
+    std::cout << "  WARNING: queryEta failed: " << qr.error_message_ << "\n";
+  }
 
-//   bool started = startTripSync(goal_gps_.latitude, goal_gps_.longitude);
-//   if (!started) {
-//     std::cout << "  WARNING: startTrip returned false; continuing test to observe publications\n";
-//   }
+  bool started = startTripSync(goal_gps_.latitude, goal_gps_.longitude);
+  if (!started) {
+    std::cout << "  WARNING: startTrip returned false; continuing test to observe publications\n";
+  }
 
-//   std::cout << "  Spinning for 10 seconds to observe publications...\n";
+  std::cout << "  Spinning for 10 seconds to observe publications...\n";
 
-//   for (int i = 0; i < 100; ++i) {
-//     rclcpp::spin_some(monitor_node_);
-//     std::this_thread::sleep_for(100ms);
+  for (int i = 0; i < 100; ++i) {
+    rclcpp::spin_some(monitor_node_);
+    std::this_thread::sleep_for(100ms);
 
-//     TripStatus status = getStatusSync();
-//     if (i % 10 == 0) {
-//       std::cout << "  t=" << i / 10 << "s  State=" << static_cast<int>(status.state_)
-//                 << "  InitPose=" << initial_pose_received_ << "  Goal=" << goal_received_
-//                 << "  Route=" << route_received_ << "  ZenohMsgs=" << zenoh_msgs_count_.load()
-//                 << "\n";
-//     }
-//   }
+    TripStatus status = getStatusSync();
+    if (i % 10 == 0) {
+      std::cout << "  t=" << i / 10 << "s  State=" << static_cast<int>(status.state_)
+                << "  InitPose=" << initial_pose_received_ << "  Goal=" << goal_received_
+                << "  Route=" << route_received_ << "  ZenohMsgs=" << zenoh_msgs_count_.load()
+                << "\n";
+    }
+  }
 
-//   std::cout << "  Test complete - check output above\n";
-// }
+  std::cout << "  Test complete - check output above\n";
+}

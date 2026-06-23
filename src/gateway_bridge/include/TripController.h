@@ -24,6 +24,7 @@
 
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include "autoware_internal_msgs/msg/mission_remaining_distance_time.hpp"
 #include <autoware_adapi_v1_msgs/msg/route_state.hpp>
 #include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -109,6 +110,7 @@ class TripController {
   TripTimings timings_;
   std::thread io_thread_;
   double assumed_speed_ms_{8.33};  // ~30 km/h
+  bool engaging_for_pickup_{true}; 
 
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
@@ -119,6 +121,9 @@ class TripController {
     loc_state_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::RouteState>::SharedPtr route_state_sub_;
   rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr mode_state_sub_;
+  rclcpp::Subscription<
+  autoware_internal_msgs::msg::MissionRemainingDistanceTime
+>::SharedPtr eta_sub_;
 
   
 

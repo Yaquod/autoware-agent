@@ -132,6 +132,11 @@ class LaneletMap {
   [[nodiscard]] size_t getLaneletCount() const;
   [[nodiscard]] bool isLoaded() const;
 
+
+  //added
+  [[nodiscard]] const LaneInfo* findNearestConnectedLane(
+    const GPSCoordinate& gps, lanelet::Id reference_id, bool must_be_reachable_from_ref) const;
+
   /** Resolve an OSM file path using the same search order that
    *  RouteConfig::resolveConfigPath() used (absolute > test > src > install). */
   static std::string resolveOsmPath(const std::string& filename);
@@ -146,7 +151,7 @@ double mgrs_origin_y_{0.0};
 
 
 // Add to private members of LaneletMap:
-lanelet::routing::RoutingGraphPtr routing_graph_;
+std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_;
 
   std::shared_ptr<lanelet::LaneletMap> map_;
   std::shared_ptr<lanelet::projection::UtmProjector> projector_;

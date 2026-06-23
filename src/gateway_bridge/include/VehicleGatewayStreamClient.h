@@ -78,6 +78,7 @@ class VehicleGatewayStreamClient {
   }
 
   void ReportEta() {
+     spdlog::info("[Stream] ReportEta called");  // ADD
     EtaData d = eta_provider_->GetEta();
     VehicleEvent ev;
     auto* r = ev.mutable_eta();
@@ -86,7 +87,26 @@ class VehicleGatewayStreamClient {
     r->set_time(d.time_seconds);
     r->set_fare(d.fare);
     enqueue(ev);
+    spdlog::info("[Stream] Eta event enqueued");  // ADD
+
   }
+
+
+
+  void ReportEta(double distance_m, double time_seconds) {
+     spdlog::info("[Stream] ReportEta called: distance={} time={}", distance_m, time_seconds);  // ADD
+  VehicleEvent ev;
+  auto* r = ev.mutable_eta();
+  r->set_vin_number(vin_);
+  r->set_request_id(eta_provider_->GetEta().request_id);  
+  r->set_time(time_seconds);
+  r->set_fare(0.0);  
+  // r->set_distance(distance_m);
+  enqueue(ev);
+    spdlog::info("[Stream] Eta event enqueued");  // ADD
+
+}
+
 
   void ReportStatus(const std::string& status) {
     VehicleEvent ev;
