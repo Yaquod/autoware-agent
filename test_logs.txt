@@ -3,302 +3,277 @@ Note: Google Test filter = *CompleteTripLifecycle*
 [----------] Global test environment set-up.
 [----------] 1 test from FullTripTest
 [ RUN      ] FullTripTest.CompleteTripLifecycle
-[INFO] [1782230424.807648397] [autoware_controller]: [AutowareAgent] Booting..
-[2026-06-23 19:00:24.808] [info] [AutowareAgent] Booting..
-[INFO] [1782230424.808275494] [autoware_controller]: [AutowareAgent] Loading Route configs: /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
-[2026-06-23 19:00:24.808] [info] [AutowareAgent] Loading Route configs: /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
-[2026-06-23 19:00:25.976] [warning] [LaneletMap] Load warning: Errors ocurred while parsing Lanelet Map:
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1332: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1340: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1351: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1384: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1385: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1392: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1400: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1449: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1456: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1484: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1486: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1488: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1506: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1589: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124149: Creating a regulatory element of type detection_area failed: No regulatory element found that implements rule detection_area
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124265: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124411: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124426: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124438: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124442: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124446: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124448: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124450: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124452: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124455: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124456: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124571: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124573: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124575: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001084: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002273: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002274: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002275: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 319: Failed to get id 1351 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 330: Failed to get id 124575 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 332: Failed to get id 124456 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 341: Failed to get id 124446 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 364: Failed to get id 1332 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 373: Failed to get id 1340 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 402: Failed to get id 124448 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 405: Failed to get id 1449 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 410: Failed to get id 1456 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 419: Failed to get id 1384 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 422: Failed to get id 1385 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 425: Failed to get id 1392 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 429: Failed to get id 1400 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 439: Failed to get id 1589 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 453: Failed to get id 124265 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 454: Failed to get id 1486 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 455: Failed to get id 1488 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 465: Failed to get id 1506 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 479: Failed to get id 1589 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 490: Failed to get id 1488 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 491: Failed to get id 1484 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 494: Failed to get id 1486 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 496: Failed to get id 1486 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 497: Failed to get id 124455 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 500: Failed to get id 1456 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 501: Failed to get id 1456 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 503: Failed to get id 1449 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 504: Failed to get id 1449 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 505: Failed to get id 1449 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 511: Failed to get id 1332 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 512: Failed to get id 1332 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 513: Failed to get id 1340 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 514: Failed to get id 1340 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 515: Failed to get id 1340 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 517: Failed to get id 1351 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 520: Failed to get id 124573 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 526: Failed to get id 1392 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 527: Failed to get id 1400 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 528: Failed to get id 1400 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 529: Failed to get id 1384 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 530: Failed to get id 1384 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 531: Failed to get id 1385 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 532: Failed to get id 1385 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 551: Failed to get id 124571 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 565: Failed to get id 124438 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 567: Failed to get id 124450 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 578: Failed to get id 124452 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 580: Failed to get id 124149 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124424: Failed to get id 124442 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124584: Failed to get id 3001084 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001220: Failed to get id 124426 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001225: Failed to get id 124411 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002034: Failed to get id 3002273 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002035: Failed to get id 3002274 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002036: Failed to get id 3002275 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002039: Failed to get id 3002273 from map
-[2026-06-23 19:00:25.977] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002045: Failed to get id 3002275 from map
-[2026-06-23 19:00:25.977] [info] [LaneletMap] Loaded 979 lanelets from /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Routing graph built — 979 lanelets
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Route exists from 406 to 406 (1 lanelets in shortest path)
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 406 has 1 followers:
-[2026-06-23 19:00:26.417] [info]   → 195
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 406 has 1 predecessors:
-[2026-06-23 19:00:26.417] [info]   ← 552
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Reachable from 406 within 200m: 13 lanelets
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 406 IS within 200m reachable set of 406
-[2026-06-23 19:00:26.417] [error] [LaneletMap] NO ROUTE from 195 to 384 — lanelets disconnected
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 195 has 1 followers:
-[2026-06-23 19:00:26.417] [info]   → 3002163
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 384 has 1 predecessors:
-[2026-06-23 19:00:26.417] [info]   ← 222
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Reachable from 195 within 200m: 16 lanelets
-[2026-06-23 19:00:26.417] [info] [LaneletMap] Lane 384 IS NOT within 200m reachable set of 195
-[2026-06-23 19:00:26.417] [info] [LaneletMap] findNearestLane called with GPS (35.688552,139.691427)
-[2026-06-23 19:00:26.523] [info] [LaneletMap] findNearestLane called with local (81596.135700,50194.080300)
-[2026-06-23 19:00:26.634] [info] [LaneletMap] GPS (35.688552,139.691427) → lanelet 406 type=lanelet subtype=road dist=11.3m
-[2026-06-23 19:00:26.634] [info] [LaneletMap] Default start 'default' → local (81585.35,50190.77)
-[INFO] [1782230426.634136117] [autoware_controller]: [AutowareAgent] LaneletMap loaded — 979 lanelets, start 'default' → local (81585.35, 50190.77)
-[INFO] [1782230427.417127162] [autoware_controller]: [ClusterBridge] Booting..
-[INFO] [1782230427.541475508] [autoware_controller]: [AutowareAgent] TripController initialized
-[2026-06-23 19:00:27.541] [info] [AutowareAgent] TripController initialized
-[INFO] [1782230427.541666861] [autoware_controller]: [AutowareAgent] Initializing vehicle in map at fixed start 'default' lane= (81585.35, 50190.77)
-[INFO] [1782230427.542503042] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[2026-06-23 19:00:27.542] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[INFO] [1782230427.542641235] [autoware_controller]: [AutowareAgent] IDLE -> INITIALIZING_IN_MAP
-[2026-06-23 19:00:27.542] [info] [AutowareAgent] IDLE -> INITIALIZING_IN_MAP
-[INFO] [1782230427.542667543] [autoware_controller]: [AutowareAgent] Initialization complete
-[2026-06-23 19:00:27.542] [info] [AutowareAgent] Initialization complete
-[INFO] [1782230427.592839319] [autoware_controller]: [ClusterBrdige] Ready...
-[INFO] [1782230427.675140876] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[2026-06-23 19:00:27.679] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[INFO] [1782230427.734920329] [autoware_controller]: [AutowareAgent] Vehicle localized in map — ready for queries
-[INFO] [1782230427.736445413] [autoware_controller]: [AutowareAgent] INITIALIZING_IN_MAP -> IDLE
-[2026-06-23 19:00:27.736] [info] [AutowareAgent] INITIALIZING_IN_MAP -> IDLE
+[INFO] [1782432918.394665954] [autoware_controller]: [AutowareAgent] Booting..
+[2026-06-26 03:15:18.395] [info] [AutowareAgent] Booting..
+[INFO] [1782432918.395336341] [autoware_controller]: [AutowareAgent] Loading Route configs: /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
+[2026-06-26 03:15:18.395] [info] [AutowareAgent] Loading Route configs: /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: Errors ocurred while parsing Lanelet Map:
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1332: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1340: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1351: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1384: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1385: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1392: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1400: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1449: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1456: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1484: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1486: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1488: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1506: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 1589: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124149: Creating a regulatory element of type detection_area failed: No regulatory element found that implements rule detection_area
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124265: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124411: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124426: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124438: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124442: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124446: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124448: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124450: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124452: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124455: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124456: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124571: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124573: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124575: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001084: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002273: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002274: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002275: Creating a regulatory element of type road_marking failed: No regulatory element found that implements rule road_marking
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 319: Failed to get id 1351 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 330: Failed to get id 124575 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 332: Failed to get id 124456 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 341: Failed to get id 124446 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 364: Failed to get id 1332 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 373: Failed to get id 1340 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 402: Failed to get id 124448 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 405: Failed to get id 1449 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 410: Failed to get id 1456 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 419: Failed to get id 1384 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 422: Failed to get id 1385 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 425: Failed to get id 1392 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 429: Failed to get id 1400 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 439: Failed to get id 1589 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 453: Failed to get id 124265 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 454: Failed to get id 1486 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 455: Failed to get id 1488 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 465: Failed to get id 1506 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 479: Failed to get id 1589 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 490: Failed to get id 1488 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 491: Failed to get id 1484 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 494: Failed to get id 1486 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 496: Failed to get id 1486 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 497: Failed to get id 124455 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 500: Failed to get id 1456 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 501: Failed to get id 1456 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 503: Failed to get id 1449 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 504: Failed to get id 1449 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 505: Failed to get id 1449 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 511: Failed to get id 1332 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 512: Failed to get id 1332 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 513: Failed to get id 1340 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 514: Failed to get id 1340 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 515: Failed to get id 1340 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 517: Failed to get id 1351 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 520: Failed to get id 124573 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 526: Failed to get id 1392 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 527: Failed to get id 1400 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 528: Failed to get id 1400 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 529: Failed to get id 1384 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 530: Failed to get id 1384 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 531: Failed to get id 1385 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 532: Failed to get id 1385 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 551: Failed to get id 124571 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 565: Failed to get id 124438 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 567: Failed to get id 124450 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 578: Failed to get id 124452 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 580: Failed to get id 124149 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124424: Failed to get id 124442 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 124584: Failed to get id 3001084 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001220: Failed to get id 124426 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3001225: Failed to get id 124411 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002034: Failed to get id 3002273 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002035: Failed to get id 3002274 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002036: Failed to get id 3002275 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002039: Failed to get id 3002273 from map
+[2026-06-26 03:15:18.785] [warning] [LaneletMap] Load warning: 	- Error parsing primitive 3002045: Failed to get id 3002275 from map
+[2026-06-26 03:15:18.785] [info] [LaneletMap] Loaded 979 lanelets from /home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/src/map_routes/lanelet2_map.osm
+[2026-06-26 03:15:19.169] [info] [LaneletMap] Routing graph built — 979 lanelets
+[2026-06-26 03:15:19.169] [error] [LaneletMap] NO ROUTE from 406 to 250 — lanelets disconnected
+[2026-06-26 03:15:19.169] [info] [LaneletMap] Lane 406 has 1 followers:
+[2026-06-26 03:15:19.169] [info]   → 195
+[2026-06-26 03:15:19.169] [info] [LaneletMap] Lane 250 has 1 predecessors:
+[2026-06-26 03:15:19.169] [info]   ← 249
+[2026-06-26 03:15:19.169] [info] [LaneletMap] Reachable from 406 within 200m: 13 lanelets
+[2026-06-26 03:15:19.169] [info] [LaneletMap] Lane 250 IS NOT within 200m reachable set of 406
+[2026-06-26 03:15:19.170] [info] [LaneletMap] Route exists from 406 to 3002174 (8 lanelets in shortest path)
+[2026-06-26 03:15:19.170] [info] [LaneletMap] Lane 406 has 1 followers:
+[2026-06-26 03:15:19.170] [info]   → 195
+[2026-06-26 03:15:19.170] [info] [LaneletMap] Lane 3002174 has 1 predecessors:
+[2026-06-26 03:15:19.170] [info]   ← 3002170
+[2026-06-26 03:15:19.170] [info] [LaneletMap] Reachable from 406 within 200m: 13 lanelets
+[2026-06-26 03:15:19.170] [info] [LaneletMap] Lane 3002174 IS NOT within 200m reachable set of 406
+[2026-06-26 03:15:19.170] [info] [LaneletMap] findNearestLane called with GPS (35.688552,139.691427)
+[2026-06-26 03:15:19.170] [info] [LaneletMap] findNearestLane called with local (81596.135700,50194.080300)
+[2026-06-26 03:15:19.276] [info] [LaneletMap] GPS (35.688552,139.691427) → lanelet 406 type=lanelet subtype=road dist=11.3m
+[2026-06-26 03:15:19.276] [info] [LaneletMap] Default start 'default' → local (81585.35,50190.77)
+[INFO] [1782432919.276381940] [autoware_controller]: [AutowareAgent] LaneletMap loaded — 979 lanelets, start 'default' → local (81585.35, 50190.77)
+[INFO] [1782432919.280930176] [autoware_controller]: [ClusterBridge] Booting..
+[INFO] [1782432919.390586596] [autoware_controller]: [ClusterBrdige] Ready...
+[INFO] [1782432919.415968215] [autoware_controller]: [AutowareAgent] TripController initialized
+[2026-06-26 03:15:19.416] [info] [AutowareAgent] TripController initialized
+[INFO] [1782432919.416241558] [autoware_controller]: [AutowareAgent] Initializing vehicle in map at fixed start 'default' lane= (81585.35, 50190.77)
+[INFO] [1782432919.416424143] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[2026-06-26 03:15:19.416] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[INFO] [1782432919.416483823] [autoware_controller]: [AutowareAgent] IDLE -> INITIALIZING_IN_MAP
+[2026-06-26 03:15:19.416] [info] [AutowareAgent] IDLE -> INITIALIZING_IN_MAP
+[INFO] [1782432919.416523165] [autoware_controller]: [AutowareAgent] Initialization complete
+[2026-06-26 03:15:19.416] [info] [AutowareAgent] Initialization complete
+[WARN] [1782432919.500257288] [autoware_controller]: [AutowareAgent] TF lookup failed: Could not find a connection between 'map' and 'base_link' because they are not part of the same tree.Tf has two or more unconnected trees.
+[INFO] [1782432919.500568100] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[2026-06-26 03:15:19.500] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[INFO] [1782432919.578089599] [autoware_controller]: [AutowareAgent] Vehicle localized in map — ready for queries
+[INFO] [1782432919.578567806] [autoware_controller]: [AutowareAgent] INITIALIZING_IN_MAP -> IDLE
+[2026-06-26 03:15:19.578] [info] [AutowareAgent] INITIALIZING_IN_MAP -> IDLE
 
 ========================================
 Full Trip Integration Test
 ========================================
 
 [Phase 1] Starting trip again...
-[DEBUG queryEtaSync] called with start=(35.1025,139.123) goal=(35.1351,139.227)
-Received queryEta request: start(35.1025, 139.123) → goal(35.1351, 139.227)
-[2026-06-23 19:00:28.180] [info] [AutowareAgent] queryEta pickup leg: vehicle(35.688522,139.691308) → pickup(35.102458,139.123478)
-[2026-06-23 19:00:28.180] [info] [AutowareAgent] queryEta trip leg: pickup(35.102458,139.123478) → goal(35.135099,139.226579)
-[2026-06-23 19:00:28.180] [info] [LaneletMap] findNearestLane called with GPS (35.688522,139.691308)
-[2026-06-23 19:00:28.180] [info] [LaneletMap] findNearestLane called with local (81585.349408,50190.774168)
-[2026-06-23 19:00:28.279] [info] [LaneletMap] GPS (35.102458,139.123478) → connected lanelet 3002174 dist=82857.1m
-[ERROR] [1782230428.279913628] [autoware_controller]: [DEBUG startQueryLeg] from_lane=0x58e6e4c76ea0 lane_id=406   to_lane=0x58e6e4c76ef8 lane_id=3002174
-[ERROR] [1782230428.280022573] [autoware_controller]: [DEBUG startQueryLeg] from_gps=(35.688522, 139.691308) to_gps=(35.102458, 139.123478)
-[INFO] [1782230428.280073204] [autoware_controller]: [AutowareAgent] Query pickup leg: lane 406 → lane 3002174
-[INFO] [1782230428.280099148] [autoware_controller]: [AutowareAgent] IDLE -> QUERY_PUBLISHING_INITIAL_POSE
-[2026-06-23 19:00:28.280] [info] [AutowareAgent] IDLE -> QUERY_PUBLISHING_INITIAL_POSE
-[ERROR] [1782230428.280149252] [autoware_controller]: [DEBUG doPublishInitialPose] route_state=1 state=2 x=81585.35 y=50190.77
-[INFO] [1782230428.280263312] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[2026-06-23 19:00:28.280] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
-[INFO] [1782230428.280315926] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
-[2026-06-23 19:00:28.280] [info] [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
-[INFO] [1782230428.334417031] [autoware_controller]: [AutowareAgent] Query leg localised — publishing goal
-[INFO] [1782230428.334505646] [autoware_controller]: [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
-[2026-06-23 19:00:28.334] [info] [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
-[ERROR] [1782230428.434506608] [autoware_controller]: [DEBUG doPublishGoal] state=4 route_state=1 x=81609.79 y=49991.81
-[INFO] [1782230428.434894803] [autoware_controller]: [AutowareAgent] Published goal (81609.79, 49991.81)
-[2026-06-23 19:00:28.434] [info] [AutowareAgent] Published goal (81609.79, 49991.81)
-[2026-06-23 19:00:28.434] [info] [TripController] goal pose: x=81609.792 y=49991.811 qz=-0.6440 qw=0.7650
-[INFO] [1782230428.434954856] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
-[2026-06-23 19:00:28.434] [info] [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
-[ERROR] [1782230428.534483613] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=-1 x=81609.79 y=49991.81
-[INFO] [1782230428.534749518] [autoware_controller]: [AutowareAgent] Published goal (81609.79, 49991.81)
-[2026-06-23 19:00:28.534] [info] [AutowareAgent] Published goal (81609.79, 49991.81)
-[2026-06-23 19:00:28.534] [info] [TripController] route_state=-1
-[INFO] [1782230428.928422720] [autoware_controller]: [AutowareAgent] Route received — 5 segment(s), start primitive id: 406
-[2026-06-23 19:00:28.928] [info] [AutowareAgent] Route received — 5 segment(s)
-[INFO] [1782230428.934344940] [autoware_controller]: [AutowareAgent] Route SET for pickup leg — waiting for ETA topic
-[INFO] [1782230428.934421828] [autoware_controller]: [AutowareAgent] QUERY_WAITING_ROUTE -> QUERY_READING_ETA
-[2026-06-23 19:00:28.934] [info] [AutowareAgent] QUERY_WAITING_ROUTE -> QUERY_READING_ETA
-[INFO] [1782230429.076874898] [autoware_controller]: [AutowareAgent] ETA injected — 523.8 m / 125.6 s
-[INFO] [1782230429.134481234] [autoware_controller]: [AutowareAgent] Pickup leg done — ETA 125.6 s / 523.8 m — starting trip leg
-[2026-06-23 19:00:29.134] [info] [AutowareAgent] Pickup leg done — 125.6 s / 523.8 m
-[2026-06-23 19:00:29.134] [info] [LaneletMap] findNearestLane called with GPS (35.102458,139.123478)
-[2026-06-23 19:00:29.134] [info] [LaneletMap] findNearestLane called with local (29814.658922,-14680.942053)
-[2026-06-23 19:00:29.136] [info] [LaneletMap] GPS (35.102458,139.123478) → lanelet 250 type=lanelet subtype=road dist=82416.6m
-[ERROR] [1782230429.136610192] [autoware_controller]: [DEBUG startQueryLeg] from_lane=0x58e6e4c76f50 lane_id=250   to_lane=0x58e6e4c76f50 lane_id=250
-[ERROR] [1782230429.136749702] [autoware_controller]: [DEBUG startQueryLeg] from_gps=(35.102458, 139.123478) to_gps=(35.135099, 139.226579)
-[INFO] [1782230429.136784512] [autoware_controller]: [AutowareAgent] Query trip leg: lane 250 → lane 250
-[INFO] [1782230429.136801246] [autoware_controller]: [AutowareAgent] QUERY_READING_ETA -> QUERY_PUBLISHING_INITIAL_POSE
-[2026-06-23 19:00:29.136] [info] [AutowareAgent] QUERY_READING_ETA -> QUERY_PUBLISHING_INITIAL_POSE
-[INFO] [1782230429.234529999] [autoware_controller]: [AutowareAgent] Published initial pose (81176.23, 49774.40)
-[2026-06-23 19:00:29.234] [info] [AutowareAgent] Published initial pose (81176.23, 49774.40)
-[INFO] [1782230429.234665781] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
-[2026-06-23 19:00:29.234] [info] [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
-[INFO] [1782230429.334578942] [autoware_controller]: [AutowareAgent] Query leg localised — publishing goal
-[INFO] [1782230429.334750624] [autoware_controller]: [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
-[2026-06-23 19:00:29.334] [info] [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
-[ERROR] [1782230429.436941114] [autoware_controller]: [DEBUG doPublishGoal] state=4 route_state=-1 x=81176.23 y=49774.40
-[INFO] [1782230429.437289466] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:29.437] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:29.437] [info] [TripController] goal pose: x=81176.233 y=49774.399 qz=-0.9525 qw=0.3045
-[INFO] [1782230429.437384174] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
-[2026-06-23 19:00:29.437] [info] [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
-[ERROR] [1782230429.534517490] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=-1 x=81176.23 y=49774.40
-[INFO] [1782230429.534912074] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:29.534] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:29.534] [info] [TripController] route_state=-1
-[INFO] [1782230429.969586159] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:29.969] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230431.634470347] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230431.634754042] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:31.634] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:31.634] [info] [TripController] route_state=3
-[INFO] [1782230432.173409482] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:32.173] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230433.734520554] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230433.734935046] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:33.734] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:33.734] [info] [TripController] route_state=3
-[INFO] [1782230434.180857933] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:34.181] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230435.834425161] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230435.834631984] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:35.834] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:35.834] [info] [TripController] route_state=3
-[INFO] [1782230436.370816474] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:36.370] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230437.934505360] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230437.934892167] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:37.935] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:37.935] [info] [TripController] route_state=3
-[INFO] [1782230438.369324108] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:38.369] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230440.034666065] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230440.034943293] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:40.034] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:40.035] [info] [TripController] route_state=3
-[INFO] [1782230440.571360229] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:40.571] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230442.134565516] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230442.134872554] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:42.134] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:42.134] [info] [TripController] route_state=3
-[INFO] [1782230442.572427615] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:42.572] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230444.234493904] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230444.234867224] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:44.234] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:44.234] [info] [TripController] route_state=3
-[INFO] [1782230444.775561273] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:44.775] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230446.334555394] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230446.334872779] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:46.334] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:46.334] [info] [TripController] route_state=3
-[INFO] [1782230446.771236033] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:46.771] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230448.434415842] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230448.434598889] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:48.434] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:48.434] [info] [TripController] route_state=3
-[INFO] [1782230448.970408802] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:48.970] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230450.534552648] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230450.534783369] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:50.534] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:50.534] [info] [TripController] route_state=3
-[INFO] [1782230450.970794310] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:50.970] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230452.634524230] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230452.634970758] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:52.635] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:52.635] [info] [TripController] route_state=3
-[INFO] [1782230453.169691860] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:53.169] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230454.734856538] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230454.735225080] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:54.735] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:54.735] [info] [TripController] route_state=3
-[INFO] [1782230455.170095825] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:55.170] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230456.834758421] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230456.835028227] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:56.835] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:56.835] [info] [TripController] route_state=3
-[INFO] [1782230457.371032400] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:57.371] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230458.934503503] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=3 x=81176.23 y=49774.40
-[INFO] [1782230458.934876503] [autoware_controller]: [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:58.934] [info] [AutowareAgent] Published goal (81176.23, 49774.40)
-[2026-06-23 19:00:58.934] [info] [TripController] route_state=3
-[INFO] [1782230459.370326016] [autoware_controller]: [AutowareAgent] Route received — 1 segment(s), start primitive id: 250
-[2026-06-23 19:00:59.370] [info] [AutowareAgent] Route received — 1 segment(s)
-[ERROR] [1782230459.534542727] [autoware_controller]: [AutowareAgent] Query failed: timeout waiting for route on trip leg (lanes 250 → 250 may not be connected)
-[2026-06-23 19:00:59.534] [error] [AutowareAgent] Query failed: timeout waiting for route on trip leg (lanes 250 → 250 may not be connected)
-/home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/tests/integration/autoware_agent/full_trip_test.cc:293: Skipped
-queryEta failed: timeout waiting for route on trip leg (lanes 250 → 250 may not be connected) - skipping CompleteTripLifecycle
-[  SKIPPED ] FullTripTest.CompleteTripLifecycle (37238 ms)
-[----------] 1 test from FullTripTest (37238 ms total)
+[DEBUG queryEtaSync] called with start=(35.6859,139.689) goal=(35.6899,139.691)
+Received queryEta request: start(35.6859, 139.689) → goal(35.6899, 139.691)
+[2026-06-26 03:15:20.016] [info] [AutowareAgent] queryEta pickup leg: vehicle(35.688522,139.691308) → pickup(35.685862,139.689436)
+[2026-06-26 03:15:20.017] [info] [AutowareAgent] queryEta trip leg: pickup(35.685862,139.689436) → goal(35.689887,139.690832)
+[2026-06-26 03:15:20.017] [info] [LaneletMap] findNearestLane called with GPS (35.688522,139.691308)
+[2026-06-26 03:15:20.017] [info] [LaneletMap] findNearestLane called with local (81585.349408,50190.774168)
+[2026-06-26 03:15:20.019] [error] [debug inside findNearestConnectedLane] GPS (35.685862,139.689436) local (81415.943307,49895.584035) reference lane 406 candidates 17
+[2026-06-26 03:15:20.019] [error] [DEBUG CONNECTED] best=%ld dist=%.1f
+[2026-06-26 03:15:20.019] [info] [LaneletMap] GPS (35.685862,139.689436) → connected lanelet 3002174 dist=216.4m
+[ERROR] [1782432920.019100149] [autoware_controller]: [DEBUG startQueryLeg] from_lane=0x6051f80819f0 lane_id=406   to_lane=0x6051f8081a48 lane_id=3002174
+[ERROR] [1782432920.019351709] [autoware_controller]: [DEBUG startQueryLeg] from_gps=(35.688522, 139.691308) to_gps=(35.685862, 139.689436)
+[INFO] [1782432920.019385870] [autoware_controller]: [LANE MATCH] From GPS(35.68852215, 139.69130795) -> Lane 406 @ Local(81585.35, 50190.77)
+[INFO] [1782432920.019401042] [autoware_controller]: [LANE MATCH] To GPS(35.68586164, 139.68943647) -> Lane 3002174 @ Local(81609.79, 49991.81)
+[INFO] [1782432920.019415415] [autoware_controller]: [AutowareAgent] Query pickup leg: lane 406 → lane 3002174
+[INFO] [1782432920.019426155] [autoware_controller]: [AutowareAgent] IDLE -> QUERY_PUBLISHING_INITIAL_POSE
+[2026-06-26 03:15:20.019] [info] [AutowareAgent] IDLE -> QUERY_PUBLISHING_INITIAL_POSE
+[ERROR] [1782432920.076743952] [autoware_controller]: [DEBUG doPublishInitialPose] route_state=1 state=2 x=81585.35 y=50190.77
+[INFO] [1782432920.077047772] [autoware_controller]: [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[2026-06-26 03:15:20.077] [info] [AutowareAgent] Published initial pose (81585.35, 50190.77)
+[INFO] [1782432920.077096317] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
+[2026-06-26 03:15:20.077] [info] [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
+[INFO] [1782432920.176746427] [autoware_controller]: [AutowareAgent] Query leg localised — publishing goal
+[INFO] [1782432920.176905251] [autoware_controller]: [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
+[2026-06-26 03:15:20.176] [info] [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
+[ERROR] [1782432920.276745873] [autoware_controller]: [DEBUG doPublishGoal] state=4 route_state=1 x=81609.79 y=49991.81
+[INFO] [1782432920.277239953] [autoware_controller]: [AutowareAgent] Published goal (81609.79, 49991.81)
+[2026-06-26 03:15:20.277] [info] [AutowareAgent] Published goal (81609.79, 49991.81)
+[2026-06-26 03:15:20.277] [info] [TripController] goal pose: x=81609.792 y=49991.811 qz=-0.6440 qw=0.7650
+[INFO] [1782432920.277303664] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
+[2026-06-26 03:15:20.277] [info] [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
+[ERROR] [1782432920.376756617] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=-1 x=81609.79 y=49991.81
+[INFO] [1782432920.377193123] [autoware_controller]: [AutowareAgent] Published goal (81609.79, 49991.81)
+[2026-06-26 03:15:20.377] [info] [AutowareAgent] Published goal (81609.79, 49991.81)
+[2026-06-26 03:15:20.377] [info] [TripController] route_state=-1
+[INFO] [1782432920.704401270] [autoware_controller]: [AutowareAgent] Route received — 5 segment(s), start primitive id: 406
+[2026-06-26 03:15:20.704] [info] [AutowareAgent] Route received — 5 segment(s)
+[INFO] [1782432920.776749194] [autoware_controller]: [AutowareAgent] Route SET for pickup leg — waiting for ETA topic
+[INFO] [1782432920.776885564] [autoware_controller]: [AutowareAgent] QUERY_WAITING_ROUTE -> QUERY_READING_ETA
+[2026-06-26 03:15:20.776] [info] [AutowareAgent] QUERY_WAITING_ROUTE -> QUERY_READING_ETA
+[INFO] [1782432920.847731585] [autoware_controller]: [AutowareAgent] ETA injected — 523.8 m / 125.6 s
+[INFO] [1782432920.876749691] [autoware_controller]: [AutowareAgent] Pickup leg done — ETA 125.6 s / 523.8 m — starting trip leg
+[2026-06-26 03:15:20.877] [info] [AutowareAgent] Pickup leg done — 125.6 s / 523.8 m
+[2026-06-26 03:15:20.877] [error] [debug inside findNearestConnectedLane] GPS (35.689887,139.690832) local (81542.231344,50342.212281) reference lane 3002174 candidates 2
+[ERROR] [1782432920.877107967] [autoware_controller]: [DEBUG startQueryLeg] from_lane=0x6051f8081a48 lane_id=3002174   to_lane=0x6051f8081a48 lane_id=3002174
+[ERROR] [1782432920.877235039] [autoware_controller]: [DEBUG startQueryLeg] from_gps=(35.685862, 139.689436) to_gps=(35.689887, 139.690832)
+[INFO] [1782432920.877264484] [autoware_controller]: [LANE MATCH] From GPS(35.68586164, 139.68943647) -> Lane 3002174 @ Local(81609.79, 49991.81)
+[INFO] [1782432920.877277226] [autoware_controller]: [LANE MATCH] To GPS(35.68988703, 139.69083158) -> Lane 3002174 @ Local(81609.79, 49991.81)
+[INFO] [1782432920.877289683] [autoware_controller]: [AutowareAgent] Query trip leg: lane 3002174 → lane 3002174
+[INFO] [1782432920.877300666] [autoware_controller]: [AutowareAgent] QUERY_READING_ETA -> QUERY_PUBLISHING_INITIAL_POSE
+[2026-06-26 03:15:20.877] [info] [AutowareAgent] QUERY_READING_ETA -> QUERY_PUBLISHING_INITIAL_POSE
+[INFO] [1782432920.976806975] [autoware_controller]: [AutowareAgent] Published initial pose (81609.79, 49991.81)
+[2026-06-26 03:15:20.976] [info] [AutowareAgent] Published initial pose (81609.79, 49991.81)
+[INFO] [1782432920.977007277] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
+[2026-06-26 03:15:20.977] [info] [AutowareAgent] QUERY_PUBLISHING_INITIAL_POSE -> QUERY_WAITING_LOCALISATION
+[INFO] [1782432921.076675280] [autoware_controller]: [AutowareAgent] Query leg localised — publishing goal
+[INFO] [1782432921.076801727] [autoware_controller]: [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
+[2026-06-26 03:15:21.076] [info] [AutowareAgent] QUERY_WAITING_LOCALISATION -> QUERY_PUBLISHING_GOAL
+[ERROR] [1782432921.176727913] [autoware_controller]: [DEBUG doPublishGoal] state=4 route_state=3 x=81607.23 y=50007.60
+[INFO] [1782432921.177031267] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:21.177] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:21.177] [info] [TripController] goal pose: x=81607.233 y=50007.602 qz=-0.6440 qw=0.7650
+[INFO] [1782432921.177098354] [autoware_controller]: [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
+[2026-06-26 03:15:21.177] [info] [AutowareAgent] QUERY_PUBLISHING_GOAL -> QUERY_WAITING_ROUTE
+[ERROR] [1782432921.276755000] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=-1 x=81607.23 y=50007.60
+[INFO] [1782432921.277153825] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:21.277] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:21.277] [info] [TripController] route_state=-1
+[ERROR] [1782432923.277725646] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432923.278094297] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:23.278] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:23.278] [info] [TripController] route_state=1
+[ERROR] [1782432925.376688972] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432925.377014130] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:25.377] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:25.377] [info] [TripController] route_state=1
+[ERROR] [1782432927.476811067] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432927.477322009] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:27.477] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:27.477] [info] [TripController] route_state=1
+[ERROR] [1782432929.576963153] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432929.577221790] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:29.577] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:29.577] [info] [TripController] route_state=1
+[ERROR] [1782432931.676965758] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432931.677254359] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:31.677] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:31.677] [info] [TripController] route_state=1
+[ERROR] [1782432933.778624484] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432933.779233515] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:33.779] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:33.779] [info] [TripController] route_state=1
+[ERROR] [1782432935.876780345] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432935.877199059] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:35.877] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:35.877] [info] [TripController] route_state=1
+[ERROR] [1782432937.976784639] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432937.977146584] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:37.977] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:37.977] [info] [TripController] route_state=1
+[ERROR] [1782432940.076844616] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432940.077454308] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:40.077] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:40.077] [info] [TripController] route_state=1
+[ERROR] [1782432942.176830495] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432942.177220512] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:42.177] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:42.177] [info] [TripController] route_state=1
+[ERROR] [1782432944.276870691] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432944.277339914] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:44.277] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:44.277] [info] [TripController] route_state=1
+[ERROR] [1782432946.376838421] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432946.377324154] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:46.377] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:46.377] [info] [TripController] route_state=1
+[ERROR] [1782432948.476857051] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432948.477321295] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:48.477] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:48.477] [info] [TripController] route_state=1
+[ERROR] [1782432950.576806093] [autoware_controller]: [DEBUG doPublishGoal] state=5 route_state=1 x=81607.23 y=50007.60
+[INFO] [1782432950.577086705] [autoware_controller]: [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:50.577] [info] [AutowareAgent] Published goal (81607.23, 50007.60)
+[2026-06-26 03:15:50.577] [info] [TripController] route_state=1
+[ERROR] [1782432951.276753869] [autoware_controller]: [AutowareAgent] Query failed: timeout waiting for route on trip leg (lanes 3002174 → 3002174 may not be connected)
+[2026-06-26 03:15:51.276] [error] [AutowareAgent] Query failed: timeout waiting for route on trip leg (lanes 3002174 → 3002174 may not be connected)
+/home/alaa-hassan/Desktop/yaqoud_project/autoware/autoware-agent/tests/integration/autoware_agent/full_trip_test.cc:302: Skipped
+queryEta failed: timeout waiting for route on trip leg (lanes 3002174 → 3002174 may not be connected) - skipping CompleteTripLifecycle
+[  SKIPPED ] FullTripTest.CompleteTripLifecycle (33639 ms)
+[----------] 1 test from FullTripTest (33639 ms total)
 
 [----------] Global test environment tear-down
-[==========] 1 test from 1 test suite ran. (37470 ms total)
+[==========] 1 test from 1 test suite ran. (33639 ms total)
 [  PASSED  ] 0 tests.
 [  SKIPPED ] 1 test, listed below:
 [  SKIPPED ] FullTripTest.CompleteTripLifecycle

@@ -177,12 +177,49 @@ bool TripController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
   return true;
 }
 
+
+
+bool TripController::goToPickup() {
+  if (status_.state_ != TripState::WAITING_FOR_PICKUP_START) {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "[AutowareAgent] goToPickup() called in wrong state=%d — ignoring",
+                 static_cast<int>(status_.state_));
+    return false;
+  }
+
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] goToPickup — driving to pickup lane %s (%.2f, %.2f)",
+              status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
+
+  current_route_state_.reset();
+  route_received_ = false;
+  transitionTo(TripState::PUBLISHING_INITIAL_POSE);
+  return true;
+}
+
+
+
+bool TripController::handleMoveCommand() {
+  if (status_.state_ == TripState::WAITING_FOR_PICKUP_START) {
+    return goToPickup();
+  } else if (status_.state_ == TripState::WAITING_FOR_MOVE) {
+    return move();
+  }
+  RCLCPP_WARN(node_->get_logger(),
+              "[AutowareAgent] move command received in unexpected state=%d",
+              static_cast<int>(status_.state_));
+  return false;
+}
+
+
+
+
+
 bool TripController::startTrip() {
 
 //added
 
  engaging_for_pickup_ = true; 
-
 
  RCLCPP_ERROR(node_->get_logger(),
     "[DEBUG startTrip] current_route_state_ before reset=%s",
@@ -190,9 +227,7 @@ bool TripController::startTrip() {
       std::to_string(current_route_state_->state).c_str() : "nullptr");
 
 
-
-
-         current_route_state_.reset();
+      current_route_state_.reset();
 
 
 
@@ -219,7 +254,8 @@ bool TripController::startTrip() {
     return false;
   }
 
-  const LaneInfo* start_lane = lanelet_map_.findNearestLane(pickup_route_->goal_gps_);
+  // const LaneInfo* start_lane = lanelet_map_.findNearestLane(pickup_route_->goal_gps_);
+const LaneInfo* start_lane = lanelet_map_.getLaneById(pickup_route_->goal_lane_id_);
   if (!start_lane) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] startTrip — cannot resolve pickup lane");
     transitionTo(TripState::FAILED);
@@ -248,13 +284,22 @@ bool TripController::startTrip() {
 
 
 
-  RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] startTrip — driving to pickup lane %s (%.2f, %.2f)",
-              status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
-  spdlog::info("[AutowareAgent] startTrip — pickup lane {} ({:.2f}, {:.2f})",
-               status_.start_lanelet_id_, status_.start_x_, status_.start_y_);
+  // RCLCPP_INFO(node_->get_logger(),
+  //             "[AutowareAgent] startTrip — driving to pickup lane %s (%.2f, %.2f)",
+  //             status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
+  // spdlog::info("[AutowareAgent] startTrip — pickup lane {} ({:.2f}, {:.2f})",
+  //              status_.start_lanelet_id_, status_.start_x_, status_.start_y_);
 
-  transitionTo(TripState::PUBLISHING_INITIAL_POSE);
+  // transitionTo(TripState::PUBLISHING_INITIAL_POSE);
+  // return true;
+
+
+    RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] startTrip — accepted, waiting for goToPickup() "
+              "pickup lane %s (%.2f, %.2f)",
+              status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
+
+         transitionTo(TripState::WAITING_FOR_PICKUP_START);
   return true;
 }
 
@@ -528,25 +573,30 @@ void TripController::tick() {
 }
 
 void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps) {
-  const LaneInfo* from_lane = lanelet_map_.findNearestLane(from_gps);
+ // const LaneInfo* from_lane = lanelet_map_.findNearestLane(from_gps);
+  const LaneInfo* from_lane = nullptr;
+if (current_leg_ == QueryLeg::PICKUP) {
+   
+    from_lane = lanelet_map_.findNearestLane(from_gps);
+  } else {
+  
+    from_lane = lanelet_map_.getLaneById(std::stoll(status_.goal_lanelet_id_));
+  }
+
+
+
   if (!from_lane) {
     failQuery("cannot resolve lane for " +
               std::string(current_leg_ == QueryLeg::PICKUP ? "pickup origin" : "trip start"));
     return;
   }
 
-  // const LaneInfo* to_lane = lanelet_map_.findNearestLane(to_gps);
-  // if (!to_lane) {
-  //   failQuery("cannot resolve lane for " +
-  //             std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
-  //   return;
-  // }
+
 
   const LaneInfo* to_lane = lanelet_map_.findNearestConnectedLane(
-      to_gps, static_cast<lanelet::Id>(from_lane->lane_id), /*must_be_reachable_from_ref=*/true);
+      to_gps, static_cast<lanelet::Id>(from_lane->lane_id), true);
 
   if (!to_lane) {
-    // Fallback: try plain nearest (old behavior) so failure logs are still informative
     to_lane = lanelet_map_.findNearestLane(to_gps);
     failQuery("destination lane " + std::to_string(to_lane ? to_lane->lane_id : -1) +
               " not reachable from start lane " + std::to_string(from_lane->lane_id));
@@ -576,13 +626,53 @@ void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps)
   status_.start_qz_ = from_lane->orientation.z;
   status_.start_lanelet_id_ = std::to_string(from_lane->lane_id);
 
-  status_.goal_x_ = to_lane->local.x;
-  status_.goal_y_ = to_lane->local.y;
-  status_.goal_z_ = to_lane->local.z;
-  status_.goal_qw_ = to_lane->orientation.w;
-  status_.goal_qz_ = to_lane->orientation.z;
-  status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
+  // status_.goal_x_ = to_lane->local.x;
+  // status_.goal_y_ = to_lane->local.y;
+  // status_.goal_z_ = to_lane->local.z;
+  // status_.goal_qw_ = to_lane->orientation.w;
+  // status_.goal_qz_ = to_lane->orientation.z;
+  // status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
+  // status_.goal_gps_ = to_gps;
+if (from_lane->lane_id == to_lane->lane_id) {
+   
+    LocalCoordinate goal_local = lanelet_map_.projectOntoLaneCenterline(to_gps, to_lane->lane_id);
+    status_.goal_x_ = goal_local.x;
+    status_.goal_y_ = goal_local.y;
+    status_.goal_z_ = goal_local.z;
+    status_.goal_qw_ = to_lane->orientation.w;
+    status_.goal_qz_ = to_lane->orientation.z;
+  } else {
+    status_.goal_x_ = to_lane->local.x;
+    status_.goal_y_ = to_lane->local.y;
+    status_.goal_z_ = to_lane->local.z;
+    status_.goal_qw_ = to_lane->orientation.w;
+    status_.goal_qz_ = to_lane->orientation.z;
+  }
+   status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
   status_.goal_gps_ = to_gps;
+
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "[LANE MATCH] From GPS(%.8f, %.8f) -> Lane %ld @ Local(%.2f, %.2f)",
+    from_gps.latitude,
+    from_gps.longitude,
+    from_lane->lane_id,
+    from_lane->local.x,
+    from_lane->local.y);
+
+RCLCPP_INFO(
+    node_->get_logger(),
+    "[LANE MATCH] To GPS(%.8f, %.8f) -> Lane %ld @ Local(%.2f, %.2f)",
+    to_gps.latitude,
+    to_gps.longitude,
+    to_lane->lane_id,
+    to_lane->local.x,
+    to_lane->local.y);
+
+
+
+
 
   LocalCoordinate raw = lanelet_map_.gpsToLocal(to_gps);
   double dx = to_lane->local.x - raw.x;
@@ -607,7 +697,8 @@ void TripController::finishQueryLeg() {
       .route_ = last_route_ ? *last_route_ : autoware_planning_msgs::msg::LaneletRoute{},
       .eta_seconds_ = eta_seconds_,
       .distance_m_ = eta_distance_m_,
-      .goal_gps_ = query_start_gps_  // pickup destination = trip start
+      .goal_gps_ = query_start_gps_ ,  // pickup destination = trip start
+      .goal_lane_id_ = std::stoll(status_.goal_lanelet_id_) 
     };
 
     RCLCPP_INFO(node_->get_logger(),

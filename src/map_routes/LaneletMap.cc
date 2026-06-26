@@ -99,8 +99,8 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
 
 
 
-      debugRouteConnectivity(406, 406);
-       debugRouteConnectivity(195, 384);
+      debugRouteConnectivity(406, 250);
+       debugRouteConnectivity(406, 3002174);
   }
 
   bool LaneletMap::isLoaded() const {
@@ -389,6 +389,7 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
 
   lanelet::ConstLanelet reference_ll = map_->laneletLayer.get(reference_id);
 
+   
   // Get the full set of lanelets reachable from (or that reach) the reference,
   // within a generous radius — e.g. 2km, adjust to your map size.
   lanelet::ConstLanelets candidates;
@@ -399,7 +400,7 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
     // lanelet2 doesn't have a direct "reverse reachableSet", so build it
     // by checking each lanelet's reachableSet for membership of reference
     for (const auto& ll : map_->laneletLayer) {
-      auto reach = routing_graph_->reachableSet(ll, 2000.0);
+      auto reach = routing_graph_->reachableSet(ll, 8000.0);
       for (const auto& r : reach) {
         if (r.id() == reference_id) {
           candidates.push_back(ll);
@@ -408,6 +409,11 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
       }
     }
   }
+
+
+  spdlog::error("[debug inside findNearestConnectedLane] GPS ({:.6f},{:.6f}) local ({:.6f},{:.6f}) reference lane {} candidates {}",
+    gps.latitude, gps.longitude, target.x, target.y, reference_id, candidates.size());
+
 
   double min_dist = std::numeric_limits<double>::max();
   lanelet::Id best_id = lanelet::InvalId;
@@ -443,6 +449,16 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
     if (cached.lane_id == static_cast<int64_t>(best_id))
       return &cached;
   }
+
+
+
+  spdlog::error(
+    "[DEBUG CONNECTED] best=%ld dist=%.1f",
+    best_id,
+    min_dist);
+
+
+
   lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
   cache_.emplace_back(makeLaneInfo(ll));
   spdlog::info("[LaneletMap] GPS ({:.6f},{:.6f}) → connected lanelet {} dist={:.1f}m",
@@ -490,5 +506,46 @@ void LaneletMap::debugVerifyLocalPoint(const std::string& label,
   spdlog::info("[VERIFY] {} lanelet2-nearest id={} vs your findNearestLane result above",
                label, nearest.front().second.id());
 }
+
+
+
+
+// Add a new function to LaneletMap that projects a GPS point onto
+// its resolved lane's ACTUAL centerline, instead of returning the midpoint:
+
+LocalCoordinate LaneletMap::projectOntoLaneCenterline(
+    const GPSCoordinate& gps, lanelet::Id lane_id) const {
+  lanelet::ConstLanelet ll = map_->laneletLayer.get(lane_id);
+  const auto& cl = ll.centerline();
+
+  LocalCoordinate target = gpsToLocal(gps);
+
+  // Find the closest point ON the centerline (not just the midpoint)
+  double min_dist = std::numeric_limits<double>::max();
+  lanelet::BasicPoint3d best_point;
+
+  for (size_t i = 0; i + 1 < cl.size(); ++i) {
+    // project target onto each centerline segment, find closest segment
+    const auto& p0 = cl[i];
+    const auto& p1 = cl[i + 1];
+    // (standard point-to-segment projection math)
+    double dx = p1.x() - p0.x();
+    double dy = p1.y() - p0.y();
+    double seg_len2 = dx*dx + dy*dy;
+    double t = seg_len2 > 0
+      ? std::clamp(((target.x - p0.x())*dx + (target.y - p0.y())*dy) / seg_len2, 0.0, 1.0)
+      : 0.0;
+    double px = p0.x() + t * dx;
+    double py = p0.y() + t * dy;
+    double dist = std::sqrt((target.x-px)*(target.x-px) + (target.y-py)*(target.y-py));
+    if (dist < min_dist) {
+      min_dist = dist;
+      best_point = lanelet::BasicPoint3d(px, py, p0.z());
+    }
+  }
+
+  return {offset_x_ + best_point.x(), offset_y_ + best_point.y(), best_point.z()};
+}
+
 
   }  // namespace autoware_agent

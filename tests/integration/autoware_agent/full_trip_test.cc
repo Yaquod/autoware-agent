@@ -51,9 +51,13 @@ class FullTripTest : public ::testing::Test {
 
     map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
     // goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
-  goal_gps_ = GPSCoordinate{35.68791931, 139.69142432};
 
-    // goal_gps_ = GPSCoordinate{35.1024578, 139.123478};
+    //work
+  // goal_gps_ = GPSCoordinate{35.68791931, 139.69142432};
+
+
+
+    goal_gps_ = GPSCoordinate{35.68988702749348, 139.69083158344597};
 
 
 
@@ -269,21 +273,26 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   //                        goal_gps_.longitude);
 
 
-  // auto qr = queryEtaSync(35.68855194431519, 139.69142711058254,
-  //                       goal_gps_.latitude, goal_gps_.longitude);
 
 
 //AFTER (pickup = goal_gps_ which is 300m away, destination = further point):
-auto qr = queryEtaSync(
-    goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
-     35.23978,         139.87945      
-);
-
-
 // auto qr = queryEtaSync(
 //     goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
-//      35.1350987,         139.226579      
+//      35.23978,         139.87945      
 // );
+
+
+//  auto qr = queryEtaSync(
+//     goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
+//      35.6350987,         139.666579      
+// );
+
+
+ auto qr = queryEtaSync(
+    35.685861638345415 , 139.68943647241218 ,
+    goal_gps_.latitude,   goal_gps_.longitude // pickup: lane 195
+    
+);
 
 
              

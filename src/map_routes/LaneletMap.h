@@ -137,6 +137,9 @@ class LaneletMap {
   [[nodiscard]] const LaneInfo* findNearestConnectedLane(
     const GPSCoordinate& gps, lanelet::Id reference_id, bool must_be_reachable_from_ref) const;
 
+    [[nodiscard]] LocalCoordinate projectOntoLaneCenterline(
+    const GPSCoordinate& gps, lanelet::Id lane_id) const ;
+
   /** Resolve an OSM file path using the same search order that
    *  RouteConfig::resolveConfigPath() used (absolute > test > src > install). */
   static std::string resolveOsmPath(const std::string& filename);

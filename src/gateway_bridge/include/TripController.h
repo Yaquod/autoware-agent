@@ -63,6 +63,10 @@ class TripController {
    */
   bool startTrip();
 
+  bool goToPickup();
+
+  bool handleMoveCommand() ;
+
   void cancel();
 
   void tick();

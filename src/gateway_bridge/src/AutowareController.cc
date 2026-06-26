@@ -123,6 +123,19 @@ void AutowareController::move(const std::function<void(bool)>& callback) {
   boost::asio::post(*strand_, [this, callback]() { moveImpl(callback); });
 }
 
+
+void AutowareController::goToPickup(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { goToPickupImpl(callback); });
+}
+
+
+
+void AutowareController::handleMoveCommand(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { handleMoveCommandImpl(callback); });
+}
+
+
+
 void AutowareController::startTripImpl(std::function<void(bool)> callback) {
   if (!trip_ctrl_) {
     RCLCPP_ERROR(get_logger(), "[AutowareAgent] startTrip called before initialize()");
@@ -135,6 +148,29 @@ void AutowareController::startTripImpl(std::function<void(bool)> callback) {
   if (callback)
     callback(ok);
 }
+
+
+void AutowareController::handleMoveCommandImpl(std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    if (callback) callback(false);
+    return;
+  }
+  bool ok = trip_ctrl_->handleMoveCommand();
+  if (callback) callback(ok);
+}
+
+
+
+void AutowareController::goToPickupImpl(std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    if (callback) callback(false);
+    return;
+  }
+  bool ok = trip_ctrl_->goToPickup();
+  if (callback) callback(ok);
+}
+
+
 
 void AutowareController::cancelTrip() {
   boost::asio::post(*strand_, [this]() { cancelTripImpl(); });
@@ -191,6 +227,8 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
         return "QUERY_READING_ETA";
       case TripState::ROUTES_READY:
         return "ROUTES_READY";
+         case TripState::WAITING_FOR_PICKUP_START:
+      return "WAITING_FOR_PICKUP_START";
       case TripState::PUBLISHING_INITIAL_POSE:
         return "PUBLISHING_INITIAL_POSE";
       case TripState::WAITING_LOCALISATION:

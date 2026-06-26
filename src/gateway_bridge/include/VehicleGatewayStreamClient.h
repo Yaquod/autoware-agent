@@ -37,7 +37,10 @@ namespace vehicle_gateway {
 struct StreamCommandHandlers {
   std::function<void(const TripInitRequest&)> on_trip_init;
   std::function<void(const TripMoveRequest&)> on_trip_move;
+  std::function<void(const OrderUpdateLocationRequest&)> on_order_update_location;
+
 };
+
 
 class VehicleGatewayStreamClient {
  public:
@@ -76,6 +79,29 @@ class VehicleGatewayStreamClient {
     r->set_message("accepted");
     enqueue(ev);
   }
+
+
+  void ReportOrderUpdateLocationAck(bool success, const std::string& message = "") {
+  VehicleEvent ev;
+  auto* r = ev.mutable_order_update_location_ack();
+  r->set_success(success);
+  r->set_message(message);
+  enqueue(ev);
+}
+
+
+
+void ReportLocation(double latitude, double longitude) {
+  VehicleEvent ev;
+  auto* r = ev.mutable_location();
+  r->set_vinnumber(vin_);
+  r->set_latitude(latitude);
+  r->set_longitude(longitude);
+  enqueue(ev);
+}
+
+
+
 
   void ReportEta() {
      spdlog::info("[Stream] ReportEta called");  // ADD
@@ -221,6 +247,12 @@ class VehicleGatewayStreamClient {
         if (handlers_.on_trip_move)
           handlers_.on_trip_move(cmd.trip_move());
       }
+      else if (cmd.has_order_update_location()) {
+    spdlog::info("[StreamClient] Received OrderUpdateLocation vin={}",
+                 cmd.order_update_location().vin_number());
+    if (handlers_.on_order_update_location)
+      handlers_.on_order_update_location(cmd.order_update_location());
+  }
     }
 
     stream_dead.store(true);
