@@ -29,6 +29,8 @@
 #include <lanelet2_projection/UTM.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+#include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
+
 
 namespace autoware_agent {
 
@@ -100,6 +102,9 @@ class LaneletMap {
   void debugRouteConnectivity(int64_t from_id, int64_t to_id) const;
   void debugVerifyLocalPoint(const std::string& label,
                                         double local_x, double local_y) const;
+ void debugConnectedComponents() const;
+ void debugFindBestStartingLane() const;
+
 
   /**
    * Find the nearest drivable lanelet to the given GPS coordinate.
@@ -157,7 +162,7 @@ double mgrs_origin_y_{0.0};
 std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_;
 
   std::shared_ptr<lanelet::LaneletMap> map_;
-  std::shared_ptr<lanelet::projection::UtmProjector> projector_;
+  std::shared_ptr<lanelet::projection::MGRSProjector> projector_;
 
   mutable std::vector<LaneInfo> cache_;  // results of findNearestLane()
   std::optional<FixedStartPosition> default_start_;

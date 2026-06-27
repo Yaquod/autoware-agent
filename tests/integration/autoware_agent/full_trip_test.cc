@@ -53,11 +53,13 @@ class FullTripTest : public ::testing::Test {
     // goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
 
     //work
-  // goal_gps_ = GPSCoordinate{35.68791931, 139.69142432};
+  // goal_gps_ = GPSCoordinate{35.68611588881342 , 139.68928899973466};
 
 
 
-    goal_gps_ = GPSCoordinate{35.68701019425071, 139.6947358336086};
+    goal_gps_ = GPSCoordinate{35.68611588881342,  139.68928899973466};
+
+
 
 
 
@@ -282,17 +284,18 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
 // );
 
 
-//  auto qr = queryEtaSync(
-//     goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
-//      35.6350987,         139.666579      
-// );
-
-
  auto qr = queryEtaSync(
-    35.69093088898861 , 139.69488819394525 ,
-    goal_gps_.latitude,   goal_gps_.longitude // pickup: lane 195
     
+     35.68737756931822, 139.6940473196528 ,
+       goal_gps_.latitude,   goal_gps_.longitude
 );
+
+
+//  auto qr = queryEtaSync(
+//     35.69093088898861 , 139.69488819394525 ,
+//     goal_gps_.latitude,   goal_gps_.longitude // pickup: lane 195
+    
+// );
 
 
              
