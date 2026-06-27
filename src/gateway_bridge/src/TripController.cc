@@ -626,30 +626,32 @@ if (current_leg_ == QueryLeg::PICKUP) {
   status_.start_qz_ = from_lane->orientation.z;
   status_.start_lanelet_id_ = std::to_string(from_lane->lane_id);
 
-  // status_.goal_x_ = to_lane->local.x;
-  // status_.goal_y_ = to_lane->local.y;
-  // status_.goal_z_ = to_lane->local.z;
-  // status_.goal_qw_ = to_lane->orientation.w;
-  // status_.goal_qz_ = to_lane->orientation.z;
-  // status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
-  // status_.goal_gps_ = to_gps;
-if (from_lane->lane_id == to_lane->lane_id) {
-   
-    LocalCoordinate goal_local = lanelet_map_.projectOntoLaneCenterline(to_gps, to_lane->lane_id);
-    status_.goal_x_ = goal_local.x;
-    status_.goal_y_ = goal_local.y;
-    status_.goal_z_ = goal_local.z;
-    status_.goal_qw_ = to_lane->orientation.w;
-    status_.goal_qz_ = to_lane->orientation.z;
-  } else {
-    status_.goal_x_ = to_lane->local.x;
-    status_.goal_y_ = to_lane->local.y;
-    status_.goal_z_ = to_lane->local.z;
-    status_.goal_qw_ = to_lane->orientation.w;
-    status_.goal_qz_ = to_lane->orientation.z;
-  }
-   status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
+  status_.goal_x_ = to_lane->local.x;
+  status_.goal_y_ = to_lane->local.y;
+  status_.goal_z_ = to_lane->local.z;
+  status_.goal_qw_ = to_lane->orientation.w;
+  status_.goal_qz_ = to_lane->orientation.z;
+  status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
   status_.goal_gps_ = to_gps;
+
+  
+// if (from_lane->lane_id == to_lane->lane_id) {
+   
+//     LocalCoordinate goal_local = lanelet_map_.projectOntoLaneCenterline(to_gps, to_lane->lane_id);
+//     status_.goal_x_ = goal_local.x;
+//     status_.goal_y_ = goal_local.y;
+//     status_.goal_z_ = goal_local.z;
+//     status_.goal_qw_ = to_lane->orientation.w;
+//     status_.goal_qz_ = to_lane->orientation.z;
+//   } else {
+//     status_.goal_x_ = to_lane->local.x;
+//     status_.goal_y_ = to_lane->local.y;
+//     status_.goal_z_ = to_lane->local.z;
+//     status_.goal_qw_ = to_lane->orientation.w;
+//     status_.goal_qz_ = to_lane->orientation.z;
+//   }
+//    status_.goal_lanelet_id_ = std::to_string(to_lane->lane_id);
+//   status_.goal_gps_ = to_gps;
 
 
   RCLCPP_INFO(

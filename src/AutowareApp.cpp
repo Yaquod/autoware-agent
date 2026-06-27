@@ -148,15 +148,14 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
       if (next == TripState::WAITING_FOR_MOVE) {
         sc->ReportTripInitAck();
         sc->ReportArrive();
-      // sc->ReportEta();
-        sc->ReportStatus("arrived_pickup");
+        sc->ReportStatus("ARRIVED_AT_PICKUP");
       } else if (next == TripState::RUNNING)
-        sc->ReportStatus("in_progress");
+        sc->ReportStatus("IN_PROGRESS");
       else if (next == TripState::COMPLETED) {
         sc->ReportArrive();
-        sc->ReportStatus("completed");
+        sc->ReportStatus("COMPLETED");
       } else if (next == TripState::FAILED)
-        sc->ReportStatus("error");
+        sc->ReportStatus("ERROR");
     });
 
     h.stream_client_ = stream_client;

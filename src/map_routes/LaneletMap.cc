@@ -137,8 +137,8 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
 
     // Convert the query GPS to the local map frame for distance comparisons.
     LocalCoordinate const target = gpsToLocal(gps);
-  spdlog::info("[LaneletMap] findNearestLane called with local ({:.6f},{:.6f})",
-    target.x, target.y);
+  spdlog::info("[LaneletMap] findNearestLane called with local ({:.6f},{:.6f}) gps_lat={:.10f} gps_lon={:.10f}",
+    target.x, target.y, gps.latitude, gps.longitude);
     
     double min_dist = std::numeric_limits<double>::max();
     lanelet::Id best_id = lanelet::InvalId;
@@ -174,6 +174,9 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
       double const dx = lx - target.x;
       double const dy = ly - target.y;
       double const dist = std::sqrt(dx * dx + dy * dy);
+
+
+  
       
 
       if (dist < min_dist) {
@@ -387,6 +390,8 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
 
   LocalCoordinate const target = gpsToLocal(gps);
 
+  spdlog::info("[gps to local conversion] x={:.6f} y={:.6f}" , target.x , target.y);
+
   lanelet::ConstLanelet reference_ll = map_->laneletLayer.get(reference_id);
 
    
@@ -409,6 +414,34 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
       }
     }
   }
+
+  
+  //just for the debugging 
+  std::vector<std::pair<double , LocalCoordinate>>min_distances;
+
+  for (const auto& ll : map_->laneletLayer) {
+    auto subtype = ll.attributes().find("subtype");
+    if (subtype == ll.attributes().end() || subtype->second.value() != "road") continue;
+    const auto& cl = ll.centerline();
+    if (cl.empty()) continue;
+    const auto& mid = cl[cl.size() / 2];
+    double const lx = offset_x_ + mid.x();
+    double const ly = offset_y_ + mid.y();
+    auto gps_new = localToGps({mid.x() + offset_x_, mid.y() + offset_y_, 0.0});
+    spdlog::info("[MAP] lane={} gps=({:.6f},{:.6f} )", ll.id(), gps_new.latitude, gps_new.longitude);
+    min_distances.push_back({sqrt(abs(lx - target.x)) + sqrt(abs(ly - target.y)), {lx, ly}});
+}
+
+
+    sort(min_distances.begin(), min_distances.end(),
+     [](const auto& a, const auto& b) {
+         return a.first < b.first;
+     });
+
+
+     for(auto ele: min_distances){
+      spdlog::info("[MAP] min_distances=({:.6f}) l_x = {:.6f} l_y = {:.6f}", ele.first, ele.second.x, ele.second.y);
+     }
 
 
   spdlog::error("[debug inside findNearestConnectedLane] GPS ({:.6f},{:.6f}) local ({:.6f},{:.6f}) reference lane {} candidates {}",

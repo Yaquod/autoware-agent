@@ -57,7 +57,7 @@ class FullTripTest : public ::testing::Test {
 
 
 
-    goal_gps_ = GPSCoordinate{35.68988702749348, 139.69083158344597};
+    goal_gps_ = GPSCoordinate{35.68701019425071, 139.6947358336086};
 
 
 
@@ -289,7 +289,7 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
 
 
  auto qr = queryEtaSync(
-    35.685861638345415 , 139.68943647241218 ,
+    35.69093088898861 , 139.69488819394525 ,
     goal_gps_.latitude,   goal_gps_.longitude // pickup: lane 195
     
 );
