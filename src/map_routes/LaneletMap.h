@@ -168,7 +168,7 @@ std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_;
   std::optional<FixedStartPosition> default_start_;
 
   /** Build a LaneInfo from a resolved lanelet (centroid + yaw). */
-  [[nodiscard]] LaneInfo makeLaneInfo(const lanelet::ConstLanelet& ll) const;
+  [[nodiscard]] LaneInfo makeLaneInfo(const lanelet::ConstLanelet& ll , const GPSCoordinate& gps) const;
 
   /** Yaw angle (radians) from the centre-line direction. */
   static double laneletYaw(const lanelet::ConstLanelet& ll);

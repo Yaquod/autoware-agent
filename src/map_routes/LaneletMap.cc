@@ -88,7 +88,7 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
 
 
       // debugConnectedComponents();
-      debugFindBestStartingLane();
+      //debugFindBestStartingLane();
 
 
   }
@@ -185,7 +185,7 @@ spdlog::info("[LaneletMap] Routing graph built — {} lanelets",
     }
 
     lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
-    cache_.emplace_back(makeLaneInfo(ll));
+    cache_.emplace_back(makeLaneInfo(ll , gps));
 
     spdlog::debug(
       "[LaneletMap] GPS ({:.6f},{:.6f}) → lanelet {} "
@@ -220,7 +220,10 @@ spdlog::info(
       return nullptr;
 
     lanelet::ConstLanelet const ll = map_->laneletLayer.get(static_cast<lanelet::Id>(lane_id));
-    cache_.emplace_back(makeLaneInfo(ll));
+    const auto& cl = ll.centerline();
+const auto& mid = cl[cl.size() / 2];
+auto mid_gps = localToGps({mid.x(), mid.y(), mid.z()});
+    cache_.emplace_back(makeLaneInfo(ll, mid_gps));
     return &cache_.back();
   }
 
@@ -274,21 +277,23 @@ spdlog::info(
 
   // ── Private helpers ───────────────────────────────────────────────────────────
 
-  LaneInfo LaneletMap::makeLaneInfo(const lanelet::ConstLanelet& ll) const {
-    const auto& cl = ll.centerline();
-    const auto& mid = cl[cl.size() / 2];
+  LaneInfo LaneletMap::makeLaneInfo(const lanelet::ConstLanelet& ll , const GPSCoordinate& gps) const {
+    // const auto& cl = ll.centerline();
+    // const auto& mid = cl[cl.size() / 2];
 
-    double const lx =  mid.x();
-    double const ly =  mid.y();
+    // double const lx =  mid.x();
+    // double const ly =  mid.y();
+
+    LocalCoordinate projected = projectOntoLaneCenterline(gps, ll.id());
     double const yaw_rad = laneletYaw(ll);
     auto const [qz, qw] = yawToQuat(yaw_rad);
 
     LaneInfo info;
     info.lane_id = ll.id(); 
-    info.local.x = lx;
-    info.local.y = ly;
-    info.local.z = 0.0;
-    info.gps = localToGps({lx, ly, 0.0});
+    // info.local.x = lx;
+    // info.local.y = ly;
+    //info.local.z = 0.0;
+    info.gps = localToGps(projected);
     info.orientation.x = 0.0;
     info.orientation.y = 0.0;
     info.orientation.z = qz;
@@ -520,8 +525,10 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(
 
 
 
+
+
   lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
-  cache_.emplace_back(makeLaneInfo(ll));
+  cache_.emplace_back(makeLaneInfo(ll,gps));
   spdlog::info("[LaneletMap] GPS ({:.6f},{:.6f}) → connected lanelet {} dist={:.1f}m",
                gps.latitude, gps.longitude, best_id, min_dist);
   return &cache_.back();
@@ -605,7 +612,7 @@ LocalCoordinate LaneletMap::projectOntoLaneCenterline(
     }
   }
 
-  return {offset_x_ + best_point.x(), offset_y_ + best_point.y(), best_point.z()};
+  return {best_point.x(), best_point.y(), best_point.z()};
 }
 
 
@@ -748,14 +755,14 @@ void LaneletMap::debugFindBestStartingLane() const {
   auto reach_406 = routing_graph_->reachableSet(map_->laneletLayer.get(406), 1000000.0);
 spdlog::info("[DEBUG] lane 406 reaches {} lanelets", reach_406.size());
 
-const auto& cl = map_->laneletLayer.get(3002178).centerline();
-const auto& mid = cl[cl.size()/2];
-auto gps = localToGps({mid.x(), mid.y(), 0.0});
-spdlog::info("[DEBUG] lane 3002178 gps=({:.8f},{:.8f})", gps.latitude, gps.longitude);
+ lanelet::ConstLanelet ll = map_->laneletLayer.get(113);
+const auto& cl = ll.centerline();
+auto gps_start = localToGps({cl.front().x(), cl.front().y(), 0.0});
+auto gps_end   = localToGps({cl.back().x(),  cl.back().y(),  0.0});
+spdlog::info("[DEBUG] lane 113 START gps=({:.8f},{:.8f})", gps_start.latitude, gps_start.longitude);
+spdlog::info("[DEBUG] lane 113 END   gps=({:.8f},{:.8f})", gps_end.latitude, gps_end.longitude);
 
-auto subtype = map_->laneletLayer.get(3002178).attributes().find("subtype");
-spdlog::info("[DEBUG] lane 3002178 subtype={}",
-             subtype != map_->laneletLayer.get(3002178).attributes().end() ? subtype->second.value() : "none");
+
 }
 
 
