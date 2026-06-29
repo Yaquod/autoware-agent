@@ -43,7 +43,6 @@ int main(int argc, char** argv) {
   std::string const YAML_PATH = std::string(autoware_agent::SRC_MAP_DIR) + "/lanelet2_map.osm";
   autoware_agent::AppHandles app = autoware_agent::startAutowareApp(YAML_PATH);
 
-
   while (!g_shutdown_requested.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }

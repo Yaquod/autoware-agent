@@ -40,8 +40,6 @@ MapProjectorInfo MapProjectorInfo::load(const std::string& map_path) {
     info.origin_lat = origin["latitude"].as<double>(0.0);
     info.origin_lon = origin["longitude"].as<double>(0.0);
     info.elevation = origin["elevation"].as<double>(0.0);
-    
-
 
     if (cfg["local_offset"]) {
       info.local_offset_x = cfg["local_offset"]["x"].as<double>(0.0);

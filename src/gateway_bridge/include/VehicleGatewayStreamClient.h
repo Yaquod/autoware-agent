@@ -38,9 +38,7 @@ struct StreamCommandHandlers {
   std::function<void(const TripInitRequest&)> on_trip_init;
   std::function<void(const TripMoveRequest&)> on_trip_move;
   std::function<void(const OrderUpdateLocationRequest&)> on_order_update_location;
-
 };
-
 
 class VehicleGatewayStreamClient {
  public:
@@ -80,31 +78,25 @@ class VehicleGatewayStreamClient {
     enqueue(ev);
   }
 
-
   void ReportOrderUpdateLocationAck(bool success, const std::string& message = "") {
-  VehicleEvent ev;
-  auto* r = ev.mutable_order_update_location_ack();
-  r->set_success(success);
-  r->set_message(message);
-  enqueue(ev);
-}
+    VehicleEvent ev;
+    auto* r = ev.mutable_order_update_location_ack();
+    r->set_success(success);
+    r->set_message(message);
+    enqueue(ev);
+  }
 
-
-
-void ReportLocation(double latitude, double longitude) {
-  VehicleEvent ev;
-  auto* r = ev.mutable_location();
-  r->set_vinnumber(vin_);
-  r->set_latitude(latitude);
-  r->set_longitude(longitude);
-  enqueue(ev);
-}
-
-
-
+  void ReportLocation(double latitude, double longitude) {
+    VehicleEvent ev;
+    auto* r = ev.mutable_location();
+    r->set_vinnumber(vin_);
+    r->set_latitude(latitude);
+    r->set_longitude(longitude);
+    enqueue(ev);
+  }
 
   void ReportEta() {
-     spdlog::info("[Stream] ReportEta called");  // ADD
+    spdlog::info("[Stream] ReportEta called");  // ADD
     EtaData d = eta_provider_->GetEta();
     VehicleEvent ev;
     auto* r = ev.mutable_eta();
@@ -114,25 +106,21 @@ void ReportLocation(double latitude, double longitude) {
     r->set_fare(d.fare);
     enqueue(ev);
     spdlog::info("[Stream] Eta event enqueued");  // ADD
-
   }
 
-
-
   void ReportEta(double distance_m, double time_seconds) {
-     spdlog::info("[Stream] ReportEta called: distance={} time={}", distance_m, time_seconds);  // ADD
-  VehicleEvent ev;
-  auto* r = ev.mutable_eta();
-  r->set_vin_number(vin_);
-  r->set_request_id(eta_provider_->GetEta().request_id);  
-  r->set_time(time_seconds);
-  r->set_fare(0.0);  
-  // r->set_distance(distance_m);
-  enqueue(ev);
+    spdlog::info("[Stream] ReportEta called: distance={} time={}", distance_m,
+                 time_seconds);  // ADD
+    VehicleEvent ev;
+    auto* r = ev.mutable_eta();
+    r->set_vin_number(vin_);
+    r->set_request_id(eta_provider_->GetEta().request_id);
+    r->set_time(time_seconds);
+    r->set_fare(0.0);
+    // r->set_distance(distance_m);
+    enqueue(ev);
     spdlog::info("[Stream] Eta event enqueued");  // ADD
-
-}
-
+  }
 
   void ReportStatus(const std::string& status) {
     VehicleEvent ev;
@@ -246,13 +234,12 @@ void ReportLocation(double latitude, double longitude) {
         trip_manager_->SetActiveTripId(cmd.trip_move().trip_id());
         if (handlers_.on_trip_move)
           handlers_.on_trip_move(cmd.trip_move());
+      } else if (cmd.has_order_update_location()) {
+        spdlog::info("[StreamClient] Received OrderUpdateLocation vin={}",
+                     cmd.order_update_location().vin_number());
+        if (handlers_.on_order_update_location)
+          handlers_.on_order_update_location(cmd.order_update_location());
       }
-      else if (cmd.has_order_update_location()) {
-    spdlog::info("[StreamClient] Received OrderUpdateLocation vin={}",
-                 cmd.order_update_location().vin_number());
-    if (handlers_.on_order_update_location)
-      handlers_.on_order_update_location(cmd.order_update_location());
-  }
     }
 
     stream_dead.store(true);
