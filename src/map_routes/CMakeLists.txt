@@ -3,6 +3,9 @@ find_package(lanelet2_io         REQUIRED)
 find_package(lanelet2_projection REQUIRED)
 find_package(GeographicLib       REQUIRED)
 find_package(yaml-cpp            REQUIRED)
+find_package(autoware_lanelet2_extension REQUIRED) 
+#added
+find_package(lanelet2_routing REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GEOGRAPHICLIB REQUIRED geographiclib)
@@ -27,6 +30,9 @@ target_link_libraries(map_routes_lib
         lanelet2_core::lanelet2_core
         lanelet2_io::lanelet2_io
         lanelet2_projection::lanelet2_projection
+        #addded
+        lanelet2_routing::lanelet2_routing 
+        ${autoware_lanelet2_extension_LIBRARIES} 
         PUBLIC ${TARGETS}
 )
 
@@ -37,6 +43,7 @@ target_include_directories(map_routes_lib
         ${CMAKE_BINARY_DIR}/generated
         ${CMAKE_SOURCE_DIR}/src
         ${GEOGRAPHICLIB_INCLUDE_DIRS}
+         ${autoware_lanelet2_extension_INCLUDE_DIRS}
 )
 
 target_compile_options(map_routes_lib PRIVATE

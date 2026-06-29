@@ -151,6 +151,8 @@ TEST_F(AutowareAgentTest, StartTripStateTransitions) {
   RouteQueryResult qr;
   {
     std::promise<RouteQueryResult> p;
+
+  
     auto f = p.get_future();
     controller_->queryEta(GPSCoordinate{goal.latitude, goal.longitude},
                           GPSCoordinate{goal.latitude, goal.longitude},
