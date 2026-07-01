@@ -50,12 +50,8 @@ class FullTripTest : public ::testing::Test {
     z_session_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(z_config)));
 
     map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
-    // goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
 
-    // work
-    // goal_gps_ = GPSCoordinate{35.68611588881342 , 139.68928899973466};
-
-    goal_gps_ = GPSCoordinate{35.68611588881342, 139.68928899973466};
+    goal_gps_ = GPSCoordinate{35.68735477, 139.69404488};
   }
 
   void TearDown() override {
@@ -244,25 +240,9 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
                  << ") - skipping CompleteTripLifecycle (requires Autoware services)";
   }
 
-  // Populate route bank by querying ETA for the goal before starting the trip
-  // auto qr = queryEtaSync(st.start_gps_.latitude, st.start_gps_.longitude, goal_gps_.latitude,
-  //                        goal_gps_.longitude);
-
-  // AFTER (pickup = goal_gps_ which is 300m away, destination = further point):
-  //  auto qr = queryEtaSync(
-  //      goal_gps_.latitude,   goal_gps_.longitude,   // pickup: lane 195
-  //       35.23978,         139.87945
-  //  );
-
   auto qr = queryEtaSync(
 
-    35.68737756931822, 139.6940473196528, goal_gps_.latitude, goal_gps_.longitude);
-
-  //  auto qr = queryEtaSync(
-  //     35.69093088898861 , 139.69488819394525 ,
-  //     goal_gps_.latitude,   goal_gps_.longitude // pickup: lane 195
-
-  // );
+    35.68735821, 139.69406061, goal_gps_.latitude, goal_gps_.longitude);
 
   if (!qr.success_) {
     GTEST_SKIP() << "queryEta failed: " << qr.error_message_ << " - skipping CompleteTripLifecycle";

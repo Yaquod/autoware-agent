@@ -95,9 +95,7 @@ class LaneletMap {
   /** Autoware local map frame -> GPS. */
   [[nodiscard]] GPSCoordinate localToGps(const LocalCoordinate& local) const;
 
-  // added
   void debugRouteConnectivity(int64_t from_id, int64_t to_id) const;
-  void debugVerifyLocalPoint(const std::string& label, double local_x, double local_y) const;
   void debugConnectedComponents() const;
   void debugFindBestStartingLane() const;
 
