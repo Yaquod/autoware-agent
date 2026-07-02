@@ -1,7 +1,5 @@
-set(PROTO_FILES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/vehicle_frame.proto"
-    "${CMAKE_CURRENT_SOURCE_DIR}/vehicle_gateway.proto"
-)
+file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
+
 
 if (NOT PROTO_FILES)
     message(WARNING "No .proto files found in ${CMAKE_CURRENT_SOURCE_DIR}")
@@ -61,6 +59,7 @@ target_link_libraries(proto_lib
         gRPC::grpc++
         gRPC::grpc++_reflection
         protobuf::libprotobuf
+        ${Protobuf_LIBRARIES}
 )
 
 set_target_properties(proto_lib PROPERTIES
