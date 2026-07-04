@@ -67,6 +67,7 @@ struct HeldRoute {
   double eta_seconds_ = 0.0;
   double distance_m_ = 0.0;
   GPSCoordinate goal_gps_{.latitude = 0.0, .longitude = 0.0};
+  int64_t goal_lane_id_{};
 };
 }  // namespace autoware_agent
 #endif  // VEHICLEAUTOWAREAGENT_TRIPSTATUS_H

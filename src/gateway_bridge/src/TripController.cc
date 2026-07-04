@@ -48,6 +48,13 @@ TripController::TripController(rclcpp::Node::SharedPtr node, const LaneletMap& r
         boost::asio::post(*strand_, [this, msg]() { current_loc_state_ = msg; });
       });
 
+  eta_sub_ = node_->create_subscription<autoware_internal_msgs::msg::MissionRemainingDistanceTime>(
+    "/planning/mission_remaining_distance_time", rclcpp::QoS(1),
+    [this](autoware_internal_msgs::msg::MissionRemainingDistanceTime::SharedPtr msg) {
+      boost::asio::post(*strand_,
+                        [this, msg]() { injectEta(msg->remaining_distance, msg->remaining_time); });
+    });
+
   route_state_sub_ = node_->create_subscription<autoware_adapi_v1_msgs::msg::RouteState>(
     "/api/routing/state", state_qos,
     [this](autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg) {
@@ -108,6 +115,10 @@ void TripController::initializeInMap() {
 
 bool TripController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
                               EtaQueryCallback cb) {
+  std::cout << "Received queryEta request: start(" << start_gps.latitude << ", "
+            << start_gps.longitude << ") → goal(" << goal_gps.latitude << ", " << goal_gps.longitude
+            << ")\n";
+
   if (status_.state_ != TripState::IDLE) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] queryEta rejected — not IDLE (state=%d)",
                  static_cast<int>(status_.state_));
@@ -158,7 +169,40 @@ bool TripController::queryEta(GPSCoordinate start_gps, GPSCoordinate goal_gps,
   return true;
 }
 
+bool TripController::goToPickup() {
+  if (status_.state_ != TripState::WAITING_FOR_PICKUP_START) {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "[AutowareAgent] goToPickup() called in wrong state=%d — ignoring",
+                 static_cast<int>(status_.state_));
+    return false;
+  }
+
+  RCLCPP_INFO(node_->get_logger(),
+              "[AutowareAgent] goToPickup — driving to pickup lane %s (%.2f, %.2f)",
+              status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
+
+  current_route_state_.reset();
+  route_received_ = false;
+  transitionTo(TripState::PUBLISHING_INITIAL_POSE);
+  return true;
+}
+
+bool TripController::handleMoveCommand() {
+  if (status_.state_ == TripState::WAITING_FOR_PICKUP_START) {
+    return goToPickup();
+  } else if (status_.state_ == TripState::WAITING_FOR_MOVE) {
+    return move();
+  }
+  RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] move command received in unexpected state=%d",
+              static_cast<int>(status_.state_));
+  return false;
+}
+
 bool TripController::startTrip() {
+  engaging_for_pickup_ = true;
+
+  current_route_state_.reset();
+
   if (!pickup_route_.has_value() || !trip_route_.has_value()) {
     RCLCPP_ERROR(node_->get_logger(),
                  "[AutowareAgent] startTrip — no routes in bank, call queryEta first");
@@ -170,13 +214,15 @@ bool TripController::startTrip() {
     return false;
   }
 
-  const LaneInfo* start_lane = lanelet_map_.findNearestLane(pickup_route_->goal_gps_);
+  // const LaneInfo* start_lane = lanelet_map_.findNearestLane(pickup_route_->goal_gps_);
+  const LaneInfo* start_lane = lanelet_map_.getLaneById(pickup_route_->goal_lane_id_);
   if (!start_lane) {
     RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] startTrip — cannot resolve pickup lane");
     transitionTo(TripState::FAILED);
     return false;
   }
 
+  // assign start with pickup location
   status_.start_lanelet_id_ = std::to_string(start_lane->lane_id);
   status_.start_x_ = start_lane->local.x;
   status_.start_y_ = start_lane->local.y;
@@ -186,12 +232,11 @@ bool TripController::startTrip() {
   status_.start_gps_ = pickup_route_->goal_gps_;
 
   RCLCPP_INFO(node_->get_logger(),
-              "[AutowareAgent] startTrip — driving to pickup lane %s (%.2f, %.2f)",
+              "[AutowareAgent] startTrip — accepted, waiting for goToPickup() "
+              "pickup lane %s (%.2f, %.2f)",
               status_.start_lanelet_id_.c_str(), status_.start_x_, status_.start_y_);
-  spdlog::info("[AutowareAgent] startTrip — pickup lane {} ({:.2f}, {:.2f})",
-               status_.start_lanelet_id_, status_.start_x_, status_.start_y_);
 
-  transitionTo(TripState::PUBLISHING_INITIAL_POSE);
+  transitionTo(TripState::WAITING_FOR_PICKUP_START);
   return true;
 }
 
@@ -207,9 +252,16 @@ bool TripController::move() {
     return false;
   }
 
-  const LaneInfo* goal_lane = lanelet_map_.findNearestLane(trip_route_->goal_gps_);
+  lanelet::Id current_lane_id = std::stoll(status_.start_lanelet_id_);
+
+  const LaneInfo* goal_lane = lanelet_map_.findNearestConnectedLane(
+    trip_route_->goal_gps_, current_lane_id, /*must_be_reachable_from_ref=*/true);
+
   if (!goal_lane) {
-    RCLCPP_ERROR(node_->get_logger(), "[AutowareAgent] move() — cannot resolve goal lane");
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "[AutowareAgent] move() — cannot resolve a goal lane reachable from current lane %ld",
+      current_lane_id);
     transitionTo(TripState::FAILED);
     return false;
   }
@@ -229,9 +281,13 @@ bool TripController::move() {
   spdlog::info("[AutowareAgent] move() — lane {} ({:.2f}, {:.2f})", status_.goal_lanelet_id_,
                status_.goal_x_, status_.goal_y_);
 
+  current_route_state_.reset();
+
   // Publish the held trip-leg goal and engage
   doPublishGoal(status_.goal_x_, status_.goal_y_, status_.goal_z_, status_.goal_qz_,
                 status_.goal_qw_);
+
+  engaging_for_pickup_ = false;
   transitionTo(TripState::ENGAGING);
   return true;
 }
@@ -306,6 +362,7 @@ void TripController::tick() {
                     status_.goal_qw_);
       route_received_ = false;
       current_route_state_.reset();
+
       transitionTo(TripState::QUERY_WAITING_ROUTE);
       break;
 
@@ -316,6 +373,10 @@ void TripController::tick() {
           doPublishGoal(status_.goal_x_, status_.goal_y_, status_.goal_z_, status_.goal_qz_,
                         status_.goal_qw_);
           last_publish_time_ = std::chrono::steady_clock::now();
+
+          // added
+          spdlog::info("[TripController] route_state={}",
+                       current_route_state_ ? current_route_state_->state : -1);
         }
         if (elapsed_ms(state_entered_at_) >= timings_.route_timeout_ms) {
           failQuery("timeout waiting for route on " +
@@ -346,8 +407,8 @@ void TripController::tick() {
       break;
 
     case TripState::PUBLISHING_INITIAL_POSE:
-      doPublishInitialPose(status_.start_x_, status_.start_y_, status_.start_z_, status_.start_qz_,
-                           status_.start_qw_);
+      // publish vechile current pose as initial pose
+      doPublishInitialPose(init_x_, init_y_, init_z_, init_qz_, init_qw_);
       transitionTo(TripState::WAITING_LOCALISATION);
       break;
 
@@ -356,8 +417,8 @@ void TripController::tick() {
           current_loc_state_->state !=
             autoware_adapi_v1_msgs::msg::LocalizationInitializationState::INITIALIZED) {
         if (elapsed_ms(last_publish_time_) >= 1000) {
-          doPublishInitialPose(status_.start_x_, status_.start_y_, status_.start_z_,
-                               status_.start_qz_, status_.start_qw_);
+          // publish vechile current pose as initial pose
+          doPublishInitialPose(init_x_, init_y_, init_z_, init_qz_, init_qw_);
           last_publish_time_ = std::chrono::steady_clock::now();
         }
       } else {
@@ -412,19 +473,37 @@ void TripController::tick() {
 }
 
 void TripController::startQueryLeg(GPSCoordinate from_gps, GPSCoordinate to_gps) {
-  const LaneInfo* from_lane = lanelet_map_.findNearestLane(from_gps);
+  // use find NearestLane for pickup leg and getLaneById for trip leg
+  const LaneInfo* from_lane = nullptr;
+  if (current_leg_ == QueryLeg::PICKUP) {
+    from_lane = lanelet_map_.findNearestLane(from_gps);
+  } else {
+    from_lane = lanelet_map_.getLaneById(std::stoll(status_.goal_lanelet_id_));
+  }
+
   if (!from_lane) {
     failQuery("cannot resolve lane for " +
               std::string(current_leg_ == QueryLeg::PICKUP ? "pickup origin" : "trip start"));
     return;
   }
 
-  const LaneInfo* to_lane = lanelet_map_.findNearestLane(to_gps);
+  const LaneInfo* to_lane = lanelet_map_.findNearestConnectedLane(
+    to_gps, static_cast<lanelet::Id>(from_lane->lane_id), true);
+
   if (!to_lane) {
-    failQuery("cannot resolve lane for " +
-              std::string(current_leg_ == QueryLeg::PICKUP ? "pickup destination" : "trip goal"));
+    to_lane = lanelet_map_.findNearestLane(to_gps);
+    failQuery("destination lane " + std::to_string(to_lane ? to_lane->lane_id : -1) +
+              " not reachable from start lane " + std::to_string(from_lane->lane_id));
     return;
   }
+
+  RCLCPP_ERROR(node_->get_logger(),
+               "[DEBUG startQueryLeg] from_lane=%p lane_id=%ld   to_lane=%p lane_id=%ld",
+               (void*)from_lane, from_lane->lane_id, (void*)to_lane, to_lane->lane_id);
+
+  RCLCPP_ERROR(node_->get_logger(),
+               "[DEBUG startQueryLeg] from_gps=(%.6f, %.6f) to_gps=(%.6f, %.6f)", from_gps.latitude,
+               from_gps.longitude, to_gps.latitude, to_gps.longitude);
 
   status_.start_x_ = from_lane->local.x;
   status_.start_y_ = from_lane->local.y;
@@ -460,12 +539,12 @@ void TripController::finishQueryLeg() {
                                        .eta_seconds_ = eta_seconds_,
                                        .start_lane_id_ = status_.start_lanelet_id_,
                                        .goal_lane_id_ = status_.goal_lanelet_id_};
-    pickup_route_ = HeldRoute{
-      .route_ = last_route_ ? *last_route_ : autoware_planning_msgs::msg::LaneletRoute{},
-      .eta_seconds_ = eta_seconds_,
-      .distance_m_ = eta_distance_m_,
-      .goal_gps_ = query_start_gps_  // pickup destination = trip start
-    };
+    pickup_route_ =
+      HeldRoute{.route_ = last_route_ ? *last_route_ : autoware_planning_msgs::msg::LaneletRoute{},
+                .eta_seconds_ = eta_seconds_,
+                .distance_m_ = eta_distance_m_,
+                .goal_gps_ = query_start_gps_,  // pickup destination = trip start
+                .goal_lane_id_ = std::stoll(status_.goal_lanelet_id_)};
 
     RCLCPP_INFO(node_->get_logger(),
                 "[AutowareAgent] Pickup leg done — ETA %.1f s / %.1f m — starting trip leg",
@@ -527,6 +606,12 @@ void TripController::failQuery(const std::string& reason) {
 }
 
 void TripController::doPublishInitialPose(double x, double y, double z, double qz, double qw) {
+  if (current_route_state_) {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "[DEBUG doPublishInitialPose] route_state=%d state=%d x=%.2f y=%.2f",
+                 current_route_state_->state, static_cast<int>(status_.state_), x, y);
+  }
+
   geometry_msgs::msg::PoseWithCovarianceStamped msg;
   msg.header.frame_id = "map";
   msg.header.stamp = node_->now();
@@ -550,6 +635,11 @@ void TripController::doPublishInitialPose(double x, double y, double z, double q
 }
 
 void TripController::doPublishGoal(double x, double y, double z, double qz, double qw) {
+  // added
+  RCLCPP_ERROR(node_->get_logger(), "[DEBUG doPublishGoal] state=%d route_state=%d x=%.2f y=%.2f",
+               static_cast<int>(status_.state_),
+               current_route_state_ ? current_route_state_->state : -1, x, y);
+
   geometry_msgs::msg::PoseStamped msg;
   msg.header.frame_id = "map";
   msg.header.stamp = node_->now();
@@ -570,6 +660,12 @@ void TripController::doPublishGoal(double x, double y, double z, double qz, doub
 void TripController::doEngage() {
   if (!mode_client_->service_is_ready() || !engage_client_->service_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] Engagement services not ready yet");
+    return;
+  }
+
+  if (current_mode_state_ && !current_mode_state_->is_autonomous_mode_available) {
+    RCLCPP_WARN(node_->get_logger(),
+                "[AutowareAgent] Autonomous mode not available yet — waiting for diagnostics");
     return;
   }
 
@@ -596,8 +692,7 @@ void TripController::doEngage() {
             RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Engaged!");
             boost::asio::post(*strand_, [this]() {
               if (status_.state_ == TripState::ENGAGING) {
-                // trip_route_ still in bank → we are on the pickup leg
-                if (trip_route_.has_value()) {
+                if (engaging_for_pickup_) {
                   transitionTo(TripState::DRIVING_TO_PICKUP);
                 } else {
                   transitionTo(TripState::RUNNING);
@@ -652,9 +747,21 @@ void TripController::setCurrentGps(const GPSCoordinate& gps) {
 std::optional<GPSCoordinate> TripController::getCurrentVehiclePose() const {
   try {
     auto tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+
     LocalCoordinate const local{.x = tf.transform.translation.x,
                                 .y = tf.transform.translation.y,
                                 .z = tf.transform.translation.z};
+
+    auto gps = lanelet_map_.localToGps(local);
+
+    if (gps.latitude < 35.0 || gps.latitude > 36.0 || gps.longitude < 139.0 ||
+        gps.longitude > 140.0) {
+      RCLCPP_WARN(node_->get_logger(),
+                  "[AutowareAgent] TF→GPS out of Nishishinjuku range (%.6f, %.6f) — ignoring",
+                  gps.latitude, gps.longitude);
+      return std::nullopt;  // caller will use fixed start instead
+    }
+
     return lanelet_map_.localToGps(local);
   } catch (const tf2::TransformException& ex) {
     RCLCPP_WARN(node_->get_logger(), "[AutowareAgent] TF lookup failed: %s", ex.what());

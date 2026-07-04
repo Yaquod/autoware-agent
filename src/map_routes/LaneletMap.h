@@ -23,10 +23,13 @@
 #include <vector>
 
 #include <GeographicLib/LocalCartesian.hpp>
+#include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 namespace autoware_agent {
 
@@ -53,7 +56,7 @@ struct Orientation {
  * Populated from the Lanelet2 map at query time.
  */
 struct LaneInfo {
-  int lane_id{};
+  int64_t lane_id{};
   GPSCoordinate gps{};
   LocalCoordinate local{};
   Orientation orientation{};
@@ -78,7 +81,11 @@ struct FixedStartPosition {
 class LaneletMap {
  public:
   LaneletMap(const std::string& osm_path, double origin_lat, double origin_lon,
-             double local_offset_x = 0.0, double local_offset_y = 0.0);
+             double local_offset_x = 0.0, double local_offset_y = 0.0
+
+  )
+
+    ;
 
   ~LaneletMap() = default;
 
@@ -87,6 +94,10 @@ class LaneletMap {
 
   /** Autoware local map frame -> GPS. */
   [[nodiscard]] GPSCoordinate localToGps(const LocalCoordinate& local) const;
+
+  void debugRouteConnectivity(int64_t from_id, int64_t to_id) const;
+  void debugConnectedComponents() const;
+  void debugFindBestStartingLane() const;
 
   /**
    * Find the nearest drivable lanelet to the given GPS coordinate.
@@ -104,7 +115,7 @@ class LaneletMap {
    * Look up a lanelet by its integer ID.
    * Returns nullptr when the ID is not present in the map.
    */
-  [[nodiscard]] const LaneInfo* getLaneById(int lane_id) const;
+  [[nodiscard]] const LaneInfo* getLaneById(int64_t lane_id) const;
 
   /**
    * The fixed vehicle start position (e.g. depot, taxi stand).
@@ -119,6 +130,14 @@ class LaneletMap {
   [[nodiscard]] size_t getLaneletCount() const;
   [[nodiscard]] bool isLoaded() const;
 
+  // added
+  [[nodiscard]] const LaneInfo* findNearestConnectedLane(const GPSCoordinate& gps,
+                                                         lanelet::Id reference_id,
+                                                         bool must_be_reachable_from_ref) const;
+
+  [[nodiscard]] LocalCoordinate projectOntoLaneCenterline(const GPSCoordinate& gps,
+                                                          lanelet::Id lane_id) const;
+
   /** Resolve an OSM file path using the same search order that
    *  RouteConfig::resolveConfigPath() used (absolute > test > src > install). */
   static std::string resolveOsmPath(const std::string& filename);
@@ -128,15 +147,21 @@ class LaneletMap {
   double origin_lon_{};
   double offset_x_{};
   double offset_y_{};
+  double mgrs_origin_x_{0.0};
+  double mgrs_origin_y_{0.0};
+
+  // Add to private members of LaneletMap:
+  std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_;
 
   std::shared_ptr<lanelet::LaneletMap> map_;
-  std::shared_ptr<lanelet::projection::UtmProjector> projector_;
+  std::shared_ptr<lanelet::projection::MGRSProjector> projector_;
 
   mutable std::vector<LaneInfo> cache_;  // results of findNearestLane()
   std::optional<FixedStartPosition> default_start_;
 
   /** Build a LaneInfo from a resolved lanelet (centroid + yaw). */
-  [[nodiscard]] LaneInfo makeLaneInfo(const lanelet::ConstLanelet& ll) const;
+  [[nodiscard]] LaneInfo makeLaneInfo(const lanelet::ConstLanelet& ll,
+                                      const GPSCoordinate& gps) const;
 
   /** Yaw angle (radians) from the centre-line direction. */
   static double laneletYaw(const lanelet::ConstLanelet& ll);

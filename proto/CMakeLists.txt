@@ -1,3 +1,4 @@
+
 file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 
 if (NOT PROTO_FILES)
@@ -32,6 +33,7 @@ foreach (PROTO_FILE ${PROTO_FILES})
             OUTPUT ${PROTO_SRC} ${PROTO_HDR} ${GRPC_SRC} ${GRPC_HDR}
             COMMAND protobuf::protoc
             ARGS
+            --experimental_allow_proto3_optional 
             --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
             --grpc_out=${CMAKE_CURRENT_BINARY_DIR}
             --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>

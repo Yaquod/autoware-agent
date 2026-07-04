@@ -50,7 +50,8 @@ class FullTripTest : public ::testing::Test {
     z_session_ = std::make_shared<zenoh::Session>(zenoh::Session::open(std::move(z_config)));
 
     map_path_ = std::string(SRC_MAP_DIR) + "/lanelet2_map.osm";
-    goal_gps_ = GPSCoordinate{35.68814679007944, 139.69440756809428};
+
+    goal_gps_ = GPSCoordinate{35.68735477, 139.69404488};
   }
 
   void TearDown() override {
@@ -90,6 +91,10 @@ class FullTripTest : public ::testing::Test {
   // Synchronous wrapper for queryEta
   RouteQueryResult queryEtaSync(double start_lat, double start_lon, double goal_lat,
                                 double goal_lon) {
+    // ADD THIS:
+    std::cout << "[DEBUG queryEtaSync] called with start=(" << start_lat << "," << start_lon
+              << ") goal=(" << goal_lat << "," << goal_lon << ")\n";
+
     std::promise<RouteQueryResult> promise;
     auto future = promise.get_future();
     controller_->queryEta(GPSCoordinate{start_lat, start_lon}, GPSCoordinate{goal_lat, goal_lon},
@@ -222,21 +227,23 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
   std::cout << "========================================\n";
 
   // Phase 1: Start trip
-  std::cout << "\n[Phase 1] Starting trip...\n";
+  std::cout << "\n[Phase 1] Starting trip again...\n";
 
   // Ensure controller is ready (IDLE) before querying/planning. If the
   // controller is still INITIALIZING_IN_MAP, the environment likely does
   // not have the full Autoware localisation/route planner running — skip
   // the full trip lifecycle in that case to keep test runs stable.
+
   TripStatus st = getStatusSync();
   if (st.state_ != TripState::IDLE) {
     GTEST_SKIP() << "Controller not IDLE (state=" << static_cast<int>(st.state_)
                  << ") - skipping CompleteTripLifecycle (requires Autoware services)";
   }
 
-  // Populate route bank by querying ETA for the goal before starting the trip
-  auto qr = queryEtaSync(st.start_gps_.latitude, st.start_gps_.longitude, goal_gps_.latitude,
-                         goal_gps_.longitude);
+  auto qr = queryEtaSync(
+
+    35.68735821, 139.69406061, goal_gps_.latitude, goal_gps_.longitude);
+
   if (!qr.success_) {
     GTEST_SKIP() << "queryEta failed: " << qr.error_message_ << " - skipping CompleteTripLifecycle";
   }
@@ -323,6 +330,40 @@ TEST_F(FullTripTest, CompleteTripLifecycle) {
       std::cout << "  ✓ Zenoh is streaming data (" << received_streams << " samples received).\n";
     } else {
       std::cout << "  ✗ Zenoh stream inactive.\n";
+    }
+  }
+
+  // Phase 6: Move to final destination
+  if (status.state_ == TripState::WAITING_FOR_MOVE) {
+    std::cout << "\n[Phase 6] Calling move() to drive to destination...\n";
+
+    std::promise<bool> move_promise;
+    auto move_future = move_promise.get_future();
+    controller_->move([&move_promise](bool ok) { move_promise.set_value(ok); });
+    bool move_ok = move_future.get();
+
+    ASSERT_TRUE(move_ok) << "move() should succeed when in WAITING_FOR_MOVE";
+
+    std::cout << "  move() returned true — waiting for RUNNING/COMPLETED...\n";
+
+    TripState last = TripState::WAITING_FOR_MOVE;
+    spinFor(60s, [this, &last]() {
+      TripStatus s = getStatusSync();
+      if (s.state_ != last) {
+        std::cout << "  State transition: " << static_cast<int>(last) << " -> "
+                  << static_cast<int>(s.state_) << "\n";
+        last = s.state_;
+      }
+      return s.state_ == TripState::COMPLETED || s.state_ == TripState::FAILED;
+    });
+
+    status = getStatusSync();
+    std::cout << "  Final state after Phase 6: " << static_cast<int>(status.state_) << "\n";
+
+    if (status.state_ == TripState::COMPLETED) {
+      std::cout << "  ✓ Trip COMPLETED — vehicle reached final destination!\n";
+    } else {
+      std::cout << "  ✗ Trip did not complete. State: " << static_cast<int>(status.state_) << "\n";
     }
   }
 

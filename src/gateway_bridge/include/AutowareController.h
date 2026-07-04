@@ -54,7 +54,11 @@ class AutowareController : public rclcpp::Node {
 
   void startTrip(const std::function<void(bool)>& callback);
 
+  void handleMoveCommand(const std::function<void(bool)>& callback);
+
   void move(const std::function<void(bool)>& callback);
+
+  void goToPickup(const std::function<void(bool)>& callback);
 
   void cancelTrip();
 
@@ -85,7 +89,11 @@ class AutowareController : public rclcpp::Node {
 
   void startTripImpl(std::function<void(bool)> callback);
 
+  void handleMoveCommandImpl(std::function<void(bool)> callback);
+
   void moveImpl(std::function<void(bool)> callback);
+
+  void goToPickupImpl(std::function<void(bool)> callback);
 
   void getTripStatusImpl(std::function<void(TripStatus)> callback) const;
 

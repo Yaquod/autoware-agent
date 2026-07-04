@@ -43,7 +43,9 @@ AutowareController::AutowareController(const std::string& map_path, double tick_
   auto proj_info = MapProjectorInfo::load(dir_path);
 
   lanelet_map_ = std::make_unique<LaneletMap>(osm_path, proj_info.origin_lat, proj_info.origin_lon,
-                                              proj_info.local_offset_x, proj_info.local_offset_y);
+                                              proj_info.local_offset_x, proj_info.local_offset_y
+
+  );
 
   if (proj_info.has_start) {
     lanelet_map_->setDefaultStart(proj_info.start_name,
@@ -121,6 +123,14 @@ void AutowareController::move(const std::function<void(bool)>& callback) {
   boost::asio::post(*strand_, [this, callback]() { moveImpl(callback); });
 }
 
+void AutowareController::goToPickup(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { goToPickupImpl(callback); });
+}
+
+void AutowareController::handleMoveCommand(const std::function<void(bool)>& callback) {
+  boost::asio::post(*strand_, [this, callback]() { handleMoveCommandImpl(callback); });
+}
+
 void AutowareController::startTripImpl(std::function<void(bool)> callback) {
   if (!trip_ctrl_) {
     RCLCPP_ERROR(get_logger(), "[AutowareAgent] startTrip called before initialize()");
@@ -130,6 +140,28 @@ void AutowareController::startTripImpl(std::function<void(bool)> callback) {
     return;
   }
   bool ok = trip_ctrl_->startTrip();
+  if (callback)
+    callback(ok);
+}
+
+void AutowareController::handleMoveCommandImpl(std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    if (callback)
+      callback(false);
+    return;
+  }
+  bool ok = trip_ctrl_->handleMoveCommand();
+  if (callback)
+    callback(ok);
+}
+
+void AutowareController::goToPickupImpl(std::function<void(bool)> callback) {
+  if (!trip_ctrl_) {
+    if (callback)
+      callback(false);
+    return;
+  }
+  bool ok = trip_ctrl_->goToPickup();
   if (callback)
     callback(ok);
 }
@@ -189,6 +221,8 @@ void AutowareController::onTripStateChanged(TripState prev, TripState next) {
         return "QUERY_READING_ETA";
       case TripState::ROUTES_READY:
         return "ROUTES_READY";
+      case TripState::WAITING_FOR_PICKUP_START:
+        return "WAITING_FOR_PICKUP_START";
       case TripState::PUBLISHING_INITIAL_POSE:
         return "PUBLISHING_INITIAL_POSE";
       case TripState::WAITING_LOCALISATION:
