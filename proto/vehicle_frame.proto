@@ -2,13 +2,6 @@ syntax = "proto3";
 
 package vehicle_frame;
 
-
-//  Master "cluster frame" contract.
-//  Published at 60 Hz by ClusterBridge; the IVI / instrument-cluster
-//  subscribes once via ClusterService::Subscribe and receives every frame.
-
-//********************cluster data*******************************
-
 enum GearState {
   GEAR_UNKNOWN = 0;
   GEAR_PARK    = 1;
@@ -385,36 +378,4 @@ TripState trip_state        = 8;
   double    goal_lon          = 18;
   double    goal_distance_m   = 19;
 
-}
-
-
-
-
-
-
-
-//***********************************************************************
-
-service ClusterService {
-  rpc Subscribe     (SubscribeRequest) returns (stream VehicleFrame);
-  rpc GetLatestFrame(SubscribeRequest) returns (VehicleFrame);
-}
-
-service PlanningService {
-rpc Subscribe     (SubscribeRequest) returns (stream PlanningFrame);
-rpc GetLatestFrame(SubscribeRequest) returns (PlanningFrame);
-}
-
-service PerceptionService {
-rpc Subscribe     (SubscribeRequest) returns (stream PerceptionFrame);
-rpc GetLatestFrame(SubscribeRequest) returns (PerceptionFrame);
-}
-
-service TripService {
-rpc Subscribe     (SubscribeRequest) returns (stream TripFrame);
-rpc GetLatestFrame(SubscribeRequest) returns (TripFrame);
-}
-
-message SubscribeRequest {
-  string client_id = 1;
 }

@@ -1,0 +1,14 @@
+map_config:
+ 
+  latitude: 35.68677918
+  longitude: 139.69154336
+  elevation: 34.137
+
+
+
+
+start_position:
+ 
+  latitude: 35.68677918
+  longitude: 139.69154336
+  name: "default"

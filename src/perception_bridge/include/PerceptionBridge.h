@@ -18,10 +18,9 @@
 #define VEHICLEAUTOWAREAGENT_PERCEPTIONBRIDGE_H
 
 #include "FrameStates.h"
-#include "vehicle_frame.grpc.pb.h"
 #include "vehicle_frame.pb.h"
+#include "zenoh_publisher.h"
 
-#include <autoware_adapi_v1_msgs/msg/dynamic_object_array.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -33,13 +32,12 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
-#include <queue>
+#include <zenoh.hxx>
 
-#include <grpcpp/grpcpp.h>
-
-class PerceptionBridge {
+class PerceptionBridge : public autoware_agent::ZenohPublisher {
  public:
-  explicit PerceptionBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder);
+  explicit PerceptionBridge(rclcpp::Node::SharedPtr node,
+                            const std::shared_ptr<zenoh::Session>& zsession);
 
   ~PerceptionBridge();
 
@@ -48,16 +46,6 @@ class PerceptionBridge {
  private:
   PerceptionFrameState state_;
   uint64_t frame_seq_{0};
-
-  struct ClientSession {
-    grpc::ServerWriter<vehicle_frame::PerceptionFrame>* writer;
-    std::queue<vehicle_frame::PerceptionFrame> pending;
-    std::mutex mu;
-    std::condition_variable cv;
-    std::atomic<bool> alive{true};
-  };
-  std::vector<std::shared_ptr<ClientSession>> grpc_clients_;
-  std::mutex clients_mutex_;
   boost::asio::io_context io_context_;
   boost::asio::io_context::strand strand_;
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
@@ -66,15 +54,13 @@ class PerceptionBridge {
   boost::asio::steady_timer publisher_timer_;
 
   void scheduleNextTick();
-  void ontick();
+  void onTick();
 
   // called on strand for grpc clients
   vehicle_frame::PerceptionFrame buildFrame();
 
   // called on strand for grpc clients
   void broadcastFrame(const vehicle_frame::PerceptionFrame& frame);
-  class PerceptionServiceImpl;
-  std::unique_ptr<PerceptionServiceImpl> grpc_service_;
 
   // ros
   rclcpp::Node::SharedPtr node_;
@@ -86,25 +72,22 @@ class PerceptionBridge {
     traffic_signal_sub_;
 
   // ROS callbacks that would be posted on strand
-  void onSurroundingObject(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
-  void onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-  void onOccupancyGrid(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
-  void onTrafficSignal(const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
-
-  // TODO: complete functions
+  void onSurroundingObject(autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
+  void onPointCloud(sensor_msgs::msg::PointCloud2::SharedPtr msg);
+  void onOccupancyGrid(nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+  void onTrafficSignal(autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
 
   // strand implementation
 
   void onSurroundingObjectImpl(
-    const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
-  void onPointCloudImpl(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-  void onOccupancyGridImpl(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+    const autoware_perception_msgs::msg::PredictedObjects::SharedPtr& msg);
+  void onPointCloudImpl(const sensor_msgs::msg::PointCloud2::SharedPtr& msg);
+  void onOccupancyGridImpl(const nav_msgs::msg::OccupancyGrid::SharedPtr& msg);
   void onTrafficSignalImpl(
-    const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr msg);
+    const autoware_perception_msgs::msg::TrafficLightGroupArray::SharedPtr& msg);
 
-  // TODO: complete functions
   static vehicle_frame::ObjectClass toObjectClass(uint8_t v);
   static vehicle_frame::TrafficLightColor toTrafficLightColor(uint8_t v);
 };
 
-#endif  // VEHICLEAUTOWAREAGENT_CLUSTERBRIDGE_H
+#endif  // VEHICLEAUTOWAREAGENT_PERCEPTIONBRIDGE_H

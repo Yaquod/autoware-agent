@@ -25,12 +25,11 @@ target_link_libraries(planning_bridge
         PUBLIC config_header
         PUBLIC fmt::fmt
         PUBLIC yaml-cpp
-        PUBLIC gRPC::grpc++
-        PUBLIC protobuf::libprotobuf
+        PUBLIC zenohc::lib
+        PUBLIC zenohcxx::zenohc
+        PUBLIC proto_lib
         PRIVATE Boost::system
 )
-
-add_dependencies(planning_bridge generate_proto_code)
 
 target_include_directories(planning_bridge PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include

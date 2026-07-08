@@ -18,65 +18,9 @@
 
 #include <boost/asio/bind_executor.hpp>
 
-class PlanningBridge::PlanningServiceImpl final : public vehicle_frame::PlanningService::Service {
- public:
-  explicit PlanningServiceImpl(PlanningBridge& parent) : parent_(parent){};
-
-  grpc::Status Subscribe(grpc::ServerContext* context,
-                         const vehicle_frame::SubscribeRequest* request,
-                         grpc::ServerWriter<vehicle_frame::PlanningFrame>* writer) override {
-    auto session = std::make_shared<ClientSession>();
-    session->writer = writer;
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      parent_.grpc_clients_.push_back(session);
-    }
-
-    while (!context->IsCancelled() && session->alive) {
-      vehicle_frame::PlanningFrame frame;
-      {
-        std::unique_lock<std::mutex> lk(session->mu);
-        session->cv.wait_for(lk, std::chrono::milliseconds(100),
-                             [&session] { return !session->pending.empty() || !session->alive; });
-        if (session->pending.empty())
-          continue;
-        frame = std::move(session->pending.front());
-        session->pending.pop();
-      }
-      if (!writer->Write(frame))
-        break;
-    }
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      auto& vec = parent_.grpc_clients_;
-      vec.erase(std::remove(vec.begin(), vec.end(), session), vec.end());
-    }
-    return grpc::Status::OK;
-  }
-
-  grpc::Status GetLatestFrame(grpc::ServerContext* context,
-                              const vehicle_frame::SubscribeRequest* request,
-                              vehicle_frame::PlanningFrame* response) override {
-    std::promise<vehicle_frame::PlanningFrame> promise;
-    auto future = promise.get_future();
-
-    boost::asio::post(parent_.strand_, [&parent = parent_, p = std::move(promise)]() mutable {
-      p.set_value(parent.buildFrame());
-    });
-
-    *response = future.get();
-    return grpc::Status::OK;
-  }
-
- private:
-  PlanningBridge& parent_;
-};
-
-PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder)
-  : frame_seq_(0)
-  , io_context_()
+PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node,
+                               const std::shared_ptr<zenoh::Session>& zsession)
+  : ZenohPublisher(zsession, "autoware/planning")
   , strand_(io_context_)
   , work_guard_(boost::asio::make_work_guard(io_context_))
   , publisher_timer_(io_context_)
@@ -147,8 +91,6 @@ PlanningBridge::PlanningBridge(rclcpp::Node::SharedPtr node, grpc::ServerBuilder
       onScenarioState(msg);
     });
 
-  grpc_service_ = std::make_unique<PlanningServiceImpl>(*this);
-  builder.RegisterService(grpc_service_.get());
   boost::asio::post(strand_, [this]() { scheduleNextTick(); });
   RCLCPP_INFO(node_->get_logger(), "[PlanningBrdige] Ready...");
 }
@@ -172,11 +114,11 @@ void PlanningBridge::scheduleNextTick() {
     boost::asio::bind_executor(strand_, [this](const boost::system::error_code& ec) {
       if (ec == boost::asio::error::operation_aborted)
         return;
-      ontick();
+      onTick();
     }));
 }
 
-void PlanningBridge::ontick() {
+void PlanningBridge::onTick() {
   auto t0 = std::chrono::steady_clock::now();
   broadcastFrame(buildFrame());
   auto dt = std::chrono::steady_clock::now() - t0;
@@ -217,16 +159,7 @@ vehicle_frame::PlanningFrame PlanningBridge::buildFrame() {
 }
 
 void PlanningBridge::broadcastFrame(const vehicle_frame::PlanningFrame& frame) {
-  std::lock_guard<std::mutex> lk(clients_mutex_);
-  for (auto& session : grpc_clients_) {
-    {
-      std::lock_guard<std::mutex> slk(session->mu);
-      if (session->pending.size() > 5)
-        session->pending.pop();
-      session->pending.push(frame);
-    }
-    session->cv.notify_one();
-  }
+  publish(frame.SerializeAsString());
 }
 
 // ROS Callbacks called on ROS executor thread, each one does only one thing post the message to

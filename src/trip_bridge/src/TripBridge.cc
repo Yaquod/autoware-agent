@@ -18,80 +18,20 @@
 
 #include <boost/asio/bind_executor.hpp>
 
-class TripBridge::TripServiceImpl final : public vehicle_frame::TripService::Service {
- public:
-  explicit TripServiceImpl(TripBridge& parent) : parent_(parent){};
-
-  grpc::Status Subscribe(grpc::ServerContext* context,
-                         const vehicle_frame::SubscribeRequest* request,
-                         grpc::ServerWriter<vehicle_frame::TripFrame>* writer) override {
-    auto session = std::make_shared<ClientSession>();
-    session->writer = writer;
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      parent_.grpc_clients_.push_back(session);
-    }
-
-    while (!context->IsCancelled() && session->alive) {
-      vehicle_frame::TripFrame frame;
-      {
-        std::unique_lock<std::mutex> lk(session->mu);
-        session->cv.wait_for(lk, std::chrono::milliseconds(100),
-                             [&session] { return !session->pending.empty() || !session->alive; });
-        if (session->pending.empty())
-          continue;
-        frame = std::move(session->pending.front());
-        session->pending.pop();
-      }
-      if (!writer->Write(frame))
-        break;
-    }
-
-    {
-      std::lock_guard<std::mutex> lk(parent_.clients_mutex_);
-      auto& vec = parent_.grpc_clients_;
-      vec.erase(std::remove(vec.begin(), vec.end(), session), vec.end());
-    }
-    return grpc::Status::OK;
-  }
-
-  grpc::Status GetLatestFrame(grpc::ServerContext* context,
-                              const vehicle_frame::SubscribeRequest* request,
-                              vehicle_frame::TripFrame* response) override {
-    std::promise<vehicle_frame::TripFrame> promise;
-    auto future = promise.get_future();
-
-    boost::asio::post(parent_.strand_, [&parent = parent_, p = std::move(promise)]() mutable {
-      p.set_value(parent.buildFrame());
-    });
-
-    *response = future.get();
-    return grpc::Status::OK;
-  }
-
- private:
-  TripBridge& parent_;
-};
-
-TripBridge::TripBridge(std::shared_ptr<AutowareAgent::AutowareController> controller,
-                       rclcpp::Node::SharedPtr node, grpc::ServerBuilder& builder)
-  : controller_(controller)
-  , frame_seq_(0)
-  , io_context_()
+TripBridge::TripBridge(std::shared_ptr<autoware_agent::AutowareController> controller,
+                       rclcpp::Node::SharedPtr node,
+                       const std::shared_ptr<zenoh::Session>& zsession)
+  : ZenohPublisher(zsession, "autoware/trip")
   , strand_(io_context_)
   , work_guard_(boost::asio::make_work_guard(io_context_))
   , publisher_timer_(io_context_)
+  , controller_(controller)
   , node_(std::move(node)) {
   RCLCPP_INFO(node_->get_logger(), "[TripBridge] Booting..");
   last_heartbeat_time_ = node_->now();
   io_thread_ = std::thread([this]() { io_context_.run(); });
 
   auto sensor_qos = rclcpp::SensorDataQoS();
-  auto reliable_qos = rclcpp::QoS(1).reliable().durability_volatile();
-  auto transient_local_qos = rclcpp::QoS(1).transient_local();
-  auto perception_qos = rclcpp::QoS(1).best_effort().durability_volatile();
-
   localization_state_sub_ =
     node_->create_subscription<autoware_adapi_v1_msgs::msg::LocalizationInitializationState>(
       "/api/localization/initialization_state", sensor_qos,
@@ -116,8 +56,6 @@ TripBridge::TripBridge(std::shared_ptr<AutowareAgent::AutowareController> contro
     "/diagnostics_graph/status", sensor_qos,
     [this](const tier4_system_msgs::msg::DiagGraphStatus::SharedPtr msg) { onDiagState(msg); });
 
-  grpc_service_ = std::make_unique<TripServiceImpl>(*this);
-  builder.RegisterService(grpc_service_.get());
   boost::asio::post(strand_, [this]() { scheduleNextTick(); });
   RCLCPP_INFO(node_->get_logger(), "[TripBrdige] Ready...");
 }
@@ -141,26 +79,26 @@ void TripBridge::scheduleNextTick() {
     boost::asio::bind_executor(strand_, [this](const boost::system::error_code& ec) {
       if (ec == boost::asio::error::operation_aborted)
         return;
-      ontick();
+      onTick();
     }));
 }
 
-void TripBridge::ontick() {
+void TripBridge::onTick() {
   auto dur = (node_->now() - last_heartbeat_time_).seconds();
   state_.system_alive = (dur < 1.0);
 
   // manage data comes from autoware controller
   auto status = controller_->getTripStatusSync();
-  state_.trip_state = toTripState(status.state);
-  state_.start_lanelet_id = status.start_lanelet_id;
-  state_.start_x = status.start_x;
-  state_.start_y = status.start_y;
-  state_.start_z = status.start_z;
-  state_.goal_lanelet_id = status.goal_lanelet_id;
-  state_.goal_x = status.goal_x;
-  state_.goal_y = status.goal_y;
-  state_.goal_z = status.goal_z;
-  state_.goal_distance_m = status.goal_distance_m;
+  state_.trip_state = toTripState(status.state_);
+  state_.start_lanelet_id = status.start_lanelet_id_;
+  state_.start_x = status.start_x_;
+  state_.start_y = status.start_y_;
+  state_.start_z = status.start_z_;
+  state_.goal_lanelet_id = status.goal_lanelet_id_;
+  state_.goal_x = status.goal_x_;
+  state_.goal_y = status.goal_y_;
+  state_.goal_z = status.goal_z_;
+  state_.goal_distance_m = status.goal_distance_m_;
 
   auto t0 = std::chrono::steady_clock::now();
   broadcastFrame(buildFrame());
@@ -199,16 +137,7 @@ vehicle_frame::TripFrame TripBridge::buildFrame() {
 }
 
 void TripBridge::broadcastFrame(const vehicle_frame::TripFrame& frame) {
-  std::lock_guard<std::mutex> lk(clients_mutex_);
-  for (auto& session : grpc_clients_) {
-    {
-      std::lock_guard<std::mutex> slk(session->mu);
-      if (session->pending.size() > 5)
-        session->pending.pop();
-      session->pending.push(frame);
-    }
-    session->cv.notify_one();
-  }
+  publish(frame.SerializeAsString());
 }
 
 // ROS Callbacks called on ROS executor thread, each one does only one thing post the message to
@@ -352,9 +281,9 @@ vehicle_frame::TripState TripBridge::toTripState(TripState v) {
       return vehicle_frame::TRIP_PUBLISHING_INITIAL_POSE;
     case TripState::WAITING_LOCALISATION:
       return vehicle_frame::TRIP_WAITING_LOCALISATION;
-    case TripState::PUBLISHING_GOAL:
+    case TripState::QUERY_PUBLISHING_GOAL:
       return vehicle_frame::TRIP_PUBLISHING_GOAL;
-    case TripState::WAITING_ROUTE:
+    case TripState::QUERY_WAITING_ROUTE:
       return vehicle_frame::TRIP_WAITING_ROUTE;
     case TripState::ENGAGING:
       return vehicle_frame::TRIP_ENGAGING;
