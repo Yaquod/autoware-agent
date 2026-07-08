@@ -303,6 +303,9 @@ void TripController::cancel() {
   trip_route_.reset();
   status_ = TripStatus{};
   route_received_ = false;
+  engaging_for_pickup_ = false;
+  current_route_state_.reset();
+
   transitionTo(TripState::IDLE);
 }
 

@@ -50,6 +50,7 @@ message EtaRequest
   int64 request_id = 2;
   double time = 3;
   double fare = 4;
+  string status = 5;
 }
 
 message EtaResponse
@@ -100,6 +101,15 @@ message OrderUpdateStatusResponse
 
 
 
+message TripCancelRequest{
+string vin_number = 1;
+  int64 request_id = 2;
+}
+
+message TripCancelResponse{
+ bool success = 1;
+  string message = 2;
+}
 
 
 message GatewayCommand {
@@ -109,6 +119,8 @@ message GatewayCommand {
     TripParkRequest trip_park = 3;
     OrderUpdateLocationRequest order_update_location = 4;
     OrderUpdateStatusRequest order_update_status = 5;
+    TripCancelRequest trip_cancel = 6;
+
   }
 }
 
@@ -123,6 +135,8 @@ message VehicleEvent {
     StatusRequest     status         = 7;
     ArriveRequest     arrive         = 8;
     UpdateVehicleLocationRequest   location       = 9;
+    TripCancelResponse trip_cancel_ack = 10;
+
   }
 }
 

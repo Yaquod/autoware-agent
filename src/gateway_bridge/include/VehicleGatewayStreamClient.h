@@ -38,18 +38,20 @@ struct StreamCommandHandlers {
   std::function<void(const TripInitRequest&)> on_trip_init;
   std::function<void(const TripMoveRequest&)> on_trip_move;
   std::function<void(const OrderUpdateLocationRequest&)> on_order_update_location;
+  std::function<void(const TripCancelRequest&)> on_trip_cancel;
 };
 
 class VehicleGatewayStreamClient {
  public:
   VehicleGatewayStreamClient(const std::string& gateway_addr, ITripManager* trip_manager,
                              IEtaProvider* eta_provider, ILocationProvider* location_provider,
-                             std::string vin)
+                             std::string vin, int64_t& request_id)
     : gateway_addr_(gateway_addr)
     , trip_manager_(trip_manager)
     , eta_provider_(eta_provider)
     , location_provider_(location_provider)
     , vin_(std::move(vin))
+    , current_request_id_(request_id)
     , shutdown_(false) {
     reconnect_thread_ = std::thread([this] { run_with_reconnect(); });
   }
@@ -75,6 +77,14 @@ class VehicleGatewayStreamClient {
     auto* r = ev.mutable_trip_init_ack();
     r->set_success(true);
     r->set_message("accepted");
+    enqueue(ev);
+  }
+
+  void ReportTripCancelAck(bool success, const std::string& message = "") {
+    VehicleEvent ev;
+    auto* r = ev.mutable_trip_cancel_ack();
+    r->set_success(success);
+    r->set_message(message);
     enqueue(ev);
   }
 
@@ -104,11 +114,12 @@ class VehicleGatewayStreamClient {
     r->set_request_id(d.request_id);
     r->set_time(d.time_seconds);
     r->set_fare(d.fare);
+    r->set_status("COMPLETED");
     enqueue(ev);
     spdlog::info("[Stream] Eta event enqueued");  // ADD
   }
 
-  void ReportEta(double distance_m, double time_seconds) {
+  void ReportEta(double distance_m, double time_seconds, double fare = 0.0) {
     spdlog::info("[Stream] ReportEta called: distance={} time={}", distance_m,
                  time_seconds);  // ADD
     VehicleEvent ev;
@@ -116,8 +127,8 @@ class VehicleGatewayStreamClient {
     r->set_vin_number(vin_);
     r->set_request_id(eta_provider_->GetEta().request_id);
     r->set_time(time_seconds);
-    r->set_fare(0.0);
-    // r->set_distance(distance_m);
+    r->set_fare(fare);
+    r->set_status("COMPLETED");
     enqueue(ev);
     spdlog::info("[Stream] Eta event enqueued");  // ADD
   }
@@ -224,9 +235,35 @@ class VehicleGatewayStreamClient {
     GatewayCommand cmd;
     while (stream->Read(&cmd)) {
       read_received.store(true);
+
+      // validate vin number
+      std::string cmd_vin;
+      if (cmd.has_trip_init()) {
+        cmd_vin = cmd.trip_init().vin_number();
+      } else if (cmd.has_trip_move()) {
+        cmd_vin = cmd.trip_move().vin_number();
+      } else if (cmd.has_trip_cancel()) {
+        cmd_vin = cmd.trip_cancel().vin_number();
+      } else if (cmd.has_trip_park()) {
+        cmd_vin = cmd.trip_park().vin_number();
+      } else if (cmd.has_order_update_location()) {
+        cmd_vin = cmd.order_update_location().vin_number();
+      } else if (cmd.has_order_update_status()) {
+        cmd_vin = cmd.order_update_status().vin_number();
+      }
+
+      if (cmd_vin != vin_) {
+        spdlog::warn(
+          "[StreamClient] Received command with mismatched VIN: expected {}, got {}. Ignoring "
+          "command.",
+          vin_, cmd_vin);
+        continue;
+      }
+
       if (cmd.has_trip_init()) {
         spdlog::info("[StreamClient] Received TripInit reqId={}", cmd.trip_init().request_id());
         trip_manager_->SetActiveTripId(cmd.trip_init().request_id());
+        current_request_id_ = cmd.trip_init().request_id();
         if (handlers_.on_trip_init)
           handlers_.on_trip_init(cmd.trip_init());
       } else if (cmd.has_trip_move()) {
@@ -239,6 +276,11 @@ class VehicleGatewayStreamClient {
                      cmd.order_update_location().vin_number());
         if (handlers_.on_order_update_location)
           handlers_.on_order_update_location(cmd.order_update_location());
+      } else if (cmd.has_trip_cancel()) {
+        spdlog::info("[StreamClient] Received TripCancel tripId={}",
+                     cmd.trip_cancel().request_id());
+        if (handlers_.on_trip_cancel)
+          handlers_.on_trip_cancel(cmd.trip_cancel());
       }
     }
 
@@ -267,6 +309,7 @@ class VehicleGatewayStreamClient {
   ILocationProvider* location_provider_;
   std::string vin_;
   StreamCommandHandlers handlers_;
+  int64_t& current_request_id_;
 
   std::atomic<bool> shutdown_;
   std::thread reconnect_thread_;
