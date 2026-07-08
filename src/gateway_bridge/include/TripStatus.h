@@ -60,6 +60,7 @@ struct EtaQueryResult {
   LegEta pickup_leg_;
   LegEta trip_leg_;
   std::string error_message_;
+  double fare_{0.0};
 };
 
 struct HeldRoute {
