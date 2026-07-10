@@ -1,6 +1,27 @@
 # Ignore everything by default
 **
 
-# Allow only the files actually used in the Dockerfile
+# --- CI image (docker/Dockerfile.ci) ---
 !docker/Dockerfile.ci
 !docker/entrypoint.sh
+
+# --- Agent runtime image (docker/Dockerfile.agent) ---
+# The agent build context needs the full colcon package sources.
+!docker/Dockerfile.agent
+!docker/entrypoint-agent.sh
+!CMakeLists.txt
+!package.xml
+!src
+!src/**
+!proto
+!proto/**
+!cmake
+!cmake/**
+!.clang-format
+!.clang-tidy
+
+# Never ship build/generated artifacts even if they exist locally
+build/
+install/
+log/
+generated/

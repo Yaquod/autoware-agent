@@ -1,0 +1,73 @@
+name: Build and Push Agent Image
+
+# Builds the final deployable agent image (docker/Dockerfile.agent) and pushes it
+# to ghcr.io/yaquod/autoware-agent. The Jetson edge only pulls this image.
+#
+# Target is arm64 (Jetson). Prefer an arm64 runner so the build is native; the
+# CUDA base image is large and cross-building under QEMU is very slow.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      base_devel:
+        description: 'Autoware devel base image'
+        default: 'ghcr.io/yaquod/autoware:universe-devel-cuda'
+      base_runtime:
+        description: 'Autoware runtime base image'
+        default: 'ghcr.io/yaquod/autoware:universe-cuda'
+
+env:
+  IMAGE: ghcr.io/yaquod/autoware-agent
+  BASE_DEVEL: ${{ github.event.inputs.base_devel || 'ghcr.io/yaquod/autoware:universe-devel-cuda' }}
+  BASE_RUNTIME: ${{ github.event.inputs.base_runtime || 'ghcr.io/yaquod/autoware:universe-cuda' }}
+
+jobs:
+  build-and-push:
+    # Use an arm64 runner if available in your org; otherwise this falls back to
+    # ubuntu-22.04 + QEMU (slow). Swap to your self-hosted arm64 label as needed.
+    runs-on: ubuntu-22.04-arm64
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (tags/labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.agent
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            BASE_DEVEL=${{ env.BASE_DEVEL }}
+            BASE_RUNTIME=${{ env.BASE_RUNTIME }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
