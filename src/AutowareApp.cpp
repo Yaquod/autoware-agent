@@ -19,6 +19,7 @@
 #include "ClusterBridgeProvider.h"
 #include "Config.h"
 #include "cluster_bridge/include/ClusterBridge.h"
+#include "location_bridge/include/LocationBridge.h"
 #include "perception_bridge/include/PerceptionBridge.h"
 #include "planning_bridge/include/PlanningBridge.h"
 #include "trip_bridge/include/TripBridge.h"
@@ -99,6 +100,18 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
     "127.0.0.1:50051", trip_adapter.get(), eta_adapter.get(), loc_adapter.get(), "ORIN_NANO_001",
     h.cluster_bridge_->GetRequestId());
 
+  h.location_bridge_ = std::make_shared<LocationBridge>(
+    node, h.zsession_,
+    [ctrl = h.controller_]() -> std::optional<std::pair<double, double>> {
+      TripStatus st = ctrl->getTripStatusSync();
+      if (st.current_gps_.latitude == 0.0 && st.current_gps_.longitude == 0.0)
+        return std::nullopt;
+      return std::make_pair(st.current_gps_.latitude, st.current_gps_.longitude);
+    },
+    [ta = trip_adapter]() -> int64_t { return ta->GetActiveTripId(); }
+
+  );
+
   stream_client->set_handlers({
     .on_trip_init =
       [ctrl = h.controller_, sc = stream_client](const vehicle_gateway::TripInitRequest& req) {
@@ -160,19 +173,25 @@ AppHandles startAutowareApp(const std::string& yaml_path, const std::string& ser
 
   });
 
-  h.controller_->setTripStateCallback([sc = stream_client](TripState, TripState next) {
-    if (next == TripState::WAITING_FOR_MOVE) {
-      sc->ReportTripInitAck();
-      sc->ReportArrive();
-      sc->ReportStatus("ARRIVED_AT_PICKUP");
-    } else if (next == TripState::RUNNING)
-      sc->ReportStatus("IN_PROGRESS");
-    else if (next == TripState::COMPLETED) {
-      sc->ReportArrive();
-      sc->ReportStatus("COMPLETED");
-    } else if (next == TripState::FAILED)
-      sc->ReportStatus("ERROR");
-  });
+  h.controller_->setTripStateCallback(
+    [sc = stream_client, lb = h.location_bridge_](TripState, TripState next) {
+      if (next == TripState::WAITING_FOR_MOVE) {
+        sc->ReportTripInitAck();
+        sc->ReportArrive();
+        sc->ReportStatus("ARRIVED_AT_PICKUP");
+        lb->setStreamingEnabled(false);
+      } else if (next == TripState::DRIVING_TO_PICKUP) {
+        lb->setStreamingEnabled(true);
+      }
+
+      else if (next == TripState::RUNNING)
+        sc->ReportStatus("IN_PROGRESS");
+      else if (next == TripState::COMPLETED) {
+        sc->ReportArrive();
+        sc->ReportStatus("COMPLETED");
+      } else if (next == TripState::FAILED)
+        sc->ReportStatus("ERROR");
+    });
 
   h.stream_client_ = stream_client;
 
@@ -197,6 +216,11 @@ void stopAutowareApp(AppHandles& h) {
   if (h.cluster_bridge_) {
     h.cluster_bridge_->shutdown();
   }
+
+  if (h.location_bridge_) {
+    h.location_bridge_->shutdown();
+  }
+
   if (h.stream_client_)
     h.stream_client_->shutdown();
 
@@ -210,6 +234,7 @@ void stopAutowareApp(AppHandles& h) {
   h.perception_bridge_.reset();
   h.planning_bridge_.reset();
   h.cluster_bridge_.reset();
+  h.location_bridge_.reset();
   h.controller_.reset();
   h.zsession_.reset();
 }

@@ -396,12 +396,11 @@ const LaneInfo* LaneletMap::findNearestConnectedLane(const GPSCoordinate& gps,
       return &cached;
   }
 
-  spdlog::error("[DEBUG CONNECTED] best=%ld dist=%.1f", best_id, min_dist);
-
   lanelet::ConstLanelet const ll = map_->laneletLayer.get(best_id);
   cache_.emplace_back(makeLaneInfo(ll, gps));
   spdlog::info("[LaneletMap] GPS ({:.6f},{:.6f}) → connected lanelet {} dist={:.1f}m", gps.latitude,
                gps.longitude, best_id, min_dist);
+
   return &cache_.back();
 }
 

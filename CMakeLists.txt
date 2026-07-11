@@ -44,7 +44,8 @@ find_package(zenohc REQUIRED)
 find_package(zenohcxx REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(protobuf CONFIG REQUIRED)
+# find_package(protobuf CONFIG REQUIRED)
+find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 
 set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -62,6 +63,7 @@ add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
 add_subdirectory(src/planning_bridge)
 add_subdirectory(src/perception_bridge)
+add_subdirectory(src/location_bridge)
 add_subdirectory(src/trip_bridge)
 add_subdirectory(proto)
 
@@ -79,6 +81,7 @@ target_link_libraries(autoware_agent
         planning_bridge
         perception_bridge
         trip_bridge
+        location_bridge
         proto_lib
         zenohc::lib
         zenohcxx::zenohc

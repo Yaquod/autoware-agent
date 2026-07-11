@@ -379,3 +379,19 @@ TripState trip_state        = 8;
   double    goal_distance_m   = 19;
 
 }
+
+
+//*********************location data*************************************
+
+message VehicleLocation{
+  double longitude = 1;
+  double latitude = 2;
+}
+
+
+
+message LocationFrame{
+  int64  stamp_ns = 1;
+  uint64 seq      = 2;
+  VehicleLocation vehicle_location = 3;
+}
