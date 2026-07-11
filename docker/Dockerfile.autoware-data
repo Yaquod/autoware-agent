@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1.6
+#
+# Dockerfile.autoware-data
+# ------------------------
+# Overlays autoware_data (perception model weights/ONNX artifacts) onto the
+# already-built universe-cuda runtime image. This exists specifically because
+# the edge target is a Yocto-managed Jetson with an unreliable uplink: nothing
+# should be downloaded or host-mounted at deploy time, so the artifacts are
+# baked in here, on the (well-connected, resourceful) build host, once.
+#
+# This is a deliberate departure from upstream Autoware's default packaging
+# (they skip artifacts in the image to keep it small for devs who don't need
+# every model) -- for a fleet of edge devices behind a single build pipeline,
+# baking in is the right tradeoff: bigger image, zero edge-side data mgmt.
+#
+# Build (run from build_autoware_base.sh, needs BuildKit + --build-context
+# support, i.e. Docker >= 23 / buildx):
+#   docker buildx build --load \
+#     --build-arg BASE_RUNTIME=ghcr.io/yaquod/autoware:universe-cuda \
+#     --build-context autoware-src=<path to the cloned fork checkout> \
+#     -f Dockerfile.autoware-data -t ghcr.io/yaquod/autoware:universe-cuda .
+
+ARG BASE_RUNTIME
+FROM ${BASE_RUNTIME}
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# ansible + galaxy collection needed to run the artifacts role standalone,
+# git-lfs since some artifact repos are LFS-backed.
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+        python3-pip python3-venv git git-lfs ca-certificates curl \
+    && pip3 install --no-cache-dir ansible \
+    && rm -rf /var/lib/apt/lists/*
+
+# `autoware-src` is a named build context pointing at the fork checkout that
+# build_autoware_base.sh already cloned -- reused here so the ansible role +
+# its pinned requirements file stay in lockstep with whatever Autoware
+# version this runtime image was built from. Copy the whole tree (not just
+# ansible/) since ansible-galaxy-requirements.yaml lives at the repo root and
+# expects the ansible/ dir alongside it.
+COPY --from=autoware-src . /tmp/autoware-repo
+WORKDIR /tmp/autoware-repo
+
+RUN ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml \
+    && ansible-playbook autoware.dev_env.download_artifacts \
+         -e "data_dir=/root/autoware_data" \
+    && test -d /root/autoware_data && [ "$(ls -A /root/autoware_data)" ] \
+    || (echo "ERROR: /root/autoware_data is empty after download_artifacts" >&2 && exit 1)
+
+WORKDIR /
+
+RUN rm -rf /tmp/autoware-repo \
+    && pip3 uninstall -y ansible \
+    && apt-get purge -y python3-pip python3-venv git-lfs \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
