@@ -107,9 +107,7 @@ void LocationBridge::broadcastFrame(const vehicle_frame::LocationFrame& frame) {
 }
 
 void LocationBridge::setStreamingEnabled(bool enabled) {
-  boost::asio::post(strand_, [this, enabled]() {
-    streaming_enabled_ = enabled;
-  });
+  boost::asio::post(strand_, [this, enabled]() { streaming_enabled_ = enabled; });
 }
 
 // TODO: complete all on-##nameImpl functions
