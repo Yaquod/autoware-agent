@@ -1,0 +1,85 @@
+# docker-compose.edge.yaml
+# -------------------------
+# Runs on the NVIDIA Jetson edge device. It ONLY pulls images (both are built and
+# pushed off-edge to ghcr.io/yaquod) and runs the full Autoware stack plus the
+# vehicle_autoware_agent bridge.
+#
+#   autoware        -> the fork image, full autonomous stack
+#   autoware_agent  -> the agent bridge, built FROM the same base (shared layers)
+#
+# Both run on the host network + a shared ROS_DOMAIN_ID so the agent's ROS 2
+# nodes discover Autoware over DDS. Maps are mounted (never baked into images).
+#
+# Prereqs on the Jetson:
+#   - JetPack with Docker + nvidia-container-runtime installed
+#   - `docker login ghcr.io`
+#   - a filled-in .env next to this file (see .env.example)
+#
+# Usage:
+#   docker compose -f docker/docker-compose.edge.yaml --env-file docker/.env pull
+#   docker compose -f docker/docker-compose.edge.yaml --env-file docker/.env up -d
+
+services:
+  autoware:
+    image: ${AUTOWARE_IMAGE:-ghcr.io/yaquod/autoware:universe-cuda}
+    container_name: autoware
+    # --- Jetson GPU access ---------------------------------------------------
+    # runtime: nvidia is the most reliable path on Jetson/JetPack. If your Docker
+    # is configured for the CDI/device syntax instead, comment `runtime` out and
+    # use the `deploy:` block below.
+    runtime: nvidia
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    network_mode: host
+    ipc: host
+    pid: host
+    stop_grace_period: 30s
+    restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ROS_LOCALHOST_ONLY=0
+      - RCUTILS_COLORIZED_OUTPUT=1
+    volumes:
+      # Vehicle-specific map (large) — mounted, not baked into the image.
+      - ${MAP_PATH:?set MAP_PATH in .env}:/autoware_map:ro
+      # DDS shared-memory / X for any visualization (optional).
+      - /dev/shm:/dev/shm
+    command:
+      - /bin/bash
+      - -lc
+      - >
+        source /opt/ros/humble/setup.bash &&
+        source /opt/autoware/setup.bash &&
+        ros2 launch autoware_launch ${AUTOWARE_LAUNCH:-autoware.launch.xml}
+        map_path:=/autoware_map
+        vehicle_model:=${VEHICLE_MODEL:-sample_vehicle}
+        sensor_model:=${SENSOR_MODEL:-sample_sensor_kit}
+
+  autoware_agent:
+    image: ${AGENT_IMAGE:-ghcr.io/yaquod/autoware-agent:latest}
+    container_name: autoware_agent
+    depends_on:
+      - autoware
+    network_mode: host
+    ipc: host
+    stop_grace_period: 15s
+    restart: unless-stopped
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ROS_LOCALHOST_ONLY=0
+      # Address of the external gateway the agent streams telemetry to (gRPC/zenoh).
+      - GATEWAY_ADDR=${GATEWAY_ADDR:-}
+    volumes:
+      # Optional: override the baked lanelet2 map / route config without rebuilding.
+      # Mount your route config here and point the agent at it if/when the node
+      # accepts a --map-path argument (see README "Run the Agent").
+      - ${AGENT_CONFIG_DIR:-./agent-config}:/opt/agent/config:ro
+    # Uses the image ENTRYPOINT + default CMD (ros2 run vehicle_autoware_agent autoware_agent).
+    # To pass args, e.g. a route config, override command here.

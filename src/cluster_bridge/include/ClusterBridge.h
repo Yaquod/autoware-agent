@@ -65,6 +65,11 @@ class ClusterBridge : public autoware_agent::ZenohPublisher {
   int64_t& GetRequestId() {
     return current_request_id_;
   }
+
+  void SetRequestId(int64_t id) {
+    current_request_id_ = id;
+  }
+
   boost::asio::io_context& GetIoContext() {
     return io_context_;
   }

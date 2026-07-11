@@ -37,6 +37,7 @@ class ClusterEtaAdapter : public IEtaProvider {
       .request_id = request_id_,
       .time_seconds = static_cast<double>(state_.remaining_time_s),
       .fare = 0.0  // Cloud should takeover pricing
+
     };
   }
 

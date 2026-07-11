@@ -1,0 +1,126 @@
+# syntax=docker/dockerfile:1.6
+#
+# Final deployable image: vehicle_autoware_agent built on top of the Autoware
+# fork images (ghcr.io/yaquod/autoware). Multi-stage:
+#   builder  -> FROM autoware:universe-devel-cuda ; builds protobuf/gRPC/zenoh + the agent
+#   runtime  -> FROM autoware:universe-cuda       ; carries only what is needed to run
+#
+# The runtime stage shares its base layers with the `autoware` compose service,
+# so pulling both images on the edge stores the Autoware base only once.
+#
+# Build (on an arm64 host with resources, e.g. an arm64 Azure VM):
+#   docker build -f docker/Dockerfile.agent \
+#     --build-arg BASE_DEVEL=ghcr.io/yaquod/autoware:universe-devel-cuda \
+#     --build-arg BASE_RUNTIME=ghcr.io/yaquod/autoware:universe-cuda \
+#     -t ghcr.io/yaquod/autoware-agent:latest .
+
+ARG BASE_DEVEL=ghcr.io/yaquod/autoware:universe-devel-cuda
+ARG BASE_RUNTIME=ghcr.io/yaquod/autoware:universe-cuda
+
+# =============================================================================
+# Stage 1: builder
+# =============================================================================
+FROM ${BASE_DEVEL} AS builder
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# --- Build tooling + agent runtime deps -------------------------------------
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    git cmake build-essential autoconf libtool curl ca-certificates pkg-config \
+    ninja-build \
+    libyaml-cpp-dev \
+    libboost-system-dev \
+    libgtest-dev libgmock-dev \
+    ros-humble-fastcdr \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- protobuf v3.21.12 (source) ---  (kept in sync with docker/Dockerfile.ci)
+RUN git clone --branch v3.21.12 --depth 1 https://github.com/protocolbuffers/protobuf.git /tmp/protobuf \
+    && cd /tmp/protobuf \
+    && git submodule update --init --recursive \
+    && mkdir build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && make -j"$(nproc)" \
+    && make install \
+    && ldconfig \
+    && cd / && rm -rf /tmp/protobuf
+
+# --- gRPC v1.60.0 (source) ---
+RUN git clone --recurse-submodules -b v1.60.0 --depth 1 https://github.com/grpc/grpc /tmp/grpc \
+    && cd /tmp/grpc \
+    && mkdir -p cmake/build && cd cmake/build \
+    && cmake ../.. -DCMAKE_BUILD_TYPE=Release -DgRPC_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DgRPC_BUILD_TESTS=OFF \
+    && make -j"$(nproc)" \
+    && make install \
+    && ldconfig \
+    && cd / && rm -rf /tmp/grpc
+
+# --- zenoh-c + zenoh-cpp (source, needs rust toolchain temporarily) ---
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && export PATH="/root/.cargo/bin:${PATH}" \
+    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-c.git /tmp/zenoh-c \
+    && cd /tmp/zenoh-c \
+    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build build --target install -j"$(nproc)" \
+    && git clone --depth 1 https://github.com/eclipse-zenoh/zenoh-cpp.git /tmp/zenoh-cpp \
+    && cd /tmp/zenoh-cpp \
+    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build build --target install -j"$(nproc)" \
+    && cd / && rm -rf /tmp/zenoh-c /tmp/zenoh-cpp \
+    && rustup self uninstall -y
+
+# --- Build the agent ---------------------------------------------------------
+# WORKDIR is fixed so the map path compiled into the binary
+# (Config.h.in -> @CMAKE_SOURCE_DIR@/src/map_routes) is stable and can be
+# reproduced in the runtime stage.
+WORKDIR /opt/agent
+COPY . /opt/agent/src/vehicle_autoware_agent
+
+RUN source /opt/ros/humble/setup.bash \
+    && if [ -f /opt/autoware/setup.bash ]; then source /opt/autoware/setup.bash; fi \
+    && export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}" \
+    && export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}" \
+    && colcon build \
+        --packages-select vehicle_autoware_agent \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF \
+        --event-handlers console_cohesion+
+
+# =============================================================================
+# Stage 2: runtime
+# =============================================================================
+FROM ${BASE_RUNTIME} AS runtime
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+LABEL maintainer="Ahmed Wafdy"
+LABEL org.opencontainers.image.title="vehicle_autoware_agent"
+LABEL org.opencontainers.image.description="Autoware <-> gateway gRPC/zenoh bridge, runnable on Jetson edge"
+LABEL org.opencontainers.image.source="https://github.com/Yaquod/autoware-agent"
+
+# Runtime-only shared libs the agent links against (not source-built here).
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    libyaml-cpp0.7 \
+    libboost-system1.74.0 \
+    ros-humble-fastcdr \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bring over the source-built protobuf / gRPC / zenoh shared libraries + headers-less runtime.
+COPY --from=builder /usr/local/lib/ /usr/local/lib/
+RUN ldconfig
+
+# Agent colcon install space.
+COPY --from=builder /opt/agent/install/ /opt/agent/install/
+
+# Reproduce the compiled-in lanelet2 map path (see src/main.cc + Config.h.in).
+# The binary reads <build-src>/src/map_routes/lanelet2_map.osm at startup.
+COPY --from=builder /opt/agent/src/vehicle_autoware_agent/src/map_routes/ \
+                    /opt/agent/src/vehicle_autoware_agent/src/map_routes/
+
+COPY docker/entrypoint-agent.sh /entrypoint-agent.sh
+RUN chmod +x /entrypoint-agent.sh
+
+WORKDIR /opt/agent
+ENTRYPOINT ["/entrypoint-agent.sh"]
+CMD ["ros2", "run", "vehicle_autoware_agent", "autoware_agent"]
