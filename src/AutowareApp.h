@@ -28,6 +28,7 @@ class ClusterBridge;
 class PlanningBridge;
 class PerceptionBridge;
 class TripBridge;
+class LocationBridge;
 
 namespace vehicle_gateway {
 class VehicleGatewayService;
@@ -49,6 +50,8 @@ struct AppHandles {
   std::shared_ptr<::PlanningBridge> planning_bridge_;
   std::shared_ptr<::PerceptionBridge> perception_bridge_;
   std::shared_ptr<::TripBridge> trip_bridge_;
+  std::shared_ptr<::LocationBridge> location_bridge_;
+
   std::shared_ptr<vehicle_gateway::VehicleGatewayStreamClient> stream_client_;
   std::shared_ptr<zenoh::Session> zsession_;
   std::thread ros_thread_;

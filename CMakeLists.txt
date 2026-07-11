@@ -62,6 +62,7 @@ add_subdirectory(src/gateway_bridge)
 add_subdirectory(src/cluster_bridge)
 add_subdirectory(src/planning_bridge)
 add_subdirectory(src/perception_bridge)
+add_subdirectory(src/location_bridge)
 add_subdirectory(src/trip_bridge)
 add_subdirectory(proto)
 
@@ -79,6 +80,7 @@ target_link_libraries(autoware_agent
         planning_bridge
         perception_bridge
         trip_bridge
+        location_bridge
         proto_lib
         zenohc::lib
         zenohcxx::zenohc

@@ -80,6 +80,7 @@ if (BUILD_INTEGRATION_TESTS)
             planning_bridge
             perception_bridge
             trip_bridge
+            location_bridge
             rclcpp::rclcpp
             PUBLIC proto_lib
             ${GRPC_LIBRARIES}
