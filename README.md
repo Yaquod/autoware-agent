@@ -150,6 +150,65 @@ docker run --rm \
 ```
 
 ---
+
+## Edge Deployment (Jetson / arm64 + CUDA)
+
+For the edge device we ship **two prebuilt images** and orchestrate them with
+Compose. The Jetson only ever **pulls** — it never builds (saving memory/time):
+
+| Image | What | Where built |
+|-------|------|-------------|
+| `ghcr.io/yaquod/autoware:universe-cuda` (+ `-devel-cuda`) | Full Autoware stack, built from the fork `Yaquod/autoware-yaquod` | Once, off-edge (`docker/build_autoware_base.sh`) |
+| `ghcr.io/yaquod/autoware-agent:latest` | This agent, built **FROM** the Autoware image (shared base layers) | CI / off-edge (`docker/Dockerfile.agent`) |
+
+Because the agent image is layered on the same Autoware base, pulling both on the
+Jetson stores the (large) Autoware base **once**.
+
+### Step 1 — Build & publish the Autoware base (once, on a resourced arm64 host)
+
+Full-Autoware-for-arm64 must be built **natively on arm64** (e.g. an arm64 Azure
+VM — Dpsv5 / Epsv5). x86 + QEMU emulation is impractically slow.
+
+```bash
+docker login ghcr.io
+./docker/build_autoware_base.sh          # clones the fork, builds, retags, pushes
+```
+
+### Step 2 — Build & publish the agent image (CI or the same arm64 host)
+
+Pushing a `v*` tag (or running the **Build and Push Agent Image** workflow) builds
+`docker/Dockerfile.agent` and pushes `ghcr.io/yaquod/autoware-agent`. Manually:
+
+```bash
+docker build -f docker/Dockerfile.agent \
+  --build-arg BASE_DEVEL=ghcr.io/yaquod/autoware:universe-devel-cuda \
+  --build-arg BASE_RUNTIME=ghcr.io/yaquod/autoware:universe-cuda \
+  -t ghcr.io/yaquod/autoware-agent:latest .
+docker push ghcr.io/yaquod/autoware-agent:latest
+```
+
+### Step 3 — Run on the Jetson
+
+Prereqs: JetPack with Docker + `nvidia-container-runtime`, and `docker login ghcr.io`.
+
+```bash
+cp docker/.env.example docker/.env      # then edit MAP_PATH, VEHICLE_MODEL, etc.
+
+docker compose -f docker/docker-compose.edge.yaml --env-file docker/.env pull
+docker compose -f docker/docker-compose.edge.yaml --env-file docker/.env up -d
+```
+
+Both services run on the host network with a shared `ROS_DOMAIN_ID`, so the agent's
+ROS 2 nodes discover Autoware over DDS. The vehicle map is **mounted** from
+`MAP_PATH` (never baked into the image).
+
+> **Note — compiled-in map path:** the agent reads its lanelet2 map from a path
+> fixed at build time (`src/main.cc` → `Config.h.in`). `Dockerfile.agent`
+> reproduces that path inside the image (`/opt/agent/src/vehicle_autoware_agent/src/map_routes/lanelet2_map.osm`),
+> so the container starts without a mount. A follow-up should make this path
+> configurable at runtime.
+
+---
 ## Run Autoware
 
 we are using Shinjuku-Map from AWSIM
