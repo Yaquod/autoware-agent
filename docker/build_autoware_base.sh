@@ -60,9 +60,17 @@ fi
 # runs `docker buildx bake` with docker-bake.hcl / docker-bake-cuda.hcl and
 # produces the `universe-devel(-cuda)` and `universe(-cuda)` image stages.
 # Confirm the exact flags on your checkout with: ./docker/build.sh --help
-echo "==> Running the fork's docker/build.sh (this takes a long time)"
+#
+# NOTE: build.sh only *loads* the target it builds. The default target is the
+# runtime `universe`; `--devel-only` loads `universe-devel`. We need BOTH:
+#   - universe-devel-cuda : builder base for the agent (has colcon + headers)
+#   - universe-cuda       : runtime base for the agent + the `autoware` service
+# So we invoke build.sh twice (the second run is mostly cache).
+echo "==> Building the Autoware runtime image (this takes a long time)"
 pushd "${WORKDIR}" >/dev/null
 ./docker/build.sh --platform "${PLATFORM}"
+echo "==> Building the Autoware devel image (mostly cached)"
+./docker/build.sh --platform "${PLATFORM}" --devel-only
 popd >/dev/null
 
 # ---- Discover what build.sh produced and retag to our registry -------------

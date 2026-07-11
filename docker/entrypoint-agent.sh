@@ -4,7 +4,7 @@
 # Sources ROS 2, the Autoware overlay, and the agent workspace, then execs the
 # agent node (or whatever command is passed to `docker run` / compose `command`).
 
-set -euo pipefail
+set -eo pipefail
 
 source /opt/ros/humble/setup.bash
 

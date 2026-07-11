@@ -83,7 +83,7 @@ RUN source /opt/ros/humble/setup.bash \
     && export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}" \
     && colcon build \
         --packages-select vehicle_autoware_agent \
-        --cmake-args -DCMAKE_BUILD_TYPE=Release \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF \
         --event-handlers console_cohesion+
 
 # =============================================================================
