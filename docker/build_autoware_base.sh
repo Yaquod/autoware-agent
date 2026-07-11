@@ -95,6 +95,19 @@ retag() {
 retag "universe-devel-cuda" "${DEVEL_TAG}"
 retag "universe-cuda"       "${RUNTIME_TAG}"
 
+# ---- Bake autoware_data into the runtime image ------------------------------
+# The edge target is a Yocto-managed Jetson with an unreliable uplink, so we
+# do NOT want a runtime download or a host-side bind-mount managed separately
+# by the Yocto layer. Bake the ML model artifacts straight into the image
+# here, on this build host, once per Autoware version bump.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "==> Baking autoware_data into ${RUNTIME_TAG} (this downloads several GB)"
+DOCKER_BUILDKIT=1 docker buildx build --load \
+  --build-arg BASE_RUNTIME="${RUNTIME_TAG}" \
+  --build-context autoware-src="${WORKDIR}" \
+  -f "${SCRIPT_DIR}/Dockerfile.autoware-data" \
+  -t "${RUNTIME_TAG}" \
+  "${SCRIPT_DIR}"
 # ---- Push -------------------------------------------------------------------
 if [[ "${NO_PUSH}" == "1" ]]; then
   echo "==> NO_PUSH=1 set, skipping push. Local tags ready:"
