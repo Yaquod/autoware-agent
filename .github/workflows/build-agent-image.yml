@@ -8,6 +8,8 @@ name: Build and Push Agent Image
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -26,9 +28,7 @@ env:
 
 jobs:
   build-and-push:
-    # Use an arm64 runner if available in your org; otherwise this falls back to
-    # ubuntu-22.04 + QEMU (slow). Swap to your self-hosted arm64 label as needed.
-    runs-on: ubuntu-22.04-arm64
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
@@ -53,6 +53,9 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
