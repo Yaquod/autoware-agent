@@ -22,28 +22,26 @@
 #include "zenoh_publisher.h"
 
 #include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
-#include <rclcpp/rclcpp.hpp>
-
 
 #include <zenoh.hxx>
 
 class LocationBridge : public autoware_agent::ZenohPublisher {
  public:
-   //GPS provider function type, returns optional pair of latitude and longitude
-  using GpsProvider = std::function<std::optional<std::pair<double,double>>()>;
-  using TripIdProvider = std::function<int64_t()>; 
+  // GPS provider function type, returns optional pair of latitude and longitude
+  using GpsProvider = std::function<std::optional<std::pair<double, double>>()>;
+  using TripIdProvider = std::function<int64_t()>;
 
   explicit LocationBridge(rclcpp::Node::SharedPtr node,
-                          const std::shared_ptr<zenoh::Session>& zsession , GpsProvider gps_provider ,  TripIdProvider trip_id_provider);
+                          const std::shared_ptr<zenoh::Session>& zsession, GpsProvider gps_provider,
+                          TripIdProvider trip_id_provider);
 
   ~LocationBridge();
-
-
 
   void setStreamingEnabled(bool enabled);
 
@@ -57,8 +55,7 @@ class LocationBridge : public autoware_agent::ZenohPublisher {
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
   std::thread io_thread_;
 
-
- GpsProvider gps_provider_; 
+  GpsProvider gps_provider_;
   TripIdProvider trip_id_provider_;
   double current_lat_{0.0};
   double current_lon_{0.0};
@@ -77,11 +74,8 @@ class LocationBridge : public autoware_agent::ZenohPublisher {
   // ros
   rclcpp::Node::SharedPtr node_;
 
-
-  //handle location streaming 
-    bool streaming_enabled_{false}; 
-
-
+  // handle location streaming
+  bool streaming_enabled_{false};
 };
 
 #endif  // VEHICLEAUTOWAREAGENT_PERCEPTIONBRIDGE_H
