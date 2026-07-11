@@ -306,6 +306,13 @@ void TripController::cancel() {
   engaging_for_pickup_ = false;
   current_route_state_.reset();
 
+  // reset the vehicle to the default start position in the map
+  const FixedStartPosition* fixed_start = lanelet_map_.getDefaultStart();
+  if (fixed_start) {
+    doPublishInitialPose(fixed_start->local.x, fixed_start->local.y, fixed_start->local.z,
+                         fixed_start->orientation.z, fixed_start->orientation.w);
+  }
+
   transitionTo(TripState::IDLE);
 }
 
@@ -571,6 +578,59 @@ void TripController::finishQueryLeg() {
                 .eta_seconds_ = eta_seconds_,
                 .distance_m_ = eta_distance_m_,
                 .goal_gps_ = query_goal_gps_};
+
+    /////////////////////////////////////////////////
+    // Raw local coords of what backend sent:
+    LocalCoordinate raw_pickup = lanelet_map_.gpsToLocal(query_start_gps_);
+    LocalCoordinate raw_dest = lanelet_map_.gpsToLocal(query_goal_gps_);
+
+    // Resolved pickup coords (trip leg's start = pickup lane center/projection):
+    double pickup_x = status_.start_x_;
+    double pickup_y = status_.start_y_;
+
+    // Resolved destination coords:
+    double dest_x = status_.goal_x_;
+    double dest_y = status_.goal_y_;
+
+    // Distances (snap distance: how far the resolved point is from the raw GPS)
+    double pickup_snap_dist =
+      std::sqrt(std::pow(pickup_x - raw_pickup.x, 2) + std::pow(pickup_y - raw_pickup.y, 2));
+
+    double dest_snap_dist =
+      std::sqrt(std::pow(dest_x - raw_dest.x, 2) + std::pow(dest_y - raw_dest.y, 2));
+
+    // Convert resolved pickup local coords back to GPS
+    GPSCoordinate resolved_pickup_gps = lanelet_map_.localToGps({pickup_x, pickup_y, 0.0});
+    GPSCoordinate resolved_dest_gps = lanelet_map_.localToGps({dest_x, dest_y, 0.0});
+
+    RCLCPP_INFO(
+      node_->get_logger(),
+      "[RouteResolution] PICKUP:"
+      "\n  Backend GPS:       (%.6f, %.6f)"
+      "\n  Backend local:     (%.2f, %.2f)"
+      "\n  Resolved lane:     %s"
+      "\n  Resolved local:    (%.2f, %.2f)"
+      "\n  Resolved GPS:      (%.6f, %.6f)"  // ADD THIS LINE
+      "\n  Snap distance:     %.2f m",
+      query_start_gps_.latitude, query_start_gps_.longitude, raw_pickup.x, raw_pickup.y,
+      pickup_route_.has_value() ? std::to_string(pickup_route_->goal_lane_id_).c_str() : "?",
+      pickup_x, pickup_y, resolved_pickup_gps.latitude, resolved_pickup_gps.longitude,  // ADD THIS
+      pickup_snap_dist);
+
+    RCLCPP_INFO(node_->get_logger(),
+                "[RouteResolution] DESTINATION:"
+                "\n  Backend GPS:       (%.6f, %.6f)"
+                "\n  Backend local:     (%.2f, %.2f)"
+                "\n  Resolved lane:     %s"
+                "\n  Resolved local:    (%.2f, %.2f)"
+                "\n  Resolved GPS:      (%.6f, %.6f)"  // ADD THIS LINE
+                "\n  Snap distance:     %.2f m",
+                query_goal_gps_.latitude, query_goal_gps_.longitude, raw_dest.x, raw_dest.y,
+                status_.goal_lanelet_id_.c_str(), dest_x, dest_y, resolved_dest_gps.latitude,
+                resolved_dest_gps.longitude,  // ADD THIS
+                dest_snap_dist);
+
+    /////////////////////////////////////
 
     RCLCPP_INFO(node_->get_logger(), "[AutowareAgent] Trip leg done — ETA %.1f s / %.1f m",
                 eta_seconds_, eta_distance_m_);
